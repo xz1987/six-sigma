@@ -1,33 +1,37 @@
 # SPEC: Emergency Response Quality Monitor
 
 ## 1. Team and prompt
-- **Team name:** FILL IN. Awaiting team confirmation.
-- **Track:** FILL IN. Confirm on-campus or Virtual DL Challenge.
-- **Prompt we chose:** Health Systems — Emergency Response (team-provided title). FILL IN. Confirm official prompt number and exact title for the selected track.
+- **Team name:** DIIS.
+- **Track:** On-campus (24-hour sprint).
+- **Prompt we chose:** Health Systems — Emergency Response (team-provided title). The team has not been supplied an official prompt number or a separate exact title; no identifier is invented. Use the team-provided challenge summary below, and reconcile wording if organizers later provide it.
 - **Challenge summary (provided by the team):** Ambulance dispatch-to-on-scene times vary across city zones; monthly averages hide extreme delays and patterns requiring investigation.
 - **Project repository:** https://github.com/xz1987/six-sigma (current origin; public accessibility must be verified under H-08).
 
 ## 2. User and use case
-- **Primary user:** Dispatcher supervisor / lead EMS worker reviewing incident response performance across five city zones.
+- **Primary user:** Dispatcher supervisor / lead EMS worker reviewing incident response performance across five selected neighborhoods in Queens, New York City.
 - **Decision supported:** Which incidents and zones require investigation because response times have increased unusually relative to their historical baseline.
-- **Review workflow:** Upload incident records and review zone-level monitoring results, with end-of-year summaries. Automatic live dispatch management is a future extension.
+- **Review workflow:** Run a simulated dispatch feed that automatically delivers synthetic incident updates to a Shiny active-call view and supervisor analysis dashboard. Retain CSV upload for historical baseline records and reproducible demos, with end-of-year summaries of available data. All simulated views carry a visible synthetic-data label.
 - **Prompt fit:** Incident-level monitoring exposes variation and extreme delays that monthly averages can hide. A flag requests investigation; it does not establish a cause, clinical outcome, or staff fault.
 
 ## 3. Inputs and measurement
-One CSV row represents one dispatched incident. Initial datasets are synthetic and explicitly labeled as such.
+One historical CSV row represents one completed dispatched incident. A deterministic replay feed also emits synthetic dispatch and on-scene events. All demonstration data are explicitly labeled synthetic.
 
 | Column | Type / units | Meaning and source |
 |---|---|---|
 | `incident_id` | unique text | Synthetic incident identifier; an operational equivalent would come from dispatch logs. |
-| `zone` | categorical, five documented labels | Incident location zone, not ambulance home zone. |
-| `call_priority` | categorical | Dispatch priority; labels and ordering documented in the codebook. Required for stratified analysis. |
-| `dispatch_time` | ISO 8601 timestamp with UTC offset | Time the ambulance is dispatched, from dispatch records. |
-| `on_scene_time` | ISO 8601 timestamp with UTC offset | Recorded on-scene arrival, from dispatch/check-in records. |
+| `zone` | categorical: `Astoria`, `Flushing`, `Jamaica`, `Forest Hills`, `Far Rockaway` | Selected Queens neighborhood containing the incident; not ambulance home zone. |
+| `call_priority` | ordered categories: `High`, `Medium`, `Low` | Synthetic urgency ratings: most urgent, urgent, and lower urgency respectively. Required for stratified analysis; not an official EMS classification. |
+| `dispatch_time` | ISO 8601 timestamp with UTC offset | Time a specific ambulance unit is assigned to the incident; response clock starts. The existing column name is retained for compatibility. |
+| `on_scene_time` | ISO 8601 timestamp with UTC offset | Time simulated crew confirmation records that the ambulance has stopped at the incident scene; response clock stops. Not proximity or patient contact. |
 
-- **Derived measurement:** `response_minutes = (on_scene_time - dispatch_time)` in minutes after converting timestamps to UTC.
+- **Geographic scope:** Five selected Queens neighborhoods, not complete coverage of the borough or official EMS districts. Assign neighborhood labels directly in the synthetic feed; address geocoding and geographic boundary assignment are outside version one. Neighborhood names follow [NYC Queens community-board descriptions](https://www.nyc.gov/site/communityboards/about/queens-boards.page).
+- **Analysis groups:** Five neighborhoods times three priorities gives 15 distinct groups. Meeting the 100-incident baseline threshold for every group requires at least 1,500 valid baseline incidents, with each group represented in all six baseline months. Priority categories describe simulated urgency only; they do not prescribe clinical triage or service targets.
+- **Simulated event contract:** Each event has a unique `event_id`, `incident_id`, `event_type` (`dispatched`, optional `approaching_scene`, or `on_scene`), `event_time` with UTC offset, zone, and priority. `dispatched` represents unit assignment and sets `dispatch_time`; confirmed arrival sets `on_scene_time`. Optional `approaching_scene` represents entry into a simulated 500-foot radius, changes display status only, and does not stop the response clock. It does not require real GPS or a routing engine. Active incidents may lack arrival time and remain pending, rather than being rejected as invalid completed records. Replayed duplicate events must not create duplicate incidents; invalid or out-of-order events are reported.
+- **Simulation controls:** Start, pause/resume, and reset a deterministic replay from documented synthetic fixtures. Display simulated time separately from wall-clock time. Keep session state isolated; restarting restores the documented initial state.
+- **Derived measurement:** `response_minutes = (on_scene_time - dispatch_time)` in minutes after converting timestamps to UTC. Label this assignment-to-confirmed-on-scene response time. Apply identical event definitions to baseline and monitoring records. On-scene means the vehicle has stopped at the scene, consistent with [NEMSIS eTimes.06](https://www.nemsis.org/media/nemsis_v3/release-3.5.1/DataDictionary/APIs/EMSDataSetAPI/eTimes_v3_xsd.html); it does not mean patient contact.
 - **Validation:** Report and exclude records with missing required fields, unparseable timestamps, negative durations, duplicate incident IDs, or undocumented categories. Report counts and reasons; do not silently impute values or remove valid long responses.
 - **Cross-zone dispatch:** Assign analysis to the incident zone. Ambulance home zone may be an optional descriptive field; it does not change the grouping definition.
-- **Analysis settings:** Explicit baseline start/end and monitoring dates; monitoring begins after the baseline ends. Confirm precise dispatch and arrival event definitions with the team before collecting operational data.
+- **Analysis settings:** Explicit baseline start/end and monitoring dates; monitoring begins after the baseline ends. Assign baseline/monitoring membership by unit-assignment timestamp. Event definitions are confirmed for the synthetic demo; any future operational integration must verify the source-system meanings.
 - Weather, traffic, density, speed limits, hospital distance, and GPS coordinates are not required inputs for version one.
 
 ## 4. Statistics and validation
@@ -35,39 +39,49 @@ One CSV row represents one dispatched incident. Initial datasets are synthetic a
 - **Why it fits:** Each incident supplies one continuous measurement. The method monitors unusual response times and changes between consecutive incidents within a comparable group.
 - **Reference:** [NIST individuals control charts](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc322.htm).
 - **Individuals calculation:** Baseline mean `xbar`; consecutive absolute moving ranges with mean `MRbar`; `sigma_hat = MRbar / 1.128`; individuals limits `xbar +/- 3 * sigma_hat`. Retain mathematical limits; explain that negative response times are invalid even if the calculated lower limit is negative.
+- **Completed records only:** Feed arrivals finalize response durations and pass valid completed incidents to the same tested QC functions used by CSV analysis. Active-call elapsed time is descriptive, not a completed response duration or I-MR observation. Feed updates never change the frozen baseline.
 - **Primary investigation rule:** A monitoring response time strictly above its group's fixed individuals upper control limit flags that incident and its zone for investigation. Show the time, value, limit, priority, and baseline dates.
-- **Variation chart:** Moving-range center `MRbar`, lower limit zero, upper limit `3.267 * MRbar`. Label upper-limit exceedances as variation signals, distinct from unusually long response times. Calculate ranges only within the same zone/priority sequence; document treatment of the baseline-to-monitoring boundary before implementation.
+- **Variation chart:** Moving-range center `MRbar`, lower limit zero, upper limit `3.267 * MRbar`. Label upper-limit exceedances as variation signals, distinct from unusually long response times. Calculate ranges only within the same zone/priority sequence, ordered by assignment timestamp with incident ID as a deterministic tie-breaker. The first completed monitoring observation uses the last baseline observation in that same group as its predecessor; later completed observations use the preceding observation in assignment order. Never form ranges across groups. The boundary range is a monitoring value and is excluded from baseline MRbar and limit estimation. When arrivals complete out of assignment order, recompute the affected monitoring sequence from available completed records; pending incidents have no completed-duration observation.
 - **Supporting descriptive summaries:** Valid incident count, median, and 90th-percentile response time in minutes, using R's `quantile(..., type = 7)`. These require their own known-answer checks before display.
 - **Zone comparison:** Present groups side by side, with sample counts, without claiming an adjusted ranking or comparing raw flag totals as equivalent evidence. Priority stratification does not adjust for weather, staffing, traffic, or other case-mix differences.
 - **Assumptions:** Assess baseline stability, distribution shape, and serial dependence within each group. Use time plots, distribution diagnostics, and lag diagnostics. Strong skew or dependence can invalidate conventional limit interpretation; revisit the method before presenting validated signals if diagnostics are unsuitable. Six months is a reference window, not a full annual seasonal adjustment.
-- **Minimum data:** FILL IN. Agree on a justified minimum baseline count per zone/priority, a stability review procedure, and diagnostic acceptance criteria before H-03. Until then, do not treat a merely computable chart as validated. Insufficient groups show `insufficient data` rather than a reassuring status.
-- **Known-answer check:** For the arithmetic fixture `4, 5, 6, 5, 4` minutes: mean `4.8`, moving ranges `1, 1, 1, 1`, `MRbar = 1`, `sigma_hat = 1 / 1.128`, individuals UCL approximately `7.459574`, LCL approximately `2.140426`, and MR UCL `3.267`. A subsequent value `8` exceeds the individuals UCL. This five-point fixture tests arithmetic only, not baseline adequacy.
+- **Baseline eligibility:** Select six consecutive calendar months preceding monitoring. Each zone/priority group needs at least 100 valid incidents, with observations in every baseline month. Report monthly counts. The count and coverage thresholds are project safeguards, not proof of stability or a full seasonal adjustment. Groups failing either threshold show `insufficient baseline data`; descriptive summaries remain available, but monitoring flags are disabled.
+- **Threshold reference:** [Minitab control-chart guidance](https://support.minitab.com/minitab/media/pdfs/translate/Assistant_Variables_Control_Charts.pdf) supports 100 observations for control-limit precision. Requiring coverage in all six months is a team-chosen safeguard.
+- **Baseline review:** One teammate prepares chronological plots, preliminary I-MR charts, distribution diagnostics, and lag/autocorrelation diagnostics; another reviews them. Record group, baseline dates, reviewer, decision, and rationale. Review unusual points, shifts, trends, strong skew, serial dependence, and changes in dispatch procedures, priority definitions, or recording practices. See [NIST process-stability guidance](https://www.itl.nist.gov/div898/handbook/ppc/section4/ppc45.htm).
+- **Approval and exceptions:** Before documented approval, or while concerns remain unresolved, show `baseline requires review` and disable monitoring flags. Review may approve the baseline with documented justification or mark it `baseline unsuitable` pending a revised period or method. Do not use a single normality test as automatic approval. Investigate valid extreme observations rather than automatically deleting them; correct documented errors and record any justified exclusions or reference-period changes. Do not repeatedly remove points merely to obtain a passing chart.
+- **Degenerate baseline:** A zero average moving range produces `degenerate baseline`; monitoring flags are disabled. Approval cannot override insufficient data or zero variation.
+- **Fixed reference:** Once eligible and approved, freeze the baseline observations and limits during monitoring. Any later rebaseline requires an explicit, documented review; monitoring observations do not silently update limits.
+- **Known-answer check:** For the arithmetic fixture `4, 5, 6, 5, 4` minutes: mean `4.8`, moving ranges `1, 1, 1, 1`, `MRbar = 1`, `sigma_hat = 1 / 1.128`, individuals UCL approximately `7.459574`, LCL approximately `2.140426`, and MR UCL `3.267`. A subsequent value `8` exceeds the individuals UCL. The baseline-to-monitoring range is `abs(8 - 4) = 4`, which also exceeds the MR UCL `3.267`; neither baseline estimate changes. This five-point fixture tests arithmetic only, not baseline adequacy.
 - **Degenerate checks:** Constant baseline, one observation, missing or invalid timestamps, empty groups, duplicate IDs, tied timestamps, and unequal group sizes. A zero moving range must produce an explicit degenerate-baseline status rather than divide-by-zero behavior or a validated all-clear.
 - **Implementation:** Statistical calculations live in plain, framework-independent functions in `app/qc.R`; the UI calls them. Use `testthat` for known-answer and edge-case checks. Verify each reported statistic independently before styling.
 - **Repository dependency:** The referenced `.claude/skills/stats-first-steering/` is missing in this checkout; restore or resolve its guidance before statistical implementation.
 
 ## 5. Delivery
 - **Language:** R for statistical logic.
-- **Proposed interface:** Shiny supervisor dashboard, starting from `demos/shinyapp/` copied once into `app/`. The team previously discussed JavaScript; confirm Shiny before scaffolding. A separate JavaScript frontend and R API are not assumed in this specification.
+- **Confirmed stack:** R Shiny supervisor dashboard with an HTML/CSS interface and optional JavaScript for custom interactions. Start from `demos/shinyapp/`, copied once into `app/`. Shiny connects the interface to the R backend; no separate frontend application or REST API is required.
+- **Responsibilities:** Shiny handles uploads, filters, dashboard layout, and chart rendering; CSS and optional JavaScript customize presentation and interactions. Framework-independent functions in `app/qc.R` perform statistical calculations, verified with `testthat`. Statistical formulas do not live in UI or JavaScript code.
 - **Run/deploy contract:** Provide `testme.R`, `manifestme.R`, `deployme.R`, and `app/README.md`; local startup uses one command. Supply missing scripts as part of H-04.
 - **Target:** Course Posit Connect server. Keep credentials and deployment server configuration in GitHub secrets or a gitignored local environment file.
 - **Deployment dependency:** Workflow templates referenced by repository instructions are missing; resolve under H-06 before relying on automated deployment.
 
 ## 6. Outputs
-- CSV validation summary with accepted/rejected counts and reasons.
+- Active-call view showing synthetic incident ID, zone, priority, dispatch status, and elapsed simulated time, updating automatically during replay.
+- Supervisor dashboard refreshing as valid arrival events complete incidents.
+- CSV and event validation summaries with accepted/rejected counts and reasons.
 - Zone and priority filters, baseline dates, monitoring period, and observation counts.
 - Individuals and moving-range charts with units, fixed limits, and marked signals.
 - Incident-level investigation table with the evidence triggering each flag.
 - Descriptive summaries and year-end views covering only the uploaded period.
 - Interpretation: `Above the upper control limit means unusually long relative to this group's baseline; investigate circumstances.`
-- Distinguish `signal detected`, `no signal detected`, `insufficient data`, and `baseline unsuitable`. No signal is not proof that service is acceptable.
+- Distinguish `signal detected`, `no signal detected`, `insufficient baseline data`, `baseline requires review`, `degenerate baseline`, and `baseline unsuitable`. No signal is not proof that service is acceptable.
 - No clinical or service target is invented. Control limits describe historical behavior, not acceptable service standards.
 
 ## 7. Test datasets and codebook
 Create under H-02; none are claimed to exist yet:
-- `data/stable.csv`: synthetic reference and monitoring periods across five zones with documented priorities and unequal call counts.
+- `data/stable.csv`: synthetic reference and monitoring periods across the five selected Queens neighborhoods with High/Medium/Low priorities and unequal call counts.
 - `data/planted_delay.csv`: synthetic valid baseline followed by documented long-response incidents in one zone/priority group.
 - `data/edge_cases.csv`: sparse groups, constant baseline, and deliberately invalid records to exercise explicit status and validation behavior.
+- The replay derives dispatch and arrival events deterministically from completed synthetic CSV records; document replay ordering, timing, assignment/approaching/on-scene transitions, and reset behavior. Optional approaching timestamps must lie between assignment and confirmed arrival; no actual GPS-derived radius crossing is claimed. No extra CSV dataset is required.
 - `data/README.md`: generation assumptions, every column and unit, priority/zone labels, planted events, baseline dates, expected behavior, and how equivalent operational records would be collected. Do not describe simulated calls or outcomes as real.
 
 ## 8. Documentation and reproducibility
@@ -78,7 +92,7 @@ Create under H-02; none are claimed to exist yet:
 - H-01 remains in progress until outstanding decisions and identity fields are confirmed and the team can explain the method.
 
 ## 9. Out of scope for version one
-- Live dispatcher-system APIs, automatic logging, GPS tracking, automatic arrival detection, active-call operations, and parsing private call logs.
+- Real dispatcher-system APIs, real operational dispatch decisions, GPS tracking, GPS-based arrival detection, and parsing private call logs. Simulated active-call updates and synthetic arrival events are in scope.
 - Logins, databases, real patient/customer data, forecasting, causal attribution, and adjusted zone league tables.
 - Weather/traffic modeling, resource routing, or claims about fatalities or clinical outcomes.
 - A second inferential method before the core QC calculation is independently tested.

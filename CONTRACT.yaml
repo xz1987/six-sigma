@@ -40,7 +40,7 @@ tasks:
       grep -c "FILL IN[.,]" SPEC.md prints 0 (it counts only the blanks,
       not the instructions at the top), and every teammate can say the
       method sentence in SPEC section 4 without reading it.
-    result: "Draft spec records team scope and I-MR proposal; pending team identity, track, official prompt number, minimum-data rules, interface confirmation, and team review."
+    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; pending team review."
 
   - id: H-02
     title: Two or three test datasets plus a codebook
@@ -154,4 +154,25 @@ tasks:
       git clone of the public repo into an empty folder, then the app/
       testme script and the H-03 tests both pass with no extra steps; git
       grep -i "api_key" finds no real key; the Devpost entry links the repo.
+    result: ""
+
+  - id: H-09
+    title: Simulated dispatch feed and active-call updates
+    points: "Supports the working-tool demonstration; no additional rubric points"
+    status: todo
+    owner: ""
+    started_at: ""
+    owns: ["app/feed.R", "tests/testthat/test-feed.R"]
+    notes: >
+      Proposed implementation task for the team-selected synthetic feed; confirm
+      task scope before checkout. Depends on H-02 fixtures and H-03 QC behavior.
+      H-03 excludes the feed test file; H-04 excludes app/feed.R and owns the
+      Shiny integration; H-05 documents replay in demo/README.md. Build no
+      separate API or real dispatch integration. Clearly label synthetic data.
+    definition_of_done: >
+      Rscript -e "testthat::test_file('tests/testthat/test-feed.R')" passes
+      deterministic replay, duplicate-event, out-of-order-event, pending-call,
+      and reset checks. The H-04 Shiny demo shows dispatch then arrival without
+      manual incident entry; only completed incidents reach QC, frozen baseline
+      limits remain unchanged, and reset reproduces the same sequence.
     result: ""
