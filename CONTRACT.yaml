@@ -40,7 +40,7 @@ tasks:
       grep -c "FILL IN[.,]" SPEC.md prints 0 (it counts only the blanks,
       not the instructions at the top), and every teammate can say the
       method sentence in SPEC section 4 without reading it.
-    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; pending team review."
+    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; responding lead EMS worker primary user and 12-month baseline confirmed; descriptive weather categories and three supporting charts confirmed; pending team review."
 
   - id: H-02
     title: Two or three test datasets plus a codebook
@@ -80,7 +80,9 @@ tasks:
     owns: ["app/"]
     notes: >
       Copy ONE folder from demos/ (the one named in SPEC section 5) to app/.
-      Everything in app/ except the H-03 files. Load fastapi-react-scaffold or
+      Everything in app/ except the H-03 files and H-09 feed.R. Include the
+      SPEC descriptive charts and weather context, with chart calculations
+      validated under H-03; weather does not alter QC limits. Load fastapi-react-scaffold or
       plumber-react-scaffold for an API plus React front end.
     definition_of_done: >
       The testme script in app/ starts the tool with one command, and a call
