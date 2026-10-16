@@ -3,7 +3,7 @@
 ## 1. Team and prompt
 - **Team name:** DIIS.
 - **Track:** On-campus (24 hours).
-- **Prompt we chose:** Health Systems — Emergency Response (team-provided title). FILL IN. Confirm official prompt number and exact title for the selected track.
+- **Prompt we chose:** Health Systems — Emergency Response (team-provided title). Confirm official prompt number and exact title for the selected track.
 - **Challenge summary (provided by the team):** Ambulance dispatch-to-on-scene times vary across city zones; monthly averages hide extreme delays and patterns requiring investigation.
 - **Project repository:** https://github.com/xz1987/six-sigma (current origin; public accessibility must be verified under H-08).
 
