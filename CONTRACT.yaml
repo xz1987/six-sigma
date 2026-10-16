@@ -178,3 +178,63 @@ tasks:
       manual incident entry; only completed incidents reach QC, frozen baseline
       limits remain unchanged, and reset reproduces the same sequence.
     result: ""
+
+  - id: H-10
+    title: Versioned synthetic wind and weather-informed ETA fixtures
+    points: "Supports experimental ETA; no additional rubric points"
+    status: todo
+    owner: ""
+    started_at: ""
+    owns: ["data/eta/"]
+    notes: >
+      Team approved the experimental ETA extension. Keep H-02 core CSVs unchanged.
+      Document raw weather units, source-specific scale definitions and tested
+      conversion boundaries; do not claim synthetic intensity labels are official.
+      Include reproducible weather-effect and no-effect scenarios, known generation
+      equations, chronological split dates and shared weather-event identifiers.
+    definition_of_done: >
+      Rscript data/eta/validate.R passes reproducibility, schema, weather-scale
+      boundaries, positive durations, missing weather retention, known injected
+      relationships and chronological/event-block separation checks; codebook
+      documents every column, unit, assumption and expected result.
+    result: ""
+
+  - id: H-11
+    title: Tested experimental weather-informed duration prediction
+    points: "Supports experimental ETA; core QC remains H-03"
+    status: todo
+    owner: ""
+    started_at: ""
+    owns: ["app/eta.R", "tests/testthat/test-eta.R", "data/eta-model-review.md"]
+    notes: >
+      Depends on H-03 core verification and H-10 fixtures. H-03 excludes ETA tests;
+      H-04 excludes app/eta.R. Define formula, quantitative acceptance gates and
+      prediction interval method in the review document before fitting. Test
+      log-scale median versus mean interpretation, leakage, missing/unseen inputs,
+      and unsupported conditions. No change to QC limits or clinical claims.
+    definition_of_done: >
+      Rscript -e "testthat::test_file('tests/testthat/test-eta.R')" passes independent
+      known-answer prediction and interval tests plus degenerate cases; model review
+      reports frozen split dates, held-out weather versus no-weather MAE, coverage,
+      interval widths and category counts against predeclared gates. Unsupported
+      or failed models return unavailable or a separately validated simpler fallback.
+    result: ""
+
+  - id: H-12
+    title: Integrate experimental ETA into the simulated Shiny view
+    points: "Supports demonstration; no additional rubric points"
+    status: todo
+    owner: ""
+    started_at: ""
+    owns: ["app/eta-view.R", "demo/eta.md"]
+    notes: >
+      Depends on H-04, H-09 and H-11. H-04 owns wiring eta-view.R into the app,
+      excludes editing eta-view.R, and integrates only after validated functions.
+      Display assignment-time prediction and range separately from actual elapsed
+      time and QC. Clearly label synthetic/experimental and show unavailable cases.
+    definition_of_done: >
+      demo/eta.md provides reproducible replay steps and independently checked
+      assignment-time predictions/intervals; completing an incident leaves its
+      original prediction and all core QC baseline limits unchanged. A teammate
+      reproduces the example and unavailable-input case with no manual arrival.
+    result: ""
