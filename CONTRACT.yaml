@@ -74,9 +74,9 @@ tasks:
   - id: H-04
     title: Working tool - one demo copied to app/ and wired to the H-03 function
     points: "25 - Tool Implementation: an effective, working tool (does it run?)"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex dashboard implementer"
+    started_at: "2026-10-16 17:54"
     owns: ["app/"]
     notes: >
       Copy ONE folder from demos/ (the one named in SPEC section 5) to app/.
@@ -88,7 +88,7 @@ tasks:
       The testme script in app/ starts the tool with one command, and a call
       on one data/ file (endpoint, function call or app upload) returns the
       same numbers as the H-03 known-answer test.
-    result: ""
+    result: "Shiny dashboard starts with app/testme.R and app/smoke.R prints the SPEC known answer (mean=4.8, I_UCL=7.459574, MR_UCL=3.267) followed by SMOKE PASS; live browser replay, I-MR charts, patterns, and method views rendered with zero Shiny output errors."
 
   - id: H-05
     title: Demonstration of the tool on every test dataset
@@ -161,9 +161,9 @@ tasks:
   - id: H-09
     title: Simulated dispatch feed and active-call updates
     points: "Supports the working-tool demonstration; no additional rubric points"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex implementer"
+    started_at: "2026-10-16 22:31"
     owns: ["app/feed.R", "tests/testthat/test-feed.R"]
     notes: >
       Proposed implementation task for the team-selected synthetic feed; confirm
@@ -177,7 +177,7 @@ tasks:
       and reset checks. The H-04 Shiny demo shows dispatch then arrival without
       manual incident entry; only completed incidents reach QC, frozen baseline
       limits remain unchanged, and reset reproduces the same sequence.
-    result: ""
+    result: "Deterministic simulated dispatch replay is integrated into Shiny; test-feed.R reports FAIL 0 WARN 0 SKIP 0 PASS 39, automatic arrival completes incidents for QC, pending calls stay excluded, frozen limits remain unchanged, and same-seed reset reproduces the sequence."
 
   - id: H-10
     title: Versioned synthetic wind and weather-informed ETA fixtures

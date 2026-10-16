@@ -10,7 +10,7 @@
 ## 2. User and use case
 - **Primary user:** The lead EMS worker on the responding ambulance who will arrive at the incident scene, working across five selected Queens neighborhoods. A dispatcher supervisor / analyst is a secondary user of historical analysis.
 - **Decision supported:** The responding lead EMS worker monitors their assigned synthetic incident, elapsed response time, and arrival status. The simulated feed automatically supplies the on-scene confirmation; no manual arrival click is required in version one. After completion, the worker and secondary supervisor review incidents and neighborhoods requiring investigation. Completed-response QC flags do not provide routing or clinical instructions.
-- **Review workflow:** Run a simulated dispatch feed that automatically delivers synthetic incident updates to a Shiny active-call view and supervisor analysis dashboard. Retain CSV upload for historical baseline records and reproducible demos, with end-of-year summaries of available data. All simulated views carry a visible synthetic-data label.
+- **Review workflow:** Run a simulated dispatch feed that automatically delivers synthetic incident updates to a Shiny active-call view and supervisor analysis dashboard. The demo loads bundled synthetic fixtures internally and replays a seeded shuffled sequence over simulated time; users do not upload CSV files. The committed CSVs remain reproducible test fixtures. All simulated views carry a visible synthetic-data label.
 - **Prompt fit:** Incident-level monitoring exposes variation and extreme delays that monthly averages can hide. A flag requests investigation; it does not establish a cause, clinical outcome, or staff fault.
 
 ## 3. Inputs and measurement
@@ -76,7 +76,7 @@ One historical CSV row represents one completed dispatched incident. A determini
 ## 5. Delivery
 - **Language:** R for statistical logic.
 - **Confirmed stack:** R Shiny supervisor dashboard with an HTML/CSS interface and optional JavaScript for custom interactions. Start from `demos/shinyapp/`, copied once into `app/`. Shiny connects the interface to the R backend; no separate frontend application or REST API is required.
-- **Responsibilities:** Shiny handles uploads, filters, dashboard layout, and chart rendering; CSS and optional JavaScript customize presentation and interactions. Framework-independent functions in `app/qc.R` perform statistical calculations, verified with `testthat`. Statistical formulas do not live in UI or JavaScript code.
+- **Responsibilities:** Shiny handles built-in fixture selection, replay controls, filters, dashboard layout, and chart rendering; CSS and optional JavaScript customize presentation and interactions. Framework-independent functions in `app/qc.R` perform statistical calculations, verified with `testthat`. Statistical formulas do not live in UI or JavaScript code.
 - **Run/deploy contract:** Provide `testme.R`, `manifestme.R`, `deployme.R`, and `app/README.md`; local startup uses one command. Supply missing scripts as part of H-04.
 - **Target:** Course Posit Connect server. Keep credentials and deployment server configuration in GitHub secrets or a gitignored local environment file.
 - **Deployment dependency:** Workflow templates are available under `.claude/skills/connect-publish/workflows/`; configure and verify deployment under H-06.
@@ -84,13 +84,13 @@ One historical CSV row represents one completed dispatched incident. A determini
 ## 6. Outputs
 - Active-call view showing synthetic incident ID, zone, priority, dispatch status, and elapsed simulated time, updating automatically during replay.
 - Supervisor dashboard refreshing as valid arrival events complete incidents.
-- CSV and event validation summaries with accepted/rejected counts and reasons.
+- Bundled-fixture and event validation summaries with accepted/rejected counts and reasons.
 - Zone and priority filters, baseline dates, monitoring period, and observation counts.
 - Individuals and moving-range charts with units, fixed limits, and marked signals.
 - Neighborhood boxplots, assignment-hour/weekday median heatmap, and weather-condition boxplots with counts and explanatory labels. Weather context also appears on active incidents and investigation details.
 - Incident-level investigation table with the evidence triggering each flag.
 - After ETA validation, experimental assignment-time arrival estimate and 95% prediction range, separate from actual response time and QC status. Include wind/gust context and prediction-availability status.
-- Descriptive summaries and year-end views covering only the uploaded period.
+- Descriptive summaries and year-end views covering only the selected bundled scenario and replay period.
 - Interpretation: `Above the upper control limit means unusually long relative to this group's baseline; investigate circumstances.`
 - Distinguish `signal detected`, `no signal detected`, `insufficient baseline data`, `baseline requires review`, `degenerate baseline`, and `baseline unsuitable`. No signal is not proof that service is acceptable.
 - No clinical or service target is invented. Control limits describe historical behavior, not acceptable service standards.
@@ -114,6 +114,7 @@ H-02 created the following core fixtures; their validation and generation assump
 
 ## 9. Out of scope for version one
 - Real dispatcher-system APIs, real operational dispatch decisions, GPS tracking, GPS-based arrival detection, and parsing private call logs. Simulated active-call updates and synthetic arrival events are in scope.
+- User-uploaded datasets are outside the demo scope; version one uses only the committed synthetic fixtures selected inside the app.
 - Logins, databases, real patient/customer data, operational routing forecasts, causal attribution, and adjusted zone league tables. The explicitly labeled experimental assignment-time ETA is in scope.
 - Traffic modeling, resource routing, or claims about fatalities or clinical outcomes. Weather context and the separately validated experimental ETA are in scope; weather-adjusted QC limits, real dispatch ETA claims and live weather APIs remain outside version one.
 - A second inferential method before the core QC calculation is independently tested.
