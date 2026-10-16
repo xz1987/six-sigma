@@ -102,12 +102,29 @@ table { font-size: 11px; }
 .review-box label { line-height: 1.35; }
 input[type="checkbox"] { accent-color: var(--lime); }
 .shiny-output-error { color: #971c25; }
+.role-intro { max-width: 760px; margin: 52px auto 24px; padding: 0 24px; text-align: center; }
+.role-intro h1 { margin: 8px 0; font-size: 34px; letter-spacing: -.035em; }
+.role-intro p, .role-card p, .role-note { color: var(--muted); }
+.roles { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+.role-card { display: flex; flex-direction: column; min-height: 245px; padding: 25px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.role-card h3 { margin: 14px 0 7px; font-size: 19px; }
+.role-card p { flex: 1; line-height: 1.6; }
+.role-card .btn { width: 100%; padding: 10px; }
+.role-number { color: var(--lime-dark); font-size: 10px; font-weight: 850; letter-spacing: .13em; }
+.role-note { margin: 18px auto; text-align: center; font-size: 11px; }
+.role-workspace { max-width: 820px; margin: 45px auto; }
+.switch-role { position: fixed; right: 28px; bottom: 22px; z-index: 20; }
+.switch-role .btn { background: var(--paper); box-shadow: 0 4px 18px rgba(23,26,29,.1); }
+.modal-content { border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 44px rgba(23,26,29,.16); }
+.modal-header, .modal-footer { border-color: var(--line); }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 1fr; }
   .control-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .kpi-grid { grid-template-columns: repeat(2,1fr); }
   .two-col { grid-template-columns: 1fr; }
+  .roles { grid-template-columns: 1fr; }
+  .role-card { min-height: 205px; }
 }
 @media (max-width: 540px) {
   .topbar { align-items: flex-start; flex-direction: column; }

@@ -75,7 +75,7 @@ tasks:
     title: Working tool - one demo copied to app/ and wired to the H-03 function
     points: "25 - Tool Implementation: an effective, working tool (does it run?)"
     status: done
-    owner: "Codex dashboard implementer"
+    owner: "Codex dashboard implementer + collaborator interface scaffold"
     started_at: "2026-10-16 17:54"
     owns: ["app/"]
     notes: >
@@ -88,7 +88,7 @@ tasks:
       The testme script in app/ starts the tool with one command, and a call
       on one data/ file (endpoint, function call or app upload) returns the
       same numbers as the H-03 known-answer test.
-    result: "Shiny dashboard starts with app/testme.R and app/smoke.R prints the SPEC known answer (mean=4.8, I_UCL=7.459574, MR_UCL=3.267) followed by SMOKE PASS; live browser replay, I-MR charts, patterns, and method views rendered with zero Shiny output errors."
+    result: "Merged the collaborator role-selection/demo-login scaffold with the functioning Shiny dashboard; app/smoke.R prints the SPEC known answer (mean=4.8, I_UCL=7.459574, MR_UCL=3.267) and SMOKE PASS, while live replay and analysis views render with zero Shiny output errors."
 
   - id: H-05
     title: Demonstration of the tool on every test dataset
@@ -238,3 +238,14 @@ tasks:
       original prediction and all core QC baseline limits unchanged. A teammate
       reproduces the example and unavailable-input case with no manual arrival.
     result: ""
+
+
+  - id: H-13
+    title: Staff demo login and open caller access
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/"]
+    notes: "User explicitly requested pre-created demo accounts for Supervisor and Primary responder; Caller stays open."
+    definition_of_done: "Verify staff role login, wrong password rejection, role separation, caller access, protected data, and logout in server checks and the running UI."
+    result: "Merged UI checks pass: supervisor login opens the live dashboard, responder login opens only its prototype, wrong credentials are rejected without crashing, caller access requires no login, protected dashboard controls stay hidden by role, and logout/change-role reloads the session."
