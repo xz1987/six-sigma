@@ -1,74 +1,84 @@
-# SPEC: Six Sigma Hackathon team project
-
-What your tool IS. Your agent reads this before every task. Where the code and this file
-disagree, the code is the bug: change this file first, then the code.
-
-Most of this page is already decided by the event and the [rubric](docs/criteria.md).
-**Only the `FILL IN` lines change, and you do not have to write them by hand:** describe your app and ask your agent to update them. They depend on the prompt your team picks at kickoff
-(prompts are secret until then, see [`docs/prompts.md`](docs/prompts.md)) and on your team.
-The examples after each `FILL IN` show the shape of an answer. They are not hints about the prompts.
+# SPEC: Emergency Response Quality Monitor
 
 ## 1. Team and prompt
-- **Team name:** FILL IN. Example: "Control Freaks"
-- **Track:** FILL IN, on-campus (24 hours) or Virtual DL Challenge (7 days). See [`docs/schedule.md`](docs/schedule.md).
-- **Prompt we chose:** FILL IN, the prompt number and title, copied from the [Devpost](https://six-sigma-hackathon.devpost.com/) challenge page at kickoff.
-- **Our public repo:** FILL IN. Example: "github.com/our-team/our-tool"
+- **Team name:** FILL IN. Awaiting team confirmation.
+- **Track:** FILL IN. Confirm on-campus or Virtual DL Challenge.
+- **Prompt we chose:** Health Systems — Emergency Response (team-provided title). FILL IN. Confirm official prompt number and exact title for the selected track.
+- **Challenge summary (provided by the team):** Ambulance dispatch-to-on-scene times vary across city zones; monthly averages hide extreme delays and patterns requiring investigation.
+- **Project repository:** https://github.com/xz1987/six-sigma (current origin; public accessibility must be verified under H-08).
 
-## 2. User and use case (rubric: scope 5, user and use case 5)
-- **User:** FILL IN, one named kind of person, not "everyone". Example: "the supervisor who checks part diameters at the end of each shift"
-- **Decision the tool helps them make, and when:** FILL IN. Example: "whether to stop the line and recalibrate before the next shift starts"
-- **Why this matches the prompt:** FILL IN, one sentence.
+## 2. User and use case
+- **Primary user:** Dispatcher supervisor / lead EMS worker reviewing incident response performance across five city zones.
+- **Decision supported:** Which incidents and zones require investigation because response times have increased unusually relative to their historical baseline.
+- **Review workflow:** Upload incident records and review zone-level monitoring results, with end-of-year summaries. Automatic live dispatch management is a future extension.
+- **Prompt fit:** Incident-level monitoring exposes variation and extreme delays that monthly averages can hide. A flag requests investigation; it does not establish a cause, clinical outcome, or staff fault.
 
-## 3. Inputs (rubric: minimal inputs 5)
-Only what this user can actually measure or already knows. Fewer is better; every input a user
-cannot measure costs points.
+## 3. Inputs and measurement
+One CSV row represents one dispatched incident. Initial datasets are synthetic and explicitly labeled as such.
 
-| Input | Type and units | Where the user gets it |
+| Column | Type / units | Meaning and source |
 |---|---|---|
-| FILL IN. Example: `measurements.csv`, one row per part | numeric, mm | their gauge log |
+| `incident_id` | unique text | Synthetic incident identifier; an operational equivalent would come from dispatch logs. |
+| `zone` | categorical, five documented labels | Incident location zone, not ambulance home zone. |
+| `call_priority` | categorical | Dispatch priority; labels and ordering documented in the codebook. Required for stratified analysis. |
+| `dispatch_time` | ISO 8601 timestamp with UTC offset | Time the ambulance is dispatched, from dispatch records. |
+| `on_scene_time` | ISO 8601 timestamp with UTC offset | Recorded on-scene arrival, from dispatch/check-in records. |
 
-## 4. The statistics, and why (rubric: valid QC analysis 25)
-Say the method in words before any code exists. Load the `stats-first-steering` skill first.
-- **Method:** FILL IN. Example: "X-bar and R chart, subgroups of 5, limits from the average range"
-- **Why it fits the use case:** FILL IN, one sentence.
-- **Assumptions and how the tool checks them:** FILL IN. Example: "normality: histogram plus Shapiro-Wilk in the demo"
-- **Known-answer check:** FILL IN, a textbook example or hand calculation the function must reproduce.
+- **Derived measurement:** `response_minutes = (on_scene_time - dispatch_time)` in minutes after converting timestamps to UTC.
+- **Validation:** Report and exclude records with missing required fields, unparseable timestamps, negative durations, duplicate incident IDs, or undocumented categories. Report counts and reasons; do not silently impute values or remove valid long responses.
+- **Cross-zone dispatch:** Assign analysis to the incident zone. Ambulance home zone may be an optional descriptive field; it does not change the grouping definition.
+- **Analysis settings:** Explicit baseline start/end and monitoring dates; monitoring begins after the baseline ends. Confirm precise dispatch and arrival event definitions with the team before collecting operational data.
+- Weather, traffic, density, speed limits, hospital distance, and GPS coordinates are not required inputs for version one.
 
-Fixed for every team:
-- The statistic lives in **one plain, tested function** (`app/qc.py` or `app/qc.R`). The API, app or
-  package only calls it and displays the result. No statistics inside UI code.
-- Every statistic has a test against a known answer and a degenerate case (constant data, n = 1, missing values).
-- You can explain every number the tool prints. If you cannot, it is not done.
+## 4. Statistics and validation
+- **Core method:** Individuals and moving-range (I-MR) charts for incident response times, separately by incident zone and call priority, in chronological order. Estimate fixed limits from an initial six-month baseline and apply them to subsequent monitoring observations.
+- **Why it fits:** Each incident supplies one continuous measurement. The method monitors unusual response times and changes between consecutive incidents within a comparable group.
+- **Reference:** [NIST individuals control charts](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc322.htm).
+- **Individuals calculation:** Baseline mean `xbar`; consecutive absolute moving ranges with mean `MRbar`; `sigma_hat = MRbar / 1.128`; individuals limits `xbar +/- 3 * sigma_hat`. Retain mathematical limits; explain that negative response times are invalid even if the calculated lower limit is negative.
+- **Primary investigation rule:** A monitoring response time strictly above its group's fixed individuals upper control limit flags that incident and its zone for investigation. Show the time, value, limit, priority, and baseline dates.
+- **Variation chart:** Moving-range center `MRbar`, lower limit zero, upper limit `3.267 * MRbar`. Label upper-limit exceedances as variation signals, distinct from unusually long response times. Calculate ranges only within the same zone/priority sequence; document treatment of the baseline-to-monitoring boundary before implementation.
+- **Supporting descriptive summaries:** Valid incident count, median, and 90th-percentile response time in minutes, using R's `quantile(..., type = 7)`. These require their own known-answer checks before display.
+- **Zone comparison:** Present groups side by side, with sample counts, without claiming an adjusted ranking or comparing raw flag totals as equivalent evidence. Priority stratification does not adjust for weather, staffing, traffic, or other case-mix differences.
+- **Assumptions:** Assess baseline stability, distribution shape, and serial dependence within each group. Use time plots, distribution diagnostics, and lag diagnostics. Strong skew or dependence can invalidate conventional limit interpretation; revisit the method before presenting validated signals if diagnostics are unsuitable. Six months is a reference window, not a full annual seasonal adjustment.
+- **Minimum data:** FILL IN. Agree on a justified minimum baseline count per zone/priority, a stability review procedure, and diagnostic acceptance criteria before H-03. Until then, do not treat a merely computable chart as validated. Insufficient groups show `insufficient data` rather than a reassuring status.
+- **Known-answer check:** For the arithmetic fixture `4, 5, 6, 5, 4` minutes: mean `4.8`, moving ranges `1, 1, 1, 1`, `MRbar = 1`, `sigma_hat = 1 / 1.128`, individuals UCL approximately `7.459574`, LCL approximately `2.140426`, and MR UCL `3.267`. A subsequent value `8` exceeds the individuals UCL. This five-point fixture tests arithmetic only, not baseline adequacy.
+- **Degenerate checks:** Constant baseline, one observation, missing or invalid timestamps, empty groups, duplicate IDs, tied timestamps, and unequal group sizes. A zero moving range must produce an explicit degenerate-baseline status rather than divide-by-zero behavior or a validated all-clear.
+- **Implementation:** Statistical calculations live in plain, framework-independent functions in `app/qc.R`; the UI calls them. Use `testthat` for known-answer and edge-case checks. Verify each reported statistic independently before styling.
+- **Repository dependency:** The referenced `.claude/skills/stats-first-steering/` is missing in this checkout; restore or resolve its guidance before statistical implementation.
 
-## 5. Delivery (rubric: working tool 25)
-- **Stack:** FILL IN, one of: R package, Python library, REST API (FastAPI or plumber), dashboard (React or Shiny).
-- **Starting demo:** FILL IN, the one folder copied from [`demos/`](demos/README.md) into `app/`. Example: `demos/fastapi/`
-
-Fixed for every team:
-- Start from **one** demo in `demos/`, copied to `app/`. Keep its four-script contract
-  (`testme`, `manifestme`, `deployme`, `README.md`); `testme` starts the tool with one command.
-- Deployed on the course **Posit Connect** server with a public URL (publisher key handed out at the
-  event). Deploy early: copy one workflow from
-  [`.claude/skills/connect-publish/workflows/`](.claude/skills/connect-publish/workflows/).
-- A small tool that runs beats a large tool that does not.
+## 5. Delivery
+- **Language:** R for statistical logic.
+- **Proposed interface:** Shiny supervisor dashboard, starting from `demos/shinyapp/` copied once into `app/`. The team previously discussed JavaScript; confirm Shiny before scaffolding. A separate JavaScript frontend and R API are not assumed in this specification.
+- **Run/deploy contract:** Provide `testme.R`, `manifestme.R`, `deployme.R`, and `app/README.md`; local startup uses one command. Supply missing scripts as part of H-04.
+- **Target:** Course Posit Connect server. Keep credentials and deployment server configuration in GitHub secrets or a gitignored local environment file.
+- **Deployment dependency:** Workflow templates referenced by repository instructions are missing; resolve under H-06 before relying on automated deployment.
 
 ## 6. Outputs
-- **What the user sees:** FILL IN, a number, chart or pass/fail, with units and a one-line "how to read this".
-  Example: "a control chart with out-of-control points in red, plus 'stop the line: yes/no'"
+- CSV validation summary with accepted/rejected counts and reasons.
+- Zone and priority filters, baseline dates, monitoring period, and observation counts.
+- Individuals and moving-range charts with units, fixed limits, and marked signals.
+- Incident-level investigation table with the evidence triggering each flag.
+- Descriptive summaries and year-end views covering only the uploaded period.
+- Interpretation: `Above the upper control limit means unusually long relative to this group's baseline; investigate circumstances.`
+- Distinguish `signal detected`, `no signal detected`, `insufficient data`, and `baseline unsuitable`. No signal is not proof that service is acceptable.
+- No clinical or service target is invented. Control limits describe historical behavior, not acceptable service standards.
 
-## 7. Test datasets and codebook (rubric: demo 10, datasets 5, codebook 5)
-2-3 small CSVs in `data/`, invented but shaped like real field data, each showing one behavior.
-`data/README.md` is the codebook: every file, every column with units, and what it would take to
-collect this data for real.
-- **Datasets:** FILL IN. Example: "`in_control.csv`, `planted_shift.csv` (mean shifts at row 40), `edge_case.csv` (one subgroup)"
+## 7. Test datasets and codebook
+Create under H-02; none are claimed to exist yet:
+- `data/stable.csv`: synthetic reference and monitoring periods across five zones with documented priorities and unequal call counts.
+- `data/planted_delay.csv`: synthetic valid baseline followed by documented long-response incidents in one zone/priority group.
+- `data/edge_cases.csv`: sparse groups, constant baseline, and deliberately invalid records to exercise explicit status and validation behavior.
+- `data/README.md`: generation assumptions, every column and unit, priority/zone labels, planted events, baseline dates, expected behavior, and how equivalent operational records would be collected. Do not describe simulated calls or outcomes as real.
 
-## 8. Documentation and reproducibility (rubric: docs 10, public repo 5)
-- `README.md` says what the tool does, for whom, every input and parameter, how to run it in one
-  command, and walks through the demo on each test dataset.
-- Public GitHub repo; a fresh clone runs `testme` and the tests pass with no extra steps.
-- Submit on Devpost: the repo link plus a demo.
+## 8. Documentation and reproducibility
+- Root and app READMEs explain the user, scope, inputs, parameters, method, assumptions, limitations, startup command, and deployed tool link.
+- `demo/README.md` walks through every dataset with independently verified expected results.
+- H-03 runs `Rscript -e "testthat::test_dir('tests')"`.
+- Verify startup and tests from a fresh clone, publish the team repository, and submit its link and demo on Devpost.
+- H-01 remains in progress until outstanding decisions and identity fields are confirmed and the team can explain the method.
 
-## 9. Out of scope
-What we will NOT build, so nobody (human or agent) builds it by accident.
-- Default: logins, databases, real customer data, a second statistic before the first one is tested.
-- FILL IN, anything else. Example: "no forecasting; no multi-plant comparison"
+## 9. Out of scope for version one
+- Live dispatcher-system APIs, automatic logging, GPS tracking, automatic arrival detection, active-call operations, and parsing private call logs.
+- Logins, databases, real patient/customer data, forecasting, causal attribution, and adjusted zone league tables.
+- Weather/traffic modeling, resource routing, or claims about fatalities or clinical outcomes.
+- A second inferential method before the core QC calculation is independently tested.
