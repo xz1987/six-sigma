@@ -45,15 +45,15 @@ tasks:
   - id: H-02
     title: Two or three test datasets plus a codebook
     points: "10 - Tool Documentation: 2-3 working test datasets (5), codebook and README for the data (5)"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex (DIIS datasets)"
+    started_at: "2026-10-16T20:52:36+00:00"
     owns: ["data/"]
     definition_of_done: >
       ls data/*.csv lists 2 or 3 files (e.g. in control, planted shift, edge
       case), and data/README.md names every one of them and describes every
       column with units and how the data would be collected for real.
-    result: ""
+    result: "Created 3 synthetic CSVs (3465, 3465, 270 rows), full codebook, base-R generator and audit; ls lists all 3 CSVs, R audit passes, Python cross-check agrees, and regeneration hashes match."
 
   - id: H-03
     title: Core QC statistic as one plain, tested function
