@@ -15,8 +15,17 @@ empty_state <- function(title, detail) div(class = "empty", h3(title), p(detail)
 metric <- function(label, value, detail) div(class = "metric", span(class = "eyebrow", label), h2(value), p(detail))
 
 ui <- fluidPage(
-  tags$head(tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
+  tags$head(tags$title("DIIS Emergency Response Monitor"),
+    tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
+    tags$meta(name = "theme-color", content = "#135b63"),
+    tags$meta(name = "apple-mobile-web-app-capable", content = "yes"),
+    tags$meta(name = "apple-mobile-web-app-title", content = "DIIS EMS"),
+    tags$link(rel = "manifest", href = "manifest.webmanifest"),
+    tags$link(rel = "icon", type = "image/png", href = "icons/icon-192.png"),
+    tags$link(rel = "apple-touch-icon", href = "icons/apple-touch-icon.png"),
+    tags$script(src = "pwa.js", defer = NA),
     tags$style(HTML("
+      [hidden]{display:none!important}
       body{background:#f3f6fa;color:#17293e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
       .container-fluid{max-width:1460px;padding:28px 32px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:26px}
       .brand{display:flex;gap:14px;align-items:center}.logo{background:#135b63;color:white;border-radius:14px;padding:13px;font-size:23px;font-weight:700}
@@ -37,6 +46,14 @@ ui <- fluidPage(
   div(class = "topbar", div(class = "brand", div(class = "logo", "+"),
     div(h1("Emergency Response Monitor"), span(class = "eyebrow", "DIIS / Emergency response workspace"))),
     span(class = "badge-mode", "Interface preview")),
+  div(id = "connection-status", class = "notice", role = "status", hidden = NA,
+    "You're offline. Reconnect to use login, incident records, and response updates."),
+  div(class = "pwa-tools", style = "margin-bottom:18px;",
+    tags$button(id = "install-app", type = "button", class = "btn btn-primary", hidden = NA, "Install app"),
+    tags$details(tags$summary("Add this app to your device"),
+      p("iPhone/iPad: use your browser's Share menu → Add to Home Screen. Safari on Mac: File → Add to Dock. Chrome/Edge: use the install option in the address bar or browser menu."),
+      p("Live features require an internet connection. This remains a hackathon demo.")),
+    tags$span(id = "pwa-setup-status", role = "status")),
   uiOutput("role_navigation"),
   conditionalPanel("output.active_role === 'choose'",
     div(class = "role-intro", span(class = "eyebrow", "Welcome"), h2("How are you joining today?"),
