@@ -40,7 +40,7 @@ tasks:
       grep -c "FILL IN[.,]" SPEC.md prints 0 (it counts only the blanks,
       not the instructions at the top), and every teammate can say the
       method sentence in SPEC section 4 without reading it.
-    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; responding lead EMS worker primary user and 12-month baseline confirmed; descriptive weather categories and three supporting charts confirmed; pending team review."
+    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; responding lead EMS worker primary user and 12-month baseline confirmed; descriptive weather categories and three supporting charts confirmed; automatic feed arrivals and non-excluding Unknown weather confirmed; team agreement reported on 2026-10-16 and zero spec placeholders verified; method-explanation check remains to be confirmed."
 
   - id: H-02
     title: Two or three test datasets plus a codebook
