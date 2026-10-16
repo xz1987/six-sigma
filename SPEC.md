@@ -54,7 +54,7 @@ One historical CSV row represents one completed dispatched incident. A determini
 - **Known-answer check:** For the arithmetic fixture `4, 5, 6, 5, 4` minutes: mean `4.8`, moving ranges `1, 1, 1, 1`, `MRbar = 1`, `sigma_hat = 1 / 1.128`, individuals UCL approximately `7.459574`, LCL approximately `2.140426`, and MR UCL `3.267`. A subsequent value `8` exceeds the individuals UCL. The baseline-to-monitoring range is `abs(8 - 4) = 4`, which also exceeds the MR UCL `3.267`; neither baseline estimate changes. This five-point fixture tests arithmetic only, not baseline adequacy.
 - **Degenerate checks:** Constant baseline, one observation, missing or invalid timestamps, empty groups, duplicate IDs, tied timestamps, and unequal group sizes. A zero moving range must produce an explicit degenerate-baseline status rather than divide-by-zero behavior or a validated all-clear.
 - **Implementation:** Statistical calculations live in plain, framework-independent functions in `app/qc.R`; the UI calls them. Use `testthat` for known-answer and edge-case checks. Verify each reported statistic independently before styling.
-- **Repository dependency:** The referenced `.claude/skills/stats-first-steering/` is missing in this checkout; restore or resolve its guidance before statistical implementation.
+- **Repository dependency:** Statistical implementation follows `.claude/skills/stats-first-steering/SKILL.md`, restored by the repository merge.
 
 ## 5. Delivery
 - **Language:** R for statistical logic.
@@ -62,7 +62,7 @@ One historical CSV row represents one completed dispatched incident. A determini
 - **Responsibilities:** Shiny handles uploads, filters, dashboard layout, and chart rendering; CSS and optional JavaScript customize presentation and interactions. Framework-independent functions in `app/qc.R` perform statistical calculations, verified with `testthat`. Statistical formulas do not live in UI or JavaScript code.
 - **Run/deploy contract:** Provide `testme.R`, `manifestme.R`, `deployme.R`, and `app/README.md`; local startup uses one command. Supply missing scripts as part of H-04.
 - **Target:** Course Posit Connect server. Keep credentials and deployment server configuration in GitHub secrets or a gitignored local environment file.
-- **Deployment dependency:** Workflow templates referenced by repository instructions are missing; resolve under H-06 before relying on automated deployment.
+- **Deployment dependency:** Workflow templates are available under `.claude/skills/connect-publish/workflows/`; configure and verify deployment under H-06.
 
 ## 6. Outputs
 - Active-call view showing synthetic incident ID, zone, priority, dispatch status, and elapsed simulated time, updating automatically during replay.
