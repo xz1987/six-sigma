@@ -9,10 +9,10 @@ Most of this page is already decided by the event and the [rubric](docs/criteria
 The examples after each `FILL IN` show the shape of an answer. They are not hints about the prompts.
 
 ## 1. Team and prompt
-- **Team name:** FILL IN. Example: "Control Freaks"
-- **Track:** FILL IN, on-campus (24 hours) or Virtual DL Challenge (7 days). See [`docs/schedule.md`](docs/schedule.md).
-- **Prompt we chose:** FILL IN, the prompt number and title, copied from the [Devpost](https://six-sigma-hackathon.devpost.com/) challenge page at kickoff.
-- **Our public repo:** FILL IN. Example: "github.com/our-team/our-tool"
+- **Team name:** DIIS. Example: "Control Freaks"
+- **Track:** On-campus (24 hours), on-campus (24 hours) or Virtual DL Challenge (7 days). See [`docs/schedule.md`](docs/schedule.md).
+- **Prompt we chose:** Health Systems Emergency Response, the prompt number and title, copied from the [Devpost](https://six-sigma-hackathon.devpost.com/) challenge page at kickoff.
+- **Our public repo:** https://github.com/xz1987/six-sigma. Example: "github.com/our-team/our-tool"
 
 ## 2. User and use case (rubric: scope 5, user and use case 5)
 - **User:** FILL IN, one named kind of person, not "everyone". Example: "the supervisor who checks part diameters at the end of each shift"
