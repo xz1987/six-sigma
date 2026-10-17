@@ -98,16 +98,16 @@ tasks:
   - id: H-05
     title: Demonstration of the tool on every test dataset
     points: "10 - Tool Design: a clear demonstration of the tool, using test datasets"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: in_progress
+    owner: "Codex H-05 demonstration"
+    started_at: "2026-10-16"
     owns: ["demo/", "app/frontend/"]
     definition_of_done: >
       demo/README.md walks through each data/ CSV with the exact command or
       URL to run, the numbers or chart the tool shows, and a one-line "how to
       read this"; a teammate who did not write it follows it and gets the same
       numbers.
-    result: ""
+    result: "demo/README.md documents all three CSVs and demo/run-datasets.R reproduces their verified QC results using existing functions. H-05 DATASET DEMO PASS; independent data audit PASS; QC tests PASS 88 with zero failures/warnings/skips. Teammate reproduction remains pending, so task stays in_progress."
 
   - id: H-06
     title: Deploy to the course Posit Connect server
