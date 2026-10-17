@@ -332,3 +332,23 @@ tasks:
     notes: "User requested all interface branches merged and app opened. Preserve separate supervisor, responder and caller modules; resolve task-ID collisions without discarding entries."
     definition_of_done: "No merge conflicts; combined app initializes; staff role and caller-link integration checks, caller verify, QC/supervisor/feed/ETA tests and smoke checks pass; open combined app."
     result: "Merged both interface branches; preserved responder, namespaced caller resources, and guarded supervisor initialization. Combined role/link checks, 118 QC/supervisor assertions, feed/ETA tests, nine caller checks and SMOKE PASS succeeded; combined app opened in Safari and Caller workspace verified."
+
+  - id: H-21
+    title: Apply reference palette and simplify Caller presentation
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/"]
+    notes: "User supplied direct palette reference and requested a simpler, friendlier Caller view than staff views. Preserve all authentication, private-link isolation and clinical confirmation behavior."
+    definition_of_done: "Combined app initializes, caller verification passes with friendly labels, reference colors appear across all roles, and updated app is previewed."
+    result: "Combined app initializes; nine Caller verification checks pass; palette and friendlier Caller layout reviewed in Safari."
+
+  - id: H-22
+    title: Return from caller tracking to role selection
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/app.R", "app/www/navigation.js", "app/README.md"]
+    notes: "Change role must remove the incident fragment before session reload; the browser handler also works without a Shiny connection."
+    definition_of_done: "Server and JavaScript checks confirm cleared staff access, fragment removal, preserved deployment path/query and one reload; browser returns to a clean role-picker URL."
+    result: "Server and connection-independent JavaScript checks pass; final browser clean-URL confirmation remains pending."

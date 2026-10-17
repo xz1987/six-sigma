@@ -41,13 +41,14 @@ ui <- fluidPage(
   tags$head(
     tags$title('DIIS Emergency Response Monitor'),
     tags$meta(name = 'viewport', content = 'width=device-width, initial-scale=1'),
-    tags$meta(name = 'theme-color', content = '#68b900'),
+    tags$meta(name = 'theme-color', content = '#3B0A0A'),
     tags$meta(name = 'apple-mobile-web-app-capable', content = 'yes'),
     tags$meta(name = 'apple-mobile-web-app-title', content = 'DIIS EMS'),
     tags$link(rel = 'manifest', href = 'manifest.webmanifest'),
     tags$link(rel = 'icon', type = 'image/png', href = 'icons/icon-192.png'),
     tags$link(rel = 'apple-touch-icon', href = 'icons/apple-touch-icon.png'),
     tags$script(src = 'pwa.js', defer = NA),
+    tags$script(src = 'navigation.js', defer = NA),
     tags$link(rel = 'stylesheet', href = 'vendor/leaflet.css'),
     tags$link(rel = 'stylesheet', href = 'responder.css'),
     tags$script(src = 'vendor/leaflet.js'),
@@ -166,7 +167,12 @@ server <- function(input, output, session) {
     updateTextInput(session, 'login_password', value = '')
     removeModal()
   })
-  observeEvent(input$change_role, session$reload())
+  observeEvent(input$change_role, {
+    authenticated_role(NULL)
+    requested_role(NULL)
+    active_role('choose')
+    session$sendCustomMessage('diis-return-home', list())
+  })
 
   responder_server(input, output, session, authenticated_role, active_role)
   created_dispatch <- reactiveVal(NULL)

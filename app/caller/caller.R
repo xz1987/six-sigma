@@ -28,13 +28,13 @@ caller_destination_panel <- function(d) {
     inherits(destination$confirmed_at,'POSIXt')&&length(destination$confirmed_at)==1&&
     !is.na(destination$confirmed_at)&&destination$confirmed_at>=d$dispatched_at
   shiny::div(class='caller-card caller-destination',
-    shiny::span(class='caller-eyebrow','HOSPITAL DESTINATION'),
-    shiny::h3(if(confirmed)'Destination confirmed by crew' else 'Destination not yet confirmed'),
+    shiny::span(class='caller-eyebrow','YOUR HOSPITAL'),
+    shiny::h3(if(confirmed)'Your crew confirmed the hospital' else 'Hospital update coming soon'),
     if(confirmed)shiny::tagList(shiny::p(class='caller-destination-name',shiny::strong(destination$name)),
       shiny::p(destination$address),shiny::p(class='caller-map-note',paste('Confirmed',
         format(destination$confirmed_at,'%b %d, %I:%M:%S %p %Z',tz='America/New_York'))),
-      shiny::p('This is the latest destination supplied by the crew. It may change; follow their updates.'))
-    else shiny::p('A hospital name and address will appear here only after the crew confirms the destination. Arrival at the scene does not confirm a hospital destination.'))
+      shiny::p('Your crew will let you know if the destination changes.'))
+    else shiny::p('Your hospital name and address will appear here once your crew confirms them.'))
 }
 caller_issue_access <- function(incident_id, now=Sys.time(), ttl=1800) {
   stopifnot(length(incident_id)==1, nzchar(incident_id), ttl>0)
@@ -96,18 +96,18 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
     shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css')),
     shiny::tags$script(src=paste0(asset_prefix,'caller.js'),defer=NA),
     shiny::div(class='caller-workspace',
-      shiny::div(class='caller-heading',shiny::span(class='caller-eyebrow','03 / YOUR RESPONSE'),shiny::h2('Your ambulance, at a glance'),shiny::p('Follow the response to your incident in one place.')),
-      shiny::div(class='caller-connection',role='status','Connection interrupted. Showing last known information; reconnect for updates.'),
+      shiny::div(class='caller-heading',shiny::span(class='caller-eyebrow','HERE FOR YOU'),shiny::h2('Your EMS updates'),shiny::p('Follow your ambulance and see where you’re headed.')),
+      shiny::div(class='caller-connection',role='status','Connection lost. These are your last updates. Reconnect for the latest.'),
       shiny::div(class='caller-access caller-access-compact',
         shiny::textOutput(ns('accessMessage')),
-        shiny::actionButton(ns('close'),'Close tracking')),
+        shiny::actionButton(ns('close'),'Close updates')),
       shiny::uiOutput(ns('tracking')),
       shiny::conditionalPanel(sprintf("output['%s'] === 'yes'",ns('authorized')),
-        shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::h3('Your ambulance in Queens'),shiny::tags$button(type='button',class='btn caller-recenter',`data-map`=ns('map'),'⌖ Recenter')),
+        shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::h3('Your ambulance'),shiny::tags$button(type='button',class='btn caller-recenter',`data-map`=ns('map'),'⌖ Recenter')),
           shiny::div(id=ns('map'),class='caller-map-output',role='region',`aria-label`='Queens street map with your assigned ambulance and incident destination'),
           shiny::p(class='caller-tile-status',role='status'),
           shiny::div(class='caller-legend',shiny::span('🚑 Assigned ambulance'),shiny::span('🏠 Your incident location')),
-          shiny::p(class='caller-map-note','Real Queens street map. Ambulance and house locations are synthetic; movement is scripted, not live GPS or a calculated road route.'),
+          shiny::tags$details(class='caller-trip-details',shiny::tags$summary('About this demo map'),shiny::p(class='caller-map-note','Queens street map with simulated ambulance movement, not live GPS. No emergency request is sent.')),
           shiny::uiOutput(ns('lastUpdate')))),
       shiny::uiOutput(ns('destination'))))
 }
@@ -118,7 +118,7 @@ caller_server <- function(id, lookup) {
     observe(input$linkToken,{token<-input$linkToken;access(if(is.character(token)&&length(token)==1&&nzchar(token))token else NULL)})
     observe(input$close,{access(NULL)})
     current<-shiny::reactive({shiny::invalidateLater(1000,session);token<-access();if(is.null(token))return(NULL);lookup(token)})
-    output$accessMessage<-shiny::renderText({if(is.null(access()))return('Open the private tracking link supplied for your incident. No account or password is needed.');if(is.null(current()))'Tracking link unavailable or expired. Request a new link from the dispatcher.' else 'Your private incident tracking is open. No sign-in needed.'})
+    output$accessMessage<-shiny::renderText({if(is.null(access()))return('Open the link from your dispatcher to see your updates. No sign-in needed.');if(is.null(current()))'This link is no longer available. Ask your dispatcher for a new one.' else 'You’re viewing your private updates.'})
     output$authorized<-shiny::renderText(if(is.null(current()))'no' else 'yes')
     shiny::outputOptions(output,'authorized',suspendWhenHidden=FALSE)
     output$map<-shiny::renderText({d<-current();if(is.null(d))'null' else jsonlite::toJSON(caller_map(d),auto_unbox=TRUE)})
@@ -129,23 +129,23 @@ caller_server <- function(id, lookup) {
       format_time<-function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
       shiny::tagList(
         shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::span(class='caller-eyebrow','YOUR INCIDENT'),shiny::span(class='caller-demo','SYNTHETIC DEMO')),
-          shiny::h3(d$zone),shiny::p(class='caller-reference',paste(d$incident_id,'·',d$ambulance_id)),
+          shiny::h3(d$zone),shiny::tags$details(class='caller-trip-details',shiny::tags$summary('Trip details'),shiny::p(class='caller-reference',paste(d$incident_id,'·',d$ambulance_id))),
           shiny::div(class=paste('caller-status',if(d$status=='arrived')'caller-arrived'),role='status',
             shiny::strong(if(d$status=='arrived')'✓ Arrival confirmed' else status),
             if(d$status=='arrived')shiny::p(paste('Ambulance on scene at',format_time(d$arrived_at)))),
           shiny::div(class='caller-steps',lapply(c('Assigned','Approaching','Arrived'),function(label)shiny::span(class=if(label==switch(d$status,assigned='Assigned',approaching='Approaching',arrived='Arrived',''))'is-current' else '',label))),
-          shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ESTIMATED ARRIVAL'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Estimate unavailable'),
-            shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An estimate will appear after the experimental ETA model is validated.'))))
+          shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
+            shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
     })
     output$destination<-shiny::renderUI({d<-current();if(is.null(d))return(NULL);caller_destination_panel(d)})
     output$lastUpdate<-shiny::renderUI({
       d<-current();if(is.null(d))return(NULL)
       stale<-as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30
       shiny::div(class=paste('caller-updated',if(stale)'caller-stale'),
-        shiny::strong(if(stale)'Location update delayed · last known position' else 'Latest received location update'),
+        shiny::strong(if(stale)'Waiting for a location update' else 'Last updated'),
         shiny::p(format(d$updated_at,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')),
         if(stale)shiny::p('The marker shows the last reported location. A fresh update is needed to confirm its current position.'),
-        shiny::p(class='caller-map-note','Only your assigned ambulance and incident are shown. This demo cannot request emergency services.'))
+        shiny::p(class='caller-map-note','This private view shows only your assigned ambulance.'))
     })
     list(current=current,access=access)
   })

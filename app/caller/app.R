@@ -3,7 +3,7 @@ source('caller.R',local=TRUE)
 # Shared by browser sessions in this single R process, never sent as a list.
 # Replace with the team's shared dispatcher store when merging interfaces.
 dispatch_store<-caller_dispatch_store()
-ui<-fluidPage(tags$head(tags$title('DIIS | Your ambulance'),tags$meta(name='viewport',content='width=device-width, initial-scale=1'),tags$meta(name='theme-color',content='#135b63'),tags$meta(name='referrer',content='strict-origin-when-cross-origin'),tags$link(rel='manifest',href='manifest.webmanifest'),tags$link(rel='apple-touch-icon',href='icons/apple-touch-icon.png'),tags$script(src='pwa.js',defer=NA)),
+ui<-fluidPage(tags$head(tags$title('DIIS | Your ambulance'),tags$meta(name='viewport',content='width=device-width, initial-scale=1'),tags$meta(name='theme-color',content='#3B0A0A'),tags$meta(name='referrer',content='strict-origin-when-cross-origin'),tags$link(rel='manifest',href='manifest.webmanifest'),tags$link(rel='apple-touch-icon',href='icons/apple-touch-icon.png'),tags$script(src='pwa.js',defer=NA)),
   div(class='caller-topbar',div(class='caller-logo','+'),div(h1('Emergency Response Monitor'),p('DIIS / CALLER WORKSPACE'))),
   uiOutput('dispatchPreview'),
   div(class='caller-install',tags$button(id='install-app',type='button',class='btn btn-default',hidden=NA,'Install app'),tags$span(id='pwa-setup-status',role='status')),

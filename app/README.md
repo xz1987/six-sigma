@@ -133,3 +133,17 @@ Requires the `jsonlite` R package in addition to shiny and openssl.
 Supervisor integration preserves the collaborator dashboard. Responder UI logic
 is isolated in app/responder-server.R, shared scenario helpers in responder-demo.R,
 and styles in www/responder.css. Set PORT=5300 for the existing local preview.
+
+
+## Shared palette and caller presentation
+
+Reference palette: https://i.pinimg.com/736x/fe/1f/30/fe1f30a657adaf103eac7a4e23f263ff.jpg
+Exact colors: ink #272030, cloud #E3EBF2, mauve #C79A99, maroon #3B0A0A.
+Cloud is the canvas, ink the main text, mauve the soft accent and maroon the primary
+control color. Map colors remain distinct and labeled. Caller uses larger text,
+softer cards, plain-language status, and expandable trip/map details. Private-link
+access, expiry, incident isolation and crew-confirmed hospital rules are unchanged.
+
+Change role clears the incident fragment before reloading, preventing a private
+Caller link from reopening after logout. Deployment paths and query parameters
+are retained; the new session starts at the role picker without prior access.

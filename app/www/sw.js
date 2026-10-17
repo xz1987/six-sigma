@@ -1,6 +1,6 @@
 /* Only public static assets are cached. Never cache Shiny sessions or records. */
 const CACHE_PREFIX = 'diis-ems-public-';
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const ROOT = new URL('./', self.location.href);
 const PUBLIC_ASSETS = ['offline.html', 'manifest.webmanifest', 'icons/icon-192.png',
   'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];

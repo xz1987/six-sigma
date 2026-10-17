@@ -648,16 +648,16 @@ supervisor_server <- function(id, production_records) {
     right <- if (nrow(m)) max(left + 24, max(m$monitoring_sequence) + 1.5) else 24.5
     ggplot() +
       geom_segment(data = segments, aes(x = x, xend = xend, y = y, yend = yend),
-        color = '#2f4c65', linewidth = .8) +
+        color = '#625B68', linewidth = .8) +
       geom_point(data = mplot, aes(sequence, value, color = signal), size = 2.7) +
       geom_point(data = mplot[mplot$new, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#68b900') +
+        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#3B0A0A') +
       geom_point(data = mplot[mplot$selected, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#151b22') +
-      geom_hline(yintercept = g$limits$center, color = '#68b900', linewidth = .75) +
+        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#272030') +
+      geom_hline(yintercept = g$limits$center, color = '#3B0A0A', linewidth = .75) +
       geom_hline(yintercept = c(g$limits$i_lcl, g$limits$i_ucl),
         color = '#d34747', linetype = 'dashed', linewidth = .65) +
-      scale_color_manual(values = c(`FALSE` = '#2f4c65', `TRUE` = '#d34747'), guide = 'none') +
+      scale_color_manual(values = c(`FALSE` = '#625B68', `TRUE` = '#d34747'), guide = 'none') +
       coord_cartesian(xlim = c(left, right)) +
       labs(x = 'Monitoring incident #',
         y = 'Duration (minutes)',
@@ -683,16 +683,16 @@ supervisor_server <- function(id, production_records) {
     right <- if (nrow(m)) max(left + 24, max(m$monitoring_sequence) + 1.5) else 24.5
     ggplot() +
       geom_segment(data = segments, aes(x = x, xend = xend, y = y, yend = yend),
-        color = '#2f4c65', linewidth = .8, na.rm = TRUE) +
+        color = '#625B68', linewidth = .8, na.rm = TRUE) +
       geom_point(data = mmr, aes(sequence, value, color = signal), size = 2.4) +
       geom_point(data = mmr[mmr$new, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#68b900') +
+        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#3B0A0A') +
       geom_point(data = mmr[mmr$selected, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#151b22') +
-      geom_hline(yintercept = g$limits$mr_center, color = '#68b900', linewidth = .75) +
+        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#272030') +
+      geom_hline(yintercept = g$limits$mr_center, color = '#3B0A0A', linewidth = .75) +
       geom_hline(yintercept = g$limits$mr_ucl,
         color = '#d34747', linetype = 'dashed', linewidth = .65) +
-      scale_color_manual(values = c(`FALSE` = '#2f4c65', `TRUE` = '#d34747'), guide = 'none') +
+      scale_color_manual(values = c(`FALSE` = '#625B68', `TRUE` = '#d34747'), guide = 'none') +
       coord_cartesian(xlim = c(left, right)) +
       labs(x = 'Monitoring incident #', y = 'Moving range (minutes)',
         subtitle = sprintf('MR UCL %.2f min · visible n=%d',
@@ -720,10 +720,10 @@ supervisor_server <- function(id, production_records) {
     }))
     if (is.null(pts)) pts <- data.frame(x = numeric(), value = numeric())
     ggplot() +
-      geom_jitter(data = pts, aes(x, value), width = .12, color = '#68b900', alpha = .2, size = 1.2) +
+      geom_jitter(data = pts, aes(x, value), width = .12, color = '#3B0A0A', alpha = .2, size = 1.2) +
       geom_segment(data = frame, aes(x = x, xend = x, y = low, yend = high), linewidth = .7, na.rm = TRUE) +
       geom_rect(data = frame, aes(xmin = x - .27, xmax = x + .27, ymin = q1, ymax = q3),
-        fill = '#dff0c7', color = '#4f730f', linewidth = .7, na.rm = TRUE) +
+        fill = '#E8D0CF', color = '#3B0A0A', linewidth = .7, na.rm = TRUE) +
       geom_segment(data = frame, aes(x = x - .27, xend = x + .27, y = median, yend = median),
         color = '#d34747', linewidth = 1, na.rm = TRUE) +
       scale_x_continuous(breaks = frame$x, labels = sprintf('%s\n(n=%d)', frame$group, frame$n)) +
@@ -751,8 +751,8 @@ supervisor_server <- function(id, production_records) {
     grid$label <- ifelse(grid$n == 0, '', sprintf('%.1f\nn=%d', grid$median, grid$n))
     ggplot(grid, aes(hour, weekday, fill = median)) +
       geom_tile(color = 'white', linewidth = .25) +
-      geom_text(aes(label = label), size = 2.2, color = '#10283c') +
-      scale_fill_gradient(low = '#f2f4ef', high = '#89bf35', na.value = '#eceeeb',
+      geom_text(aes(label = label), size = 2.2, color = '#272030') +
+      scale_fill_gradient(low = '#E3EBF2', high = '#C79A99', na.value = '#F4E9E8',
         name = 'Median\nminutes') +
       scale_x_continuous(breaks = seq(0, 23, 3)) +
       labs(x = 'Assignment hour (America/New_York)', y = NULL,

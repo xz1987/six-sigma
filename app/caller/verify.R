@@ -16,7 +16,7 @@ stopifnot(!grepl('Flushing|DEMO UNIT',as.character(caller_map(a))))
 lookup<-function(token)caller_lookup(token,list(ga,gb),incidents,now)
 shiny::testServer(caller_server,args=list(lookup=lookup),{
  session$setInputs(linkToken=ga$token);session$flushReact()
- stopifnot(current()$incident_id=='A',grepl('Estimate unavailable',paste(as.character(output$tracking),collapse=' ')),!grepl('Flushing',paste(as.character(output$tracking),collapse=' ')))
+ stopifnot(current()$incident_id=='A',grepl('Not available yet',paste(as.character(output$tracking),collapse=' ')),!grepl('Flushing',paste(as.character(output$tracking),collapse=' ')))
  session$setInputs(linkToken='bad');session$flushReact();stopifnot(is.null(current()),is.null(output$tracking))
  session$setInputs(linkToken=gb$token);session$flushReact();stopifnot(current()$incident_id=='B')
  session$setInputs(close=1);session$flushReact();stopifnot(is.null(current()),is.null(output$tracking))
@@ -88,7 +88,7 @@ cat('PASS: geographic Queens coordinates; JSON latitude/longitude; ambulance rea
 old<-a;old$updated_at<-Sys.time()-60
 shiny::testServer(caller_server,args=list(lookup=function(token)if(identical(token,'test-only'))old else NULL),{
  session$setInputs(linkToken='test-only');session$flushReact()
- stopifnot(grepl('Location update delayed',paste(as.character(output$lastUpdate),collapse=' ')),jsonlite::fromJSON(output$map)$stale)
+ stopifnot(grepl('Waiting for a location update',paste(as.character(output$lastUpdate),collapse=' ')),jsonlite::fromJSON(output$map)$stale)
 })
 markup<-paste(as.character(caller_ui('caller')),collapse=' ')
 stopifnot(grepl('Recenter',markup),grepl('Your incident location',markup))
@@ -96,12 +96,12 @@ cat('PASS: delayed-location warning and stale marker state; Recenter and inciden
 
 # Destination is explicit crew data, independent of arrival and scoped like tracking.
 unconfirmed<-caller_replay(a,90,now)
-stopifnot(grepl('Destination not yet confirmed',as.character(caller_destination_panel(unconfirmed))))
+stopifnot(grepl('Hospital update coming soon',as.character(caller_destination_panel(unconfirmed))))
 confirmed<-caller_confirm_destination(a,'DEMO Hospital — fictional facility','100 Example Avenue — fictional address',now+100)
 stopifnot(inherits(try(caller_confirm_destination(a,'','address',now),silent=TRUE),'try-error'))
 shiny::testServer(caller_server,args=list(lookup=function(token)if(identical(token,'A-access'))confirmed else if(identical(token,'B-access'))b else NULL),{
  session$setInputs(linkToken='A-access');session$flushReact()
- stopifnot(grepl('Destination confirmed by crew',paste(as.character(output$destination),collapse=' ')),
+ stopifnot(grepl('Your crew confirmed the hospital',paste(as.character(output$destination),collapse=' ')),
    grepl('DEMO Hospital',paste(as.character(output$destination),collapse=' ')))
  session$setInputs(linkToken='B-access');session$flushReact()
  stopifnot(!grepl('DEMO Hospital',paste(as.character(output$destination),collapse=' ')))
@@ -114,7 +114,7 @@ cat('PASS: explicit crew destination; arrival does not imply hospital; cross-inc
 shared_incident<-a
 shiny::testServer(caller_server,args=list(lookup=function(token)if(identical(token,'shared-access'))shared_incident else NULL),{
  session$setInputs(linkToken='shared-access');session$flushReact()
- stopifnot(grepl('Destination not yet confirmed',paste(as.character(output$destination),collapse=' ')))
+ stopifnot(grepl('Hospital update coming soon',paste(as.character(output$destination),collapse=' ')))
  shared_incident<<-caller_confirm_destination(shared_incident,'Synthetic EMS-selected hospital','Fictional address',now+100)
  session$elapse(1100);session$flushReact()
  stopifnot(grepl('Synthetic EMS-selected hospital',paste(as.character(output$destination),collapse=' ')))
