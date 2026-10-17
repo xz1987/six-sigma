@@ -229,9 +229,9 @@ request and do not provide clinical or operational navigation instructions.
 
 See the [root README](../README.md#verify-and-extend) for commands and
 [tests/README.md](../tests/README.md) for existing numerical checks. Dataset
-expected output is in [demo/README.md](../demo/README.md). A fresh-clone teammate
-walkthrough and public hosted-link verification are still required for H-07;
-local automated checks alone do not establish either.
+expected output is in [demo/README.md](../demo/README.md). The team confirmed a
+successful independent local walkthrough on 2026-10-17, completing H-07. Hosted
+cross-role/device verification remains separate from documentation completion.
 
 ## Earlier local audit — 2026-10-17 (commit 8390b46)
 
@@ -257,7 +257,7 @@ signals, the separate live-trip panel, and rendered full-year history charts
 with current-day observations excluded from closed subgroups. Full completion,
 reset and access revocation were verified by the automated session checks.
 
-Known remaining items:
+Remaining items at the earlier audit (see the later completion record below):
 
 - The Supervisor day-demo module check emits 12 R warnings that `tzone`
   attributes are inconsistent. Its chronology, fixed-limit and isolation checks
@@ -307,7 +307,8 @@ Monitor page title. This confirms page delivery, not a deployed cross-role
 WebSocket walkthrough, installed-device behavior or hosted commit identity.
 Local documentation links and runtime manifest checksums passed.
 
-A teammate reported opening the app successfully. Running from a fresh clone
-with only the README instructions has not yet been specifically confirmed by
-that teammate. The written documentation is complete; that independent H-07
-reproduction check remains separate from local automated verification.
+The user confirmed on 2026-10-17 that a teammate successfully ran the app locally
+for the requested independent documentation walkthrough and authorized marking
+H-07 complete. This confirmation supersedes the earlier pending walkthrough
+notes. No teammate name, operating system or additional test results were
+provided. Hosted cross-role/device checks and Devpost submission remain separate.

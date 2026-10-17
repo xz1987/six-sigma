@@ -167,9 +167,10 @@ dispatch service, live GPS feed, clinical decision system, or validated routing
 product. Automatic responder selection (H-15) is deferred. Offline installation
 provides a fallback page; live interactions require a server connection.
 
-Before submission, verify the documented hosted URL, ask a teammate to follow these
-instructions from a fresh clone, and submit the public repository and demo on
-Devpost. Deployment and submission remain separate verification tasks.
+On 2026-10-17 the team confirmed that a teammate successfully ran the app locally
+for the documentation walkthrough, completing H-07. Before submission, verify the
+final hosted release and submit the public repository and demo on Devpost.
+Deployment and submission remain separate verification tasks.
 
 Event information remains in [schedule](docs/schedule.md),
 [prompts](docs/prompts.md), [rubric](docs/criteria.md) and [resources](docs/resources.md).

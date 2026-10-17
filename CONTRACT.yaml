@@ -132,7 +132,7 @@ tasks:
   - id: H-07
     title: README and function documentation
     points: "10 - Tool Documentation: excellent, easy-to-follow documentation"
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-17"
     owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html", "app/manifest.json", "SPEC.md", "demo/README.md", "demo/shared-incidents.md", "tests/README.md", "tests/verify-supervisor-daily-demo.R"]
@@ -144,7 +144,7 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: "Written documentation synchronized to final merge 1f746aa, including isolated daily/yearly simulations, workspace-specific labels, locked generation scope, reset/navigation behavior and all three findings summaries. Root/app READMEs, SPEC, About pages, demo and test guides updated. Full suites PASS 460; updated daily module PASS with 12 existing timezone warnings; smoke, dataset, standalone bundle, local links, manifest and YAML checks PASS. Documented hosted URL returned HTTP 200 with DIIS title; hosted cross-role/device behavior and release identity are not established by this check. Teammate reports opening app; H-07 remains in progress only until the specifically required independent fresh-clone README walkthrough is confirmed."
+    result: "Written documentation synchronized to final merge 1f746aa, including isolated daily/yearly simulations, workspace-specific labels, locked generation scope, reset/navigation behavior and all three findings summaries. Root/app READMEs, SPEC, About pages, demo and test guides updated. Full suites PASS 460; updated daily module PASS with 12 existing timezone warnings; smoke, dataset, standalone bundle, local links, manifest and YAML checks PASS. Documented hosted URL returned HTTP 200 with DIIS title; hosted cross-role/device behavior and release identity are not established by this check. User confirmed on 2026-10-17 that a teammate successfully ran the app locally for the requested H-07 walkthrough and authorized marking it complete. Documentation and independent reproduction requirements are complete; deployment/device checks and submission remain separate tasks."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost
