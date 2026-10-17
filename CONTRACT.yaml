@@ -228,9 +228,9 @@ tasks:
   - id: H-12
     title: Integrate experimental ETA into the simulated Shiny view
     points: "Supports demonstration; no additional rubric points"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex ETA demonstration"
+    started_at: "2026-10-16"
     owns: ["app/eta-view.R", "demo/eta.md"]
     notes: >
       Depends on H-04, H-09 and H-11. H-04 owns wiring eta-view.R into the app,
@@ -242,7 +242,7 @@ tasks:
       assignment-time predictions/intervals; completing an incident leaves its
       original prediction and all core QC baseline limits unchanged. A teammate
       reproduces the example and unavailable-input case with no manual arrival.
-    result: ""
+    result: "H-23 already wires the frozen shared ETA card into both roles. app/eta-view.R and demo/eta.md now reproduce a fixed assignment prediction and independently reconstructed individual interval, automatic scene completion with unchanged prediction/all 15 core QC limits, and missing-wind unavailable display. H-12 ETA VIEW PASS; existing ETA tests PASS 100 and SHARED INCIDENTS PASS. Isabel Wilmot independently reproduced the available/unavailable examples and supplied matching H-12 ETA VIEW PASS output; reproduction recorded in demo/eta.md."
 
 
   - id: H-13
