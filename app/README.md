@@ -138,9 +138,9 @@ and styles in www/responder.css. Set PORT=5300 for the existing local preview.
 ## Shared palette and caller presentation
 
 Reference palette: https://i.pinimg.com/736x/fe/1f/30/fe1f30a657adaf103eac7a4e23f263ff.jpg
-Exact colors: ink #1F2D3B, cloud #EFEAE2, mauve #AFC6D9, maroon #2C3E50.
-Cloud is the canvas, ink the main text, mauve the soft accent and maroon the primary
-control color. Map colors remain distinct and labeled. Caller uses larger text,
+Exact colors: navy #2C3E50, blue #AFC6D9, green #6B8F7A, red #D15B4A,
+yellow #E6C35A, and cream #EFEAE2. Cream is the canvas, navy is the main text and
+primary control color, and blue is the soft accent. Map colors remain distinct and labeled. Caller uses larger text,
 softer cards, plain-language status, and expandable trip/map details. Private-link
 access, expiry, incident isolation and crew-confirmed hospital rules are unchanged.
 

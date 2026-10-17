@@ -314,13 +314,13 @@ tasks:
 
   - id: H-19
     title: Isolate and refocus the Supervisor response-time dashboard
-    status: in_progress
+    status: done
     owner: "Codex (Supervisor module refactor)"
     started_at: "2026-10-16"
     owns: ["SPEC.md", "app/app.R", "app/supervisor.R", "app/response-metrics.R", "app/www/styles.css", "app/www/supervisor.css", "tests/test-supervisor-view.R", "CONTRACT.yaml"]
     notes: "User requested a physical boundary and then approved a Supervisor-first base interface. app/app.R remains the role/login shell; app/supervisor.R owns the dashboard. Ordinary mode is the default and reads only the process-level in-memory canonical stream shared by Caller, Responder, and Supervisor sessions; durable storage remains a future backend concern. Opening Developer settings and explicitly entering Developer mode creates an isolated fixture replay. Closing the panel or ending Developer mode stops and discards replay state, restores today's production period, and reconnects the dashboard to the ordinary stream. The user finalized two response-system metrics on 2026-10-16: call received to confirmed scene arrival, and transport departure to confirmed hospital arrival. Scene arrival and hospital arrival each produce a separately visible Supervisor completion milestone while retaining one canonical incident row. app/response-metrics.R is the shared connection boundary and converts canonical timestamps or explicitly synthetic developer-fixture proxies into the unchanged QC input shape. Day, week, or month selection has no custom range and no Data & method tab. Fixed metric-specific zone/priority baseline limits and full-group moving-range sequence never change with display filters."
     definition_of_done: "Rscript app/smoke.R prints SMOKE PASS; Rscript -e \"testthat::test_dir('tests')\" reports zero failures; in a running Shiny browser session, Supervisor login opens in ordinary mode on today's date and reads the shared Caller/Responder canonical stream, Developer mode visibly switches to isolated fixture replay, replay adds at most one completed response-system record per beat while simulated time and chart change, ending Developer mode or closing its panel stops replay and restores ordinary mode, day/week/month selectors update the displayed period without a custom range, no Data & method tab appears, and Primary responder and Caller remain accessible without Supervisor content."
-    result: "Dual-metric Supervisor interface defaults to ordinary mode and reads the process-level Caller/Responder stream. Scene and hospital arrivals now appear as separate completion milestones; the relevant selected metric enters its fixed-limit control chart. Developer mode replay now invalidates cached completed data, focuses the newly added point, and shows an explicit add confirmation. SHARED INCIDENTS PASS and SMOKE PASS; durable storage remains unimplemented. 2026-10-17 fix: live records now reach the Individuals/MR charts (ordinary mode uses an open monitoring window instead of the Feb 2026 fixture window, live ISO timestamps are strictly parsed so durations are no longer coerced to 0 min, today uses America/New_York, and a new milestone selects its zone/priority); testthat 124 pass / 0 fail. Awaiting teammate diff review and commit approval; no commit or push."
+    result: "Dual-metric Supervisor defaults to ordinary mode and reads the shared Caller/Responder stream. Scene and hospital arrivals appear as separate milestones and enter the relevant fixed-limit chart. Live timestamps are strictly parsed, the monitoring window accepts post-fixture records, and new milestones focus their zone/priority. On 2026-10-17 an ordinary Responder scene arrival rendered as one Astoria/High Individuals-chart point at 12.0 minutes; full testthat, shared-trip, caller and smoke checks passed."
 
 
   - id: H-20
@@ -395,21 +395,21 @@ tasks:
 
   - id: H-27
     title: Apply DIIS logo, role elements and brand palette to the web app
-    status: in_progress
+    status: done
     owner: "Claude"
     started_at: "2026-10-17"
     owns: ["app/"]
     notes: "User supplied a DIIS brand sheet (main logo, Supervisor/EMS Responder/Caller role elements, palette #2C3E50 #AFC6D9 #6B8F7A #D15B4A #E6C35A #EFEAE2). Logo and role elements cropped from the supplied brand sheet with the background keyed to transparent (PNG, app/www/brand/). Installed-app (PWA) icons for both the main and caller apps are regenerated from that logo on a cream tile; service-worker caches bumped to v3 so installed copies refresh. User then approved replacing the maroon H-21 palette with the brand palette across all roles (CSS, manifests, offline pages, map markers, ggplot chart colors). Presentation only; no statistics, authentication or navigation behavior changes."
     definition_of_done: "Header shows the DIIS logo, each role card shows its role element, existing testthat suites and tests/verify-shared-trip.R pass, and the role picker is checked in the browser."
-    result: "Logo in header, three role elements, brand palette across Supervisor/Responder/Caller; testthat suites, verify-shared-trip and caller verify PASS; role picker, Caller and Supervisor viewed in browser preview. Awaiting teammate review before check-in."
+    result: "Logo in header, three role elements and the DIIS palette appear across Supervisor, Responder and Caller. Full testthat, verify-shared-trip and caller verification pass; the role picker and live Responder-to-Supervisor flow were reviewed in the browser."
 
   - id: H-28
     title: Simplify Supervisor developer mode to on-demand simulated calls
-    status: in_progress
+    status: done
     owner: "Claude"
     started_at: "2026-10-17"
     owns: ["app/supervisor.R", "app/www/supervisor.css", "tests/test-supervisor-view.R", "CONTRACT.yaml"]
     notes: "User reported that added developer calls did not form continuous chart points and asked for a top control bar that only adds a simulated call (no start/pause/replay/interval), with filters working as in ordinary mode. Root causes: each step pulled the next fixture completion from any of 15 groups and auto-switched the zone/priority filter, and supervisor_chart_window ended at the latest completion rather than the newest sequence row. Each simulated call now goes to the selected zone/priority (and responder, if one is selected), with both metric durations drawn from that group's 2025 synthetic baseline mean/SD. Calls are spaced so start order matches completion order. Limits stay fixed; the QC formulas are unchanged."
     definition_of_done: "Supervisor view tests pass (deterministic synthetic simulation, chart-window ordering, consecutive group sequence, unchanged limits); full testthat suite, verify-shared-trip, smoke and caller verify pass; in the browser, repeated Add simulated call clicks form a connected I-MR line, and zone/metric filters change the visible counts."
-    result: "Tests pass (supervisor-view 37 expectations, qc, shared incidents, shared trip, SMOKE PASS, 9 caller checks). Browser: 5 Far Rockaway/High calls plotted as connected I and MR points; switching to Astoria showed 0 calls, then 3 after adding; switching back showed 5; the transport metric showed 5. Awaiting teammate review."
+    result: "Tests pass (supervisor-view 37 expectations, qc, shared incidents, shared trip, SMOKE PASS, 9 caller checks). Browser review confirmed connected I/MR points, zone filtering and both response metrics; ordinary Responder completions also enter the Individuals chart."
 
