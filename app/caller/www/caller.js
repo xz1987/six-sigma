@@ -74,6 +74,8 @@
     el.classList.toggle('caller-location-stale', data.stale);
     el.callerAmbulance.setLatLng([data.ambulance.lat, data.ambulance.lng]);
     el.callerHouse.setLatLng([data.destination.lat, data.destination.lng]);
+    if (data.waiting_for_confirmation) el.callerAmbulance.remove();
+    else el.callerAmbulance.addTo(el.callerMap);
     if (data.hospital) el.callerHouse.remove();
     else el.callerHouse.addTo(el.callerMap);
     // Route data is delivered only through the authorized incident lookup.

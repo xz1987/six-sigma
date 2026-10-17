@@ -4,7 +4,7 @@ link <- shared_create(store)
 d <- shared_claim(store,link$incident_id)
 frozen <- d$eta
 markup <- function() as.character(shared_eta_card(store$incidents[[d$incident_id]],caller_view=TRUE))
-stopifnot(grepl('Arriving around',markup()),!grepl('Arrival confirmed',markup()))
+stopifnot(grepl('Around',markup()),!grepl('Arrival confirmed',markup()))
 shared_advance(store,d$incident_id,720)
 stopifnot(grepl('SCENE ARRIVAL',markup()),grepl('Ambulance on scene',markup()))
 shared_transport(store,d$incident_id,demo_hospitals[[1]])

@@ -48,7 +48,7 @@ local({
       session$setInputs(linkToken=token);session$flushReact()
       stopifnot(current()$incident_id==a$incident_id,
         !grepl('95% prediction range',paste(as.character(output$tracking),collapse=' ')),
-        grepl('Arrival confirmed',paste(as.character(output$tracking),collapse=' ')),
+        grepl('Hospital arrival confirmed',paste(as.character(output$tracking),collapse=' ')),
         grepl('95% prediction range',as.character(shared_eta_card(current()))),
         grepl(demo_hospitals[[1]]$name,paste(as.character(output$destination),collapse=' '),fixed=TRUE))
       shared_revoke(store,a$incident_id)

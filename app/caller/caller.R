@@ -31,7 +31,7 @@ caller_destination_panel <- function(d) {
     shiny::span(class='caller-eyebrow','YOUR HOSPITAL'),
     shiny::h3(if(confirmed)'Your crew confirmed the hospital' else 'Hospital update coming soon'),
     if(confirmed)shiny::tagList(shiny::p(class='caller-destination-name',shiny::strong(destination$name)),
-      shiny::p(destination$address),shiny::p(class='caller-map-note',paste('Confirmed',
+      shiny::p(destination$address),shiny::p(class='caller-map-note',paste('Confirmed · simulated time',
         format(destination$confirmed_at,'%b %d, %I:%M:%S %p %Z',tz='America/New_York'))),
       shiny::p('Your crew will let you know if the destination changes.'))
     else shiny::p('Your hospital name and address will appear here once your crew confirms them.'))
@@ -97,7 +97,7 @@ caller_map <- function(d) {
   list(incident_id=d$incident_id,ambulance=list(lat=unname(pos[2]),lng=unname(pos[1])),
        destination=list(lat=target$y,lng=target$x),hospital=hospital,hospital_route=route,
        route_key=paste(d$incident_id,if(is.null(hospital))'scene' else hospital$id,sep=':'),
-       transporting=transporting,
+       transporting=transporting,waiting_for_confirmation=identical(d$claimed,FALSE),
        arrived=if(transporting)!is.null(d$hospital_arrived_at) else identical(d$status,'arrived'),
        stale=as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30)
 }
@@ -115,8 +115,8 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
         shiny::actionButton(ns('close'),'Close updates')),
       shiny::uiOutput(ns('tracking')),
       shiny::conditionalPanel(sprintf("output['%s'] === 'yes'",ns('authorized')),
-        shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::h3('Your ambulance'),shiny::tags$button(type='button',class='btn caller-recenter',`data-map`=ns('map'),'⌖ Recenter')),
-          shiny::div(id=ns('map'),class='caller-map-output',role='region',`aria-label`='Queens street map with your assigned ambulance and incident destination'),
+        shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::h3('Your trip map'),shiny::tags$button(type='button',class='btn caller-recenter',`data-map`=ns('map'),'⌖ Recenter')),
+          shiny::div(id=ns('map'),class='caller-map-output',role='region',`aria-label`='Queens street map for your incident destination'),
           shiny::p(class='caller-tile-status',role='status'),
           shiny::p(class='caller-route-status',role='status'),
           shiny::uiOutput(ns('legend')),
@@ -149,7 +149,7 @@ caller_server <- function(id, lookup) {
           shiny::h3(d$zone),shiny::tags$details(class='caller-trip-details',shiny::tags$summary('Trip details'),shiny::p(class='caller-reference',paste(d$incident_id,'·',d$ambulance_id))),
           shiny::div(class=paste('caller-status',if(d$status=='arrived')'caller-arrived'),role='status',
             shiny::strong(if(!is.null(d$transport_departed_at))status else if(d$status=='arrived')'✓ Arrival confirmed' else status),
-            if(d$status=='arrived')shiny::p(paste('Ambulance on scene at',format_time(d$arrived_at)))),
+            if(d$status=='arrived')shiny::p(paste('Scene arrival · simulated time:',format_time(d$arrived_at)))),
 
           shiny::tags$ol(class='caller-steps workflow-steps', `aria-label`='Your trip progress', lapply(seq_len(4),function(i) {
             stage <- if(!is.null(d$hospital_arrived_at))4L else if(!is.null(d$transport_departed_at))3L else if(d$status=='arrived')2L else 1L
@@ -164,7 +164,7 @@ caller_server <- function(id, lookup) {
     output$legend<-shiny::renderUI({
       d<-current();if(is.null(d))return(NULL)
       h<-caller_map(d)$hospital
-      shiny::div(class='caller-legend',shiny::span(class='caller-legend-ambulance','🚑 Assigned ambulance'),
+      shiny::div(class='caller-legend',if(!identical(d$claimed,FALSE)) shiny::span(class='caller-legend-ambulance','🚑 Assigned ambulance'),
         if(is.null(h)) shiny::span(class='caller-legend-scene','🏠 Your incident location') else shiny::span(class='caller-legend-hospital','🏥 Confirmed hospital'))
     })
     output$destination<-shiny::renderUI({d<-current();if(is.null(d))return(NULL);if(is.null(d$confirmed_destination)) shiny::tags$details(class='caller-trip-details',shiny::tags$summary('Hospital updates'),caller_destination_panel(d)) else caller_destination_panel(d)})
@@ -175,7 +175,7 @@ caller_server <- function(id, lookup) {
         shiny::strong(if(stale)'Waiting for a location update' else 'Last updated'),
         shiny::p(format(d$updated_at,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')),
         if(stale)shiny::p('The marker shows the last reported location. A fresh update is needed to confirm its current position.'),
-        shiny::p(class='caller-map-note','This private view shows only your assigned ambulance.'))
+        shiny::p(class='caller-map-note',if(identical(d$claimed,FALSE))'Ambulance tracking begins after responder confirmation.' else 'This private view shows only your assigned ambulance.'))
     })
     list(current=current,access=access)
   })

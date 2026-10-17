@@ -277,27 +277,27 @@ tasks:
 
   - id: H-16
     title: Responder incoming-call replay with map and traffic/weather context
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/responder-demo.R", "app/www/responder-map.js", "app/www/vendor/", "app/app.R", "app/README.md"]
     notes: "User requested a simulated responder call, delay-reduction panel, and map. Show synthetic context and coordination prompts; no live routing or unvalidated weather ETA."
     definition_of_done: "Verify staff gating, deterministic dispatch-to-arrival transitions, start/pause/reset, scenario prompts, interactive map, and automatic stopped arrival clock in server checks and browser."
-    result: "Responder replay and scenario controls pass server checks; road-following map snapshot and weather icons added; final browser checks pending."
+    result: "Final local Safari walkthrough at 5ce127f verifies staff gating, shared assignment, pause/resume, automatic 12-minute stopped scene clock, scenario context and interactive zone/route map; shared-trip and caller checks pass. Evidence in app/README.md final local verification."
 
   - id: H-17
     title: Compact assignment, Queens zone outlines and simulated hospital destination
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/app.R", "app/testme.R", "app/www/responder-map.js", "app/www/demo-zones.geojson", "app/www/demo-hospitals.json", "app/www/hospital-route-a.json", "app/www/hospital-route-b.json", "app/www/hospital-route-c.json", "app/README.md"]
     notes: "User requested icon-based briefing, five solid zone outlines, matching nearby hospital options, transport route and responder hospital-arrival confirmation. Facilities/capabilities are fictional; no medical triage or operational destination selection."
     definition_of_done: "Check five zone groups, matching/no-match options, no transport before scene arrival, explicit destination confirmation, route switching, and hospital arrival after simulated transport; verify UI."
-    result: "Implementation in progress."
+    result: "Final local Safari walkthrough verifies five zone labels/map controls, Stroke-care no-match handling, transport blocked before scene, explicit Hospital A confirmation, hospital route and 8-minute transport followed by crew arrival. Shared integration tests cover all stored routes and early-arrival guards; evidence in app/README.md."
 
   - id: H-18
     title: Incident-scoped caller PWA tracking module
-    status: in_progress
+    status: done
     owner: "Codex caller implementer"
     started_at: "2026-10-16"
     owns: ["app/caller/", "SPEC.md"]
@@ -309,7 +309,7 @@ tasks:
       Real Queens street basemap with ambulance and house markers; synthetic coordinate movement, not GPS. ETA stays unavailable until H-11 validation.
       Remote ledger has H-13 login, H-14 PWA and H-15 dispatch; reconcile H-13 before merging.
     definition_of_done: "Rscript app/caller/verify.R passes incident isolation, expired/invalid access, status and arrival transitions, ETA unavailable, and module server checks; browser preview reviewed."
-    result: "Caller module now uses dispatch-generated private tracking links without passwords; cross-session isolation/expiry/revocation and status/arrival server checks pass. Safari dispatch-generated link click-through now verified; all nine caller verify.R checks pass, including automatic provider destination updates. Shared data merge, validated ETA and hosted installation checks remain pending."
+    result: "All nine caller verification checks pass; Safari confirms caller-originated private link, automatic arrival and hospital updates, route/legend, immediate reset revocation and cleared output. Hosted/device installation remains H-14/H-06 work; evidence in app/README.md."
 
 
   - id: H-19
@@ -335,43 +335,43 @@ tasks:
 
   - id: H-21
     title: Apply reference palette and simplify Caller presentation
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/"]
     notes: "User supplied direct palette reference and requested a simpler, friendlier Caller view than staff views. Preserve all authentication, private-link isolation and clinical confirmation behavior."
     definition_of_done: "Combined app initializes, caller verification passes with friendly labels, reference colors appear across all roles, and updated app is previewed."
-    result: "Combined app initializes; nine Caller verification checks pass; palette and friendlier Caller layout reviewed in Safari."
+    result: "Reference presentation verification complete and superseded by user-approved H-27 DIIS branding. Latest combined app initializes, all nine caller checks pass and latest caller/responder/supervisor views reviewed in Safari; evidence in app/README.md."
 
   - id: H-22
     title: Return from caller tracking to role selection
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/app.R", "app/www/navigation.js", "app/README.md"]
     notes: "Change role must remove the incident fragment before session reload; the browser handler also works without a Shiny connection."
     definition_of_done: "Server and JavaScript checks confirm cleared staff access, fragment removal, preserved deployment path/query and one reload; browser returns to a clean role-picker URL."
-    result: "Server and connection-independent JavaScript checks pass; final browser clean-URL confirmation remains pending."
+    result: "Safari caller Change role removes private fragment and reloads clean role picker. Isolated JavaScript checks preserve nested path/query with one reload per action; authentication and role gating checks pass. Evidence in app/README.md."
 
   - id: H-23
     title: Responder-confirmed hospital handoff to Caller tracking
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/app.R", "app/responder-server.R", "app/caller/caller.R", "app/caller/responder-bridge.R", "app/README.md"]
     notes: "User requested a Caller tracking button after destination confirmation. Preserve private-link isolation and show only the crew-confirmed fictional hospital."
     definition_of_done: "Confirm hospital, open generated Caller link, verify matching hospital and scene marker, reject invalid/expired links, and verify the button is absent before confirmation."
-    result: "Implementation in progress."
+    result: "Safari verifies explicit Hospital A confirmation, matching caller hospital/route and post-confirmation View caller tracking control. Existing caller tests pass expiry/invalid-token/isolation checks; general private tracking is also available before hospital confirmation by design. Evidence in app/README.md."
 
   - id: H-24
     title: Synchronize one demo trip across all roles with hospital map destination
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/", "tests/verify-shared-trip.R"]
     notes: "User requested Caller hospital marker/legend, continued ambulance movement and the same trip in Responder, Caller and Supervisor. Use a process-local shared trip and expiring incident-scoped caller grants; keep developer replay isolated."
     definition_of_done: "Rscript tests/verify-shared-trip.R and caller verification pass; validate map script, canonical upserts and no premature hospital completion; inspect preview."
-    result: "Shared-trip regression and all nine Caller checks pass. Map rendering test verifies hospital icon, bounds and moving ambulance; confirmed hospital marker/legend verified in Safari. Changes remain local."
+    result: "Final local Safari shared-trip walkthrough complete: caller-originated incident, responder acceptance, automatic scene arrival, hospital confirmation and caller route, crew hospital arrival, Supervisor 12.0/8.0-minute milestones, reset revocation. Shared-trip/caller/regression checks pass; two nonblocking live timezone warnings documented in app/README.md."
 
   - id: H-25
     title: Connect shared incidents and frozen experimental ETA across roles
@@ -385,13 +385,13 @@ tasks:
 
   - id: H-26
     title: Make private caller links open reliably across browsers
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/caller/www/caller.js"]
     notes: "User reports the responder's Open this incident's caller tracking link does not work on their system, although it opens on collaborators' systems. Preserve the private URL-fragment token flow and role authorization."
     definition_of_done: "Caller link token is delivered to the namespaced Shiny module when the page initializes whether caller.js loads before or after DOMContentLoaded/Shiny connection; existing caller verification passes and browser click-through opens the incident."
-    result: "Caller initialization now reads the fragment immediately when the script executes, including after DOMContentLoaded, while retaining the Shiny-connected and hashchange handlers. JavaScript syntax check passes. R caller verification, browser click-through, and Posit Cloud sync remain pending because GitHub DNS/push and embedded RStudio UI actions were unavailable from this session."
+    result: "Safari private-link click-through passes. Isolated JavaScript checks verify fragment delivery when script loads before/after DOMContentLoaded, on reconnect and hash removal; all nine caller checks pass. Other physical browsers and hosted environment are not claimed; evidence in app/README.md."
 
   - id: H-27
     title: Apply DIIS logo, role elements and brand palette to the web app
@@ -455,6 +455,16 @@ tasks:
     notes: "Choose the zone once at incident creation; share the zone, street route, fictional nearby hospitals and completion records across roles. Retain existing queued incident locations."
     definition_of_done: "All five zones have nonempty road snapshots with matching scene/transport endpoints; shared-trip, Caller and role-stage checks pass."
     result: "PASS: all five zone routes, matching hospital endpoints, shared records, and randomized creation. Shared-trip, role-stage, Caller, full testthat and smoke checks pass. Safari confirmed a randomized Far Rockaway incident, matching road route and hospitals, and the Caller hospital emoji/legend after confirmation."
+
+  - id: H-33
+    title: Clarify caller arrival, waiting state and trip completion
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/shared-incidents.R", "app/caller/caller.R", "app/caller/www/caller.css", "app/caller/www/caller.js", "app/responder-server.R", "tests/verify-role-steps.R", "tests/test-shared-incidents.R", "CONTRACT.yaml"]
+    notes: "User approved clock-first caller ETA, waiting until responder acceptance, visible completed-trip action and consistent simulated timestamp labels. Preserve brand palette and frozen ETA model."
+    definition_of_done: "Role-stage, caller, shared-trip and zone-trip checks pass; caller waits before claim, clock is primary en route and hidden during hospital transport; responder completion uses canonical simulated arrival and visible reset action."
+    result: "Caller clock-first scene arrival, explicit pre-acceptance waiting state with hidden ambulance marker/label, hidden old scene ETA during hospital transport, and visible completed-trip reset implemented. Responder uses canonical simulated hospital timestamp. Full root/ETA/feed regression suites pass, plus role-stage, shared-trip, five-zone and nine Caller checks; H-12 ETA VIEW PASS and JavaScript parsing pass. Browser verified waiting state; preview on port 5796. User authorized commit and push."
 
   - id: H-38
     title: Replace fictional destination options with sourced real hospital capabilities
