@@ -132,9 +132,9 @@ tasks:
   - id: H-07
     title: README and function documentation
     points: "10 - Tool Documentation: excellent, easy-to-follow documentation"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-17"
     owns: ["README.md", "app/README.md"]
     notes: >
       Replace the hackathon README.md with your tool's README; the event
@@ -144,7 +144,7 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: ""
+    result: "Replaced event README and outdated app notes with DIIS overview, setup, connected-role and active-day walkthroughs, measurement/codebook links, QC/adapter/ETA function parameters and outputs, reproducible commands and limitations. Local links and standalone documented QC example pass; dataset demo passes. H-07 remains in progress pending verified hosted URL and independent fresh-clone teammate walkthrough."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost
