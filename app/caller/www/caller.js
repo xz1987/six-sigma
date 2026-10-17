@@ -26,14 +26,16 @@
   const icon = (character, kind) => L.divIcon({
     className: `caller-map-character ${kind}`,
     html: `<span aria-hidden="true">${character}</span>`,
-    iconSize: [48, 48], iconAnchor: [24, 24]
+    iconSize: [48, 48], iconAnchor: kind === 'caller-hospital' ? [-12, 24] : [24, 24]
   });
   binding.renderValue = (el, value) => {
+    try {
     const data = JSON.parse(value);
+    if (data && (!data.hospital || !Number.isFinite(data.hospital.lat) || !Number.isFinite(data.hospital.lng))) data.hospital = null;
     if (!data) {
       if (el.callerResize) el.callerResize.disconnect();
       if (el.callerMap) el.callerMap.remove();
-      el.callerMap = null; el.callerIncident = null;
+      el.callerMap = null; el.callerIncident = null; el.callerRouteKey = null; el.callerHospital = null; el.callerRoute = null;
       el.replaceChildren();
       return;
     }
@@ -43,6 +45,7 @@
       const map = L.map(el, {scrollWheelZoom: false});
       el.callerMap = map;
       el.callerIncident = data.incident_id;
+      el.callerRouteKey = null; el.callerHospital = null; el.callerRoute = null;
       const status = el.parentElement.querySelector('.caller-tile-status');
       const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -65,8 +68,42 @@
     el.classList.toggle('caller-location-stale', data.stale);
     el.callerAmbulance.setLatLng([data.ambulance.lat, data.ambulance.lng]);
     el.callerHouse.setLatLng([data.destination.lat, data.destination.lng]);
+    if (data.hospital) el.callerHouse.remove();
+    else el.callerHouse.addTo(el.callerMap);
+    // Route data is delivered only through the authorized incident lookup.
+    // Switch geometry on confirmed hospital changes; retain user zoom on ticks.
+    if (el.callerRouteKey !== data.route_key) {
+      if (el.callerHospital) el.callerHospital.remove();
+      if (el.callerRoute) el.callerRoute.remove();
+      el.callerHospital = null; el.callerRoute = null;
+      el.callerRouteKey = data.route_key;
+      const routeStatus = el.parentElement.querySelector('.caller-route-status');
+      if (data.hospital) {
+        const hospital = data.hospital;
+        const label = document.createElement('span');
+        label.textContent = `${hospital.name} · confirmed fictional destination`;
+        el.callerHospital = L.marker([hospital.lat, hospital.lng], {
+          icon: icon('🏥', 'caller-hospital'), title: hospital.name,
+          alt: 'Crew-confirmed fictional hospital', zIndexOffset: 100
+        }).addTo(el.callerMap).bindTooltip(label, {permanent:true,direction:'right'});
+        if (Array.isArray(data.hospital_route) && data.hospital_route.length >= 2) {
+          el.callerRoute = L.polyline(data.hospital_route, {color:'#2468c4',weight:5,opacity:0.85})
+            .addTo(el.callerMap).bindTooltip('Synthetic hospital trip · stored OSRM road snapshot, not live navigation');
+          el.callerMap.fitBounds(el.callerRoute.getBounds().extend([hospital.lat,hospital.lng]), {padding:[48,48],maxZoom:15});
+          if (routeStatus) routeStatus.textContent = `Route to ${hospital.name} · fictional destination, stored road snapshot. No live navigation or hospital ETA.`;
+        } else {
+          el.callerMap.fitBounds([[data.ambulance.lat,data.ambulance.lng],[hospital.lat,hospital.lng]], {padding:[48,48],maxZoom:15});
+          if (routeStatus) routeStatus.textContent = 'Hospital confirmed; road route unavailable. No straight-line route substituted.';
+        }
+      } else if (routeStatus) routeStatus.textContent = 'Hospital route appears after crew confirmation.';
+    }
     // Keep both characters visible when the ambulance reaches the same location.
     el.callerAmbulance.setIcon(icon('🚑', data.arrived ? 'caller-ambulance at-destination' : 'caller-ambulance'));
+    } catch (error) {
+      if (el.callerMap) el.callerMap.remove();
+      el.callerMap = null; el.callerIncident = null; el.callerRouteKey = null;
+      el.textContent = 'Map temporarily unavailable. Reconnect for updated location information.';
+    }
   };
   document.addEventListener('click', event => {
     const button = event.target.closest('.caller-recenter');
@@ -74,7 +111,10 @@
     const el = document.getElementById(button.dataset.map);
     if (!el || !el.callerMap || !el.callerLocations) return;
     const d = el.callerLocations;
-    el.callerMap.fitBounds([[d.ambulance.lat, d.ambulance.lng], [d.destination.lat, d.destination.lng]], {padding: [48, 48], maxZoom: 16});
+    const bounds = el.callerRoute ? el.callerRoute.getBounds().extend([d.ambulance.lat,d.ambulance.lng]) :
+      L.latLngBounds([[d.ambulance.lat,d.ambulance.lng],[d.destination.lat,d.destination.lng]]);
+    if (d.hospital) bounds.extend([d.hospital.lat,d.hospital.lng]);
+    el.callerMap.fitBounds(bounds, {padding: [48, 48], maxZoom: 16});
   });
   Shiny.outputBindings.register(binding, 'diis.callerMap');
 })();

@@ -352,3 +352,13 @@ tasks:
     notes: "Change role must remove the incident fragment before session reload; the browser handler also works without a Shiny connection."
     definition_of_done: "Server and JavaScript checks confirm cleared staff access, fragment removal, preserved deployment path/query and one reload; browser returns to a clean role-picker URL."
     result: "Server and connection-independent JavaScript checks pass; final browser clean-URL confirmation remains pending."
+
+  - id: H-23
+    title: Connect shared incidents and frozen experimental ETA across roles
+    status: done
+    owner: "Codex shared integration"
+    started_at: "2026-10-16"
+    owns: ["app/shared-incidents.R", "app/app.R", "app/responder-server.R", "app/caller/caller.R", "app/caller/www/caller.js", "app/caller/www/caller.css", "tests/test-shared-incidents.R", "demo/shared-incidents.md", "SPEC.md"]
+    notes: "User explicitly authorized shared incident and ETA integration. User additionally authorized confirmed hospital route on the caller map, with a hospital emoji replacing the house during hospital transport. Preserve role authorization, caller link expiry/isolation, fixed assignment predictions, synthetic labels and unchanged QC formulas. Isolated branch based on merged main."
+    definition_of_done: "Rscript tests/test-shared-incidents.R prints SHARED INCIDENTS PASS; Rscript app/caller/verify.R passes; Rscript app/smoke.R prints SMOKE PASS; existing QC/supervisor/feed/ETA tests pass."
+    result: "Shared incidents, frozen ETA, immediate caller destination updates and hospital route with hospital emoji integrated while preserving main 2450129 reference palette, friendly Caller layout and role navigation. SHARED INCIDENTS PASS; nine caller checks PASS; SMOKE PASS; regression suites PASS 119 and PASS 139 with zero failures, warnings or skips. User authorized commit and push."

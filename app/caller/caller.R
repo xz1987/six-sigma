@@ -84,9 +84,21 @@ caller_position <- function(route, progress) {
 caller_map <- function(d) {
   if(is.null(d))return(NULL)
   pos<-caller_position(d$route,d$progress);target<-tail(d$route,1)
+  hospital <- NULL; route <- NULL
+  transporting <- !is.null(d$confirmed_destination) && !is.null(d$transport_departed_at)
+  if(transporting && !is.null(d$hospital)) {
+    hospital <- d$hospital
+    if(is.data.frame(d$hospital_route) && nrow(d$hospital_route)>=2) {
+      route <- lapply(seq_len(nrow(d$hospital_route)),function(i)
+        c(unname(d$hospital_route$y[i]),unname(d$hospital_route$x[i])))
+      pos <- caller_position(d$hospital_route,min(1,d$transport_elapsed/480))
+    }
+  }
   list(incident_id=d$incident_id,ambulance=list(lat=unname(pos[2]),lng=unname(pos[1])),
-       destination=list(lat=target$y,lng=target$x),
-       arrived=identical(d$status,'arrived'),
+       destination=list(lat=target$y,lng=target$x),hospital=hospital,hospital_route=route,
+       route_key=if(is.null(hospital))'scene' else hospital$id,
+       transporting=transporting,
+       arrived=if(transporting)!is.null(d$hospital_arrived_at) else identical(d$status,'arrived'),
        stale=as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30)
 }
 caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
@@ -106,8 +118,10 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
         shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::h3('Your ambulance'),shiny::tags$button(type='button',class='btn caller-recenter',`data-map`=ns('map'),'⌖ Recenter')),
           shiny::div(id=ns('map'),class='caller-map-output',role='region',`aria-label`='Queens street map with your assigned ambulance and incident destination'),
           shiny::p(class='caller-tile-status',role='status'),
-          shiny::div(class='caller-legend',shiny::span('🚑 Assigned ambulance'),shiny::span('🏠 Your incident location')),
-          shiny::tags$details(class='caller-trip-details',shiny::tags$summary('About this demo map'),shiny::p(class='caller-map-note','Queens street map with simulated ambulance movement, not live GPS. No emergency request is sent.')),
+          shiny::p(class='caller-route-status',role='status'),
+          shiny::div(class='caller-legend',shiny::span('🚑 Assigned ambulance'),shiny::span('🏠 Your incident location'),shiny::span('🏥 Confirmed hospital')),
+          shiny::tags$details(class='caller-trip-details',shiny::tags$summary('About this demo map'),shiny::p(class='caller-map-note','Queens street map with simulated ambulance movement. After crew confirmation, the blue line shows a stored road-route snapshot to a fictional hospital. No live GPS, navigation or emergency request.')),
+
           shiny::uiOutput(ns('lastUpdate')))),
       shiny::uiOutput(ns('destination'))))
 }
@@ -121,21 +135,25 @@ caller_server <- function(id, lookup) {
     output$accessMessage<-shiny::renderText({if(is.null(access()))return('Open the link from your dispatcher to see your updates. No sign-in needed.');if(is.null(current()))'This link is no longer available. Ask your dispatcher for a new one.' else 'You’re viewing your private updates.'})
     output$authorized<-shiny::renderText(if(is.null(current()))'no' else 'yes')
     shiny::outputOptions(output,'authorized',suspendWhenHidden=FALSE)
-    output$map<-shiny::renderText({d<-current();if(is.null(d))'null' else jsonlite::toJSON(caller_map(d),auto_unbox=TRUE)})
+    output$map<-shiny::renderText({d<-current();if(is.null(d))'null' else jsonlite::toJSON(caller_map(d),auto_unbox=TRUE,digits=NA,null="null")})
     shiny::outputOptions(output,'map',suspendWhenHidden=FALSE)
     output$tracking<-shiny::renderUI({
       d<-current();if(is.null(d))return(NULL)
       status<-switch(d$status,assigned='Ambulance assigned',approaching='Approaching the scene',arrived='Ambulance has arrived','Status unavailable')
+      if(!is.null(d$hospital_arrived_at)) status <- 'Hospital arrival confirmed'
+      else if(!is.null(d$transport_departed_at)) status <- 'Transporting to confirmed hospital'
       format_time<-function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
       shiny::tagList(
         shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::span(class='caller-eyebrow','YOUR INCIDENT'),shiny::span(class='caller-demo','SYNTHETIC DEMO')),
           shiny::h3(d$zone),shiny::tags$details(class='caller-trip-details',shiny::tags$summary('Trip details'),shiny::p(class='caller-reference',paste(d$incident_id,'·',d$ambulance_id))),
           shiny::div(class=paste('caller-status',if(d$status=='arrived')'caller-arrived'),role='status',
-            shiny::strong(if(d$status=='arrived')'✓ Arrival confirmed' else status),
+            shiny::strong(if(!is.null(d$transport_departed_at))status else if(d$status=='arrived')'✓ Arrival confirmed' else status),
             if(d$status=='arrived')shiny::p(paste('Ambulance on scene at',format_time(d$arrived_at)))),
           shiny::div(class='caller-steps',lapply(c('Assigned','Approaching','Arrived'),function(label)shiny::span(class=if(label==switch(d$status,assigned='Assigned',approaching='Approaching',arrived='Arrived',''))'is-current' else '',label))),
-          shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
-            shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
+          if(exists('shared_eta_card',mode='function')) shared_eta_card(d) else
+            shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
+              shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
+
     })
     output$destination<-shiny::renderUI({d<-current();if(is.null(d))return(NULL);caller_destination_panel(d)})
     output$lastUpdate<-shiny::renderUI({
