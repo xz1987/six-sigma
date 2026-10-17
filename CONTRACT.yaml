@@ -112,10 +112,10 @@ tasks:
   - id: H-06
     title: Deploy to the course Posit Connect server
     points: "protects the 25 working-tool points - judges must be able to open it"
-    status: todo
-    owner: ""
-    started_at: ""
-    owns: [".github/workflows/", ".github/scripts/", "app/manifest.json", "app/.python-version"]
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/", "tests/verify-deploy-bundle.R"]
     notes: >
       Load the connect-publish skill. Copy ONE workflow for your stack from
       .claude/skills/connect-publish/workflows/ to .github/workflows/ and the
@@ -132,10 +132,10 @@ tasks:
   - id: H-07
     title: README and function documentation
     points: "10 - Tool Documentation: excellent, easy-to-follow documentation"
-    status: todo
-    owner: ""
-    started_at: ""
-    owns: ["README.md", "app/README.md"]
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html"]
     notes: >
       Replace the hackathon README.md with your tool's README; the event
       pages stay in docs/. See demos/making_readmes/.
@@ -144,7 +144,7 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: ""
+    result: "Project and function documentation now includes setup, connected-role and day-demo walkthroughs, codebook links, statistical interpretation, About page and hosted link. Audit of 8390b46 passed 362 assertions plus role, route, ETA and standalone bundle checks; credential-free clone, smoke and dataset checks pass. Known timezone warnings and delivery-format discrepancy are documented. H-07 remains in progress pending independent fresh-clone teammate walkthrough; deployed cross-session behavior needs separate verification."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost
@@ -614,3 +614,23 @@ tasks:
     notes: "Creating a caller demo must replace the displayed old responder trip with the fresh pending incident, reset replay controls, and select that incident for acceptance. Preserve prior incident records and require responder acceptance before replay movement."
     definition_of_done: "Caller-first regression recreates prior step-3 trip, creates a new caller dispatch, checks responder step 1 and zero progress until acceptance, then matching incident IDs through response and scene arrival; existing role/shared-trip tests pass."
     result: "PASS: caller-created demo resets old step 3 to step 1; acceptance starts the exact queued incident. Role, shared-trip, Caller ETA and full testthat checks pass. Browser verified caller Waiting for assignment, then Responder step 1 with the same queued incident preselected and an explicit Accept assignment action."
+
+  - id: H-45
+    title: Simulate an active-tracking day alongside the connected live trip
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "tests/test-supervisor-daily-demo.R", "tests/verify-supervisor-daily-demo.R", "app/README.md", "CONTRACT.yaml"]
+    notes: "User clarified a single-day session in Active tracking, not historical daily graphs. Reveal normal or abnormal completed cases progressively or jump to end of day; display demo-day average and existing charts. Keep live Caller/Responder panel connected but records separate."
+    definition_of_done: "Deterministic one-day generator, planted cases and known mean tests pass; module verification proves progressive Active tracking counts and plots, unchanged limits, and separation from live trip records; existing Supervisor/shared-trip checks pass."
+    result: "Active tracking now simulates one day of 12 cases with start/next-case/complete-day controls, optional final three planted 30-minute delays, day-so-far mean, existing KPIs and I-MR updates. Live trip stays connected in a separate panel; records never mix. Generator PASS 18; module verifies progressive 0/1/12 counts, rendered plots, displayed mean, frozen limits and ordinary record preservation. Full root/ETA/feed suites pass. Module emits nonblocking R warnings. Preview port 5801; not committed or pushed."
+
+  - id: H-46
+    title: Explain every Supervisor chart with guides and legends
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "app/www/supervisor.css", "tests/test-supervisor-chart-guides.R", "CONTRACT.yaml"]
+    notes: "User requested per-chart explanations and legends without clutter. Provide collapsible guides with visible text/symbol/color legends for every Active tracking, Patterns and History graph. Do not change any calculations."
+    definition_of_done: "All plotted Supervisor outputs have a guide and legend; units, colors, lines and interpretation limits match the renderer; Supervisor and day-demo verification pass."
+    result: "All 11 Supervisor graphs now include a keyboard-accessible expandable reading guide and visible symbol/text/color legend, including dynamic History layouts. Reading guides now have bordered button styling, plus/minus expansion indicators, hover feedback and keyboard focus outlines; chart guide checks PASS 67. Units and interpretation match renderers; calculations unchanged. Root tests PASS (chart coverage 67, day demo 18, Supervisor 49, QC 88, shared 1). Connected day-demo verification PASS with 12 existing nonblocking R warnings. Preview port 5802; uncommitted."

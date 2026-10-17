@@ -1,226 +1,227 @@
-# Combined role interfaces
+# DIIS developer and function reference
 
-The main app now integrates `branch-sub-supervisor`, `codex/caller-tracking`,
-and the responder/map/transport work from main. Run `Rscript app/testme.R`
-(default http://127.0.0.1:3838); set PORT=5300 for the existing preview.
-Dependencies: shiny, openssl, jsonlite, ggplot2. Tests additionally need testthat.
+Start with the [project README](../README.md) for setup, role walkthrough and
+scope. This is an R/Shiny application, not a public REST API or an installed R
+package. Source functions from their files for scripted analysis.
 
-- Supervisor: ordinary mode, and a developer mode whose top bar adds one synthetic completed call to the selected zone/priority per click, in `supervisor.R`.
-- Responder: call replay, weather cards, road maps, hospital transport, in `responder-server.R`.
-- Caller: password-free expiring incident links and tracking, in `caller/caller.R`.
+For the short user-facing overview, see [About the app](../docs/about.md).
+The current [hosted demo](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/)
+opens on the same role-selection screen.
 
-Caller assets are namespaced under caller-assets; only one Leaflet copy loads.
-Responder and Caller now share one process-local trip state. Supervisor shows
-that same active trip and receives canonical scene/hospital completion updates.
-The ETA branch is preserved, but validated ETA is not yet displayed in the UI.
-No real EMS request is sent. Local data and account state reset with the process.
+## Runtime and architecture
 
-# Emergency Response Quality Monitor
+Run `Rscript app/testme.R` from the repository root. `PORT` defaults to 3838 and
+`HOST` to 127.0.0.1. Runtime packages: shiny, openssl, jsonlite and ggplot2;
+testthat is used by tests, rsconnect by publishing. Disposable staff passwords
+are generated at startup and shown by the login dialog; do not replace them with
+real credentials in committed files.
 
-Supervisor interface scaffold built from `demos/shinyapp/app.R`.
+| File | Responsibility |
+| --- | --- |
+| `app.R` | Role selection, demo authentication, shared service and application startup |
+| `shared-incidents.R`, `shared-trip.R` | Process-local incident lifecycle, tracking links and milestone publication |
+| `responder-server.R`, `responder-demo.R` | Responder workflow, replay and hospital confirmation |
+| `caller/caller.R` | Link-based Caller view and shared-state tracking |
+| `response-metrics.R` | Canonical timestamp adapter; no QC formulas |
+| `qc.R` | Validation, fixed I-MR limits, gated monitoring and descriptive statistics |
+| `supervisor.R`, `supervisor-analytics.R` | Supervisor UI, isolated simulation, SPC patterns and historical summaries |
+| `eta.R` | Independent synthetic ETA fitting, validation and prediction |
+| `www/`, `caller/www/` | Maps, styles, browser behavior and offline fallback |
 
-From the repository root, run `Rscript app/testme.R`, then open
-http://127.0.0.1:3838. Requires R and the `shiny` and `openssl` packages.
+## Measurement inputs
 
-Upload a CSV containing `incident_id`, `zone`, `call_priority`,
-`dispatch_time`, and `on_scene_time`. The interface checks the column
-names and previews records, with zone and priority filters and a CSV export.
-Full record validation, date filtering, response calculations, control charts,
-and investigation flags are pending H-03. Preview rows are not validated incidents.
-Uploads remain in the current Shiny session; no database or live dispatch feed exists.
+Ordinary mode consumes shared records; users do not upload a CSV. Each incident
+has the fields below. A metric is available only after its own start and end
+exist. Timestamp strings require ISO 8601 seconds with `Z` or an explicit UTC
+offset. Durations are elapsed minutes; local calendar displays use
+`America/New_York`.
 
-Baseline date controls capture proposed settings only. No statistical result is
-displayed until the separate statistical engine is implemented and verified.
+| Field | Meaning / allowed values |
+| --- | --- |
+| `incident_id` | Unique incident identifier |
+| `zone` | Astoria, Flushing, Jamaica, Forest Hills or Far Rockaway; incident location |
+| `call_priority` | High, Medium or Low; synthetic urgency categories |
+| `weather_condition` | Dry, Rain, Snow/Ice or Unknown; invalid/missing becomes Unknown |
+| `call_received_time` | Start of call-to-scene duration |
+| `scene_arrival_time` | Confirmed scene arrival; end of call-to-scene duration |
+| `transport_departure_time` | Start of hospital transport duration |
+| `hospital_arrival_time` | Upstream confirmed hospital arrival; end of transport duration |
+| `responder_id`, `response_system_source` | Optional identifying/provenance context |
 
-The welcome screen routes to Supervisor, Primary responder, or Person calling
-for EMS. Supervisor opens the CSV dashboard; responder and caller views are
-explicit prototype placeholders. Change role returns to the welcome screen.
-Supervisor and Primary responder require their matching demo accounts. Caller needs no login. No EMS requests are sent.
+Missing/invalid required values, ambiguous duplicate IDs and negative durations
+are reported and excluded from completed QC. Missing weather is reported without
+excluding an otherwise valid incident. Pending pairs do not become zero-minute
+observations. The legacy fixture fields `dispatch_time`/`on_scene_time` are
+assignment/arrival timestamps, not the full canonical contract. Synthetic adapters
+create explicitly labeled proxies; production integrations must supply actual
+milestones. See [codebook](../data/README.md) and [SPEC](../SPEC.md).
 
-Demo usernames are `supervisor.demo` and `responder.demo`. Disposable passwords
-are generated in memory when the application starts and displayed in the login
-dialog for hackathon reviewers. Password verification uses salted bcrypt-PBKDF.
-These shared demo accounts are for synthetic data only; they are not production
-authentication. Five failed attempts trigger a 30-second per-session delay.
-Logging out reloads the page, ending staff access and clearing uploaded data.
+## QC function reference (`qc.R`)
 
+All arguments below are R objects, with durations in minutes. These functions
+return values rather than modifying shared trip state.
 
-## Installable web app (PWA)
+| Function | Parameters and result |
+| --- | --- |
+| `qc_parse_time(x)` | Timestamp vector or POSIXt; returns UTC POSIXct, invalid values as NA. |
+| `qc_validate(records, mode=c('completed','active'))` | Data frame with legacy QC fields above. Returns completed, pending, rejected, issues and counts. Active mode retains missing arrivals as pending; completed mode rejects them. |
+| `imr_fit(baseline)` | Finite nonnegative numeric duration vector in chronological order. Returns n, center, moving ranges, sigma, I/MR limits, last observation and computability status. Short/constant inputs have unavailable limits. This does not grant review approval. |
+| `imr_monitor(fit, monitoring, enabled=TRUE)` | Fit plus ordered finite nonnegative monitoring vector. Returns durations, adjacent ranges and upper-limit exceedance fields. Disabled/unusable fit yields unavailable signals. Arithmetic primitive for tests; application integrations should use `qc_analyze`. |
+| `qc_summary(x)` | Finite numeric vector; returns n, median, type-7 p90. Empty input returns n=0 and NA statistics. |
+| `qc_box(x)` | Finite vector; returns quartiles, median, 1.5-IQR whiskers, outliers and points. Empty input returns unavailable summaries. |
+| `qc_boxes(completed, group_col)` | Validated completed data and grouping-column name; returns grouped box summaries. |
+| `qc_heatmap(completed, tz='America/New_York')` | Validated completed records; returns local hour/weekday median and count cells, preserving empty cells as missing. |
+| `qc_period(baseline_start, baseline_end, monitoring_start=baseline_end, monitoring_end)` | Offset-bearing timestamps; requires 12 complete New York baseline calendar months and nonoverlapping monitoring. Returns validated half-open period boundaries and baseline month labels. |
+| `qc_order(d)` | Orders a QC data frame by start (`dispatch_time`), then incident ID for ties. |
+| `qc_baseline_key(baseline, period, zone, priority)` | Creates an identity for the exact reference observations/settings used to match a review. |
+| `qc_diagnostics(b, fit, months)` | Ordered baseline records, fit and expected month labels; returns preliminary chart, monthly, distribution and lag diagnostics for review. |
+| `qc_review(group, reviewer, rationale, decision=c('approved','unsuitable'), reviewed_at)` | Reviewed analysis group plus documented reviewer, rationale, decision and timestamp; returns a review tied to its baseline identity. Does not bypass insufficient/degenerate safeguards. |
+| `qc_analyze(records, period, reviews=list(), mode=c('completed','active'))` | QC-shaped records, validated period and optional review records. Returns validation and 15 zone/priority groups with diagnostics, limits, summaries, status and monitoring evidence. Without suitable approval, operational monitoring flags are disabled. |
 
-The existing Shiny website now includes a web manifest, 192/512px app icons,
-Apple touch icon, service worker, and a public offline fallback page.
-Open the app once while online. Chrome/Edge offer installation when supported;
-Safari uses Share > Add to Home Screen on iPhone/iPad or File > Add to Dock on Mac.
-The interface also includes installation instructions and a conditional install button.
+Minimal standalone example, independent of Shiny:
 
-Deploy behind HTTPS (localhost is allowed for development). Relative manifest,
-worker, and icon paths support deployment below a Posit Connect app URL.
-The worker caches only its explicitly listed public assets. It does not cache
-login responses, uploaded incidents, downloads, or Shiny session traffic.
-Offline startup shows a connection-unavailable page; interactive features still
-require the R/Shiny server and its WebSocket connection. This does not provide
-background dispatch, offline incident entry, push notifications, or production auth.
-The public demo credentials and account behavior are unchanged.
+```r
+source('app/qc.R')
+x <- c(8, 9, 8, 7, 8)
+fit <- imr_fit(x)
+stopifnot(fit$center == 8, fit$mr_center == 1)
+qc_summary(x) # n = 5, median = 8, p90 = 8.6
+imr_monitor(fit, c(8, 30)) # arithmetic check, not baseline approval
+```
 
-Reference: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable
+## Metric adapter (`response-metrics.R`)
 
+`response_metric_catalog()` lists the two metric IDs, labels and timestamp pairs.
+`response_system_fields()` lists canonical fields;
+`response_metric_empty_records()` creates an empty stream.
+`response_metric_info(metric_id)` looks up one supported metric and rejects
+unknown IDs. Choose `call_to_scene` or `transport_to_hospital`.
 
-## Agreed dispatch workflow (planned)
+`response_metric_to_qc(records, metric_id, allow_mock=TRUE)` maps the selected
+canonical timestamp pair onto QC's `dispatch_time`/`on_scene_time` columns;
+`allow_mock=FALSE` prevents synthetic legacy fallback. Use that setting for real
+integrations. `response_metric_completion_events(records, allow_mock=FALSE)`
+returns metric completion events with IDs, metric, zone, priority, timestamp and
+duration. `response_metric_connection_status(records)` describes which input
+contract is present. Scene and transport remain separate observations and limits.
 
-Dispatcher enters the caller's address → app identifies the incident zone →
-filters available responders → ranks candidates by estimated travel time from
-current responder locations → dispatcher confirms the assignment → assigned
-responder receives the incident. Explicitly show when no responder is available.
-The hackathon version will simulate addresses, responder locations, availability,
-and travel estimates. This workflow is agreed but not implemented yet; it does
-not currently select responders or send incident notifications.
+## ETA functions (`eta.R`)
 
+The ETA target is legacy assignment-to-scene minutes, distinct from the final
+call-received-to-scene QC definition. Inputs include zone, priority,
+`dispatch_time`, weather condition, precipitation intensity (`None`, `Light`,
+`Moderate`, `Heavy`), sustained `wind_speed_mph`, `wind_gust_mph` and
+`weather_observed_at`. Training also needs `on_scene_time`. Gust must be at least
+sustained speed; weather observation must precede assignment by less than one
+hour. [ETA codebook](../data/eta/README.md) defines generation and partitions.
 
-## Responder incoming-call simulation
+| Function | Parameters and result |
+| --- | --- |
+| `eta_prepare(d)` | Data frame; returns predictors, times, target and per-row unavailability reasons. |
+| `eta_fit(d, weather=TRUE)` | Fits a log-duration candidate with weather terms, or the comparison model without those terms. Requires eligible sample/support and nondegenerate full-rank fit; returns candidate or unavailable status/reason. |
+| `eta_validate(d)` | Runs fixed chronological train/validation/test checks against the simpler model, including predictive error and interval coverage; returns a frozen validated-synthetic bundle or unavailable result. |
+| `eta_predict(bundle, d)` | Bundle plus assignment-time rows; returns status/reason, median/mean minutes, 95% individual prediction limits and arrival timestamps. Unsupported/incomplete input returns NA estimates, never zero. |
 
-Log in as Primary responder using the displayed disposable demo account. Choose
-Rain + rush hour, Dry + light traffic, or Snow/ice + road closure; then select
-Simulate incoming call. Replay advances 30 simulated seconds per real second:
-assigned at 0, en route at 30 seconds, approaching at 10 minutes, and automatically
-on scene at 12 minutes. Pause/resume and reset are session-local controls. New
-calls restart the deterministic sequence; scenario changes apply on the next call.
+The prediction is frozen at assignment; advancing replay does not refit it.
+Hospital route progress does not turn this model into a hospital ETA. Model
+intervals describe uncertainty for a synthetic individual duration, not a
+confidence interval for a real EMS service promise. `Rscript app/eta-view.R`
+runs the reproducible ETA demonstration.
 
-Traffic/weather prompts are authored coordination examples, not measured traffic,
-weather, turn-by-turn routing, a prediction model, or proof of minutes saved.
-Markers are fictional near Astoria Park. Movement follows a road-driving route
-returned by the public OSRM service and stored in www/demo-road-route.json.
-The snapshot uses synthetic endpoints and excludes live traffic, weather, closures,
-and emergency-vehicle rules. It is not validated operational navigation. No GPS or address geocoding is used.
-The basemap requires internet access and credits OpenStreetMap contributors.
-Leaflet 1.9.4 is vendored in www/vendor with its license. Map source/license:
-https://www.openstreetmap.org/copyright and https://leafletjs.com/.
-This standalone UI replay is not yet wired to the H-09 dispatch feed or QC engine.
+## Supervisor controls and chart interpretation
 
-Weather icons are accessible inline SVGs for sun, rain, heavy rain, and snow/ice.
-A Heavy rain + rush hour scenario is available. Road-route provenance and distance
-are stored with the snapshot; no duration estimate or time saving is inferred.
+Active tracking selects metric, date window, zone and priority. Patterns are
+descriptive. History analysis has independent metric/zone/priority, phase,
+period and aggregation filters. Daily/weekly subgroup limits depend on n;
+today's open New York day is excluded from closed subgroup history. Configured
+priority service goals and optional zone overrides do not modify control limits.
+Charts have visible legends and expandable **How to read this chart** buttons.
 
-Delay-reduction prompts appear as separate bordered checklist cards; ticks are
-session-only and reset on a new demo call. Route distance is displayed in miles
-(1 mile = 1609.344 meters); source geometry retains its native meter units.
+**Try demo mode** isolates generated observations. Choose Normal day or Day with
+delays, then Start demo day. Next completed case reveals one of 12 hourly cases
+(08:00–19:00 on the current New York date); Complete demo day reveals all 12.
+The delayed scenario sets the final three selected-metric durations to 30 minutes.
+The day-so-far average is the arithmetic mean of revealed durations. Replay time
+is synthetic, including any displayed future time. Advanced settings retain
+single-case and event controls. The connected live trip stays visible but its
+records never enter generated graphs. Exit discards the generated records.
 
+## Publishing and limitations
 
-## Zone outlines and hospital transport demo
+From the repository root with rsconnect installed, run:
 
-The assignment briefing uses compact icon/label cards, retaining reported reason,
-scene, priority, unit and access. Map controls switch between the active road route
-and all five selected Queens zone groupings. Solid outlines have opacity 1 and
-light interior fill. Boundaries come from NYC DCP 2020 NTAs (9nt8-h7nd):
-Astoria aggregates QN0101/02/03/04 and QN0191; Flushing aggregates QN0704/05/07;
-Jamaica uses QN1201; Forest Hills QN0602; Far Rockaway QN1401. These app-defined
-statistical-area groupings are not official EMS districts or definitive neighborhood
-boundaries. Source: https://data.cityofnewyork.us/resource/9nt8-h7nd.geojson
+```sh
+Rscript app/manifestme.R
+Rscript tests/verify-deploy-bundle.R
+```
 
-The app lists real hospitals serving Astoria, Flushing, Jamaica, Forest Hills and
-Far Rockaway, plus nearby specialty centers. `hospital-directory.json` records
-published services, adult/pediatric trauma designations, address coordinates,
-source links and review date. No quality ranking or live availability is inferred.
-All nine facilities are considered regardless of incident zone and matching
-options sort by stored road distance. See `data/hospitals/README.md` for provenance.
-Crew confirms a matching destination
-after scene arrival (Advance to scene is a demo shortcut). The map switches to its
-OSRM road snapshot; an 8-minute simulated replay follows, unrelated to predicted
-travel time. At its end the responder manually confirms Arrived at hospital.
-The arrival confirmation uses local wall-clock time, clearly labeled separately
-from simulated elapsed time. It stays in this session and resets with a new call.
-The original scene-response clock remains stopped; hospital transport is separate.
-Requires the `jsonlite` R package in addition to shiny and openssl.
+The manifest script bundles the required synthetic CSVs under `app/data/` and
+writes `app/manifest.json`. Refresh it after runtime source/assets change. The
+bundle check verifies startup without the parent repository. Publish the `app/`
+directory to the course Posit Connect server using the team's deployment setup.
+Keep publishing credentials in environment/repository secrets. The current
+content is [hosted here](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/).
+Configure one R process so separate role sessions share state. Records disappear
+on restart; durable storage, operational authentication and multiworker shared
+storage are future work.
 
-Supervisor integration preserves the collaborator dashboard. Responder UI logic
-is isolated in app/responder-server.R, shared scenario helpers in responder-demo.R,
-and styles in www/responder.css. Set PORT=5300 for the existing local preview.
+The installable PWA requires HTTPS (localhost is exempt) and a server connection
+for interaction. Its offline fallback is not offline dispatch. Browser map tiles
+require internet. Hospital capabilities have dated sources; route snapshots and
+vehicle movement do not include live traffic, emergency driving rules or GPS.
+Vendored Leaflet licensing and route/source notes are retained in `www/` and the
+[hospital codebook](../data/hospitals/README.md). Demo interactions send no EMS
+request and do not provide clinical or operational navigation instructions.
 
+## Reproduction checks
 
-## Shared palette and caller presentation
+See the [root README](../README.md#verify-and-extend) for commands and
+[tests/README.md](../tests/README.md) for existing numerical checks. Dataset
+expected output is in [demo/README.md](../demo/README.md). A fresh-clone teammate
+walkthrough and public hosted-link verification are still required for H-07;
+local automated checks alone do not establish either.
 
-Reference palette: https://i.pinimg.com/736x/fe/1f/30/fe1f30a657adaf103eac7a4e23f263ff.jpg
-Exact colors: navy #2C3E50, blue #AFC6D9, green #6B8F7A, red #D15B4A,
-yellow #E6C35A, and cream #EFEAE2. Cream is the canvas, navy is the main text and
-primary control color, and blue is the soft accent. Map colors remain distinct and labeled. Caller uses larger text,
-softer cards, plain-language status, and expandable trip/map details. Private-link
-access, expiry, incident isolation and crew-confirmed hospital rules are unchanged.
+## Final local audit — 2026-10-17
 
-Change role clears the incident fragment before reloading, preventing a private
-Caller link from reopening after logout. Deployment paths and query parameters
-are retained; the new session starts at the role picker without prior access.
+Audited pushed commit `8390b46`. Both test suites passed all 362 assertions:
+QC 88, shared incidents 1, chart guides 67, daily demo 18, Supervisor 49,
+ETA 100 and feed 39. Separate checks passed for independent Caller/Responder
+sessions, caller-first assignment, role-stage guards, role synchronization,
+phase-aware Caller ETA, shared trips, five-zone routes and the nine-hospital
+directory. Caller verification, smoke, dataset demo, ETA demonstration,
+isolated Supervisor day-demo verification and standalone deployment-bundle
+startup also passed. Manifest file checksums matched the bundle.
 
+A public, credential-free clone of this commit succeeded. Its smoke and dataset
+demonstration passed using the installed R dependencies; this does not test
+package installation on a new machine or replace a teammate's walkthrough.
 
-After confirming a hospital in the Responder demo, View caller tracking opens an
-expiring incident-scoped link with that exact hospital name and real facility map
-location. The Caller map uses the responder's scene route and shows scene arrival,
-without restarting the standalone caller replay. Switching to Caller ends staff
-access. The link does not send a message or EMS request; it is a demo handoff.
+Safari checks confirmed Caller waiting before assignment, updates after a
+separate Responder tab accepts that incident, scene completion appearing in
+Supervisor, and automatic Caller hospital destination, hospital-marker legend
+and road-route updates after responder confirmation. Supervisor checks confirmed
+expandable chart-guide buttons, a 12-case delayed day with three 30-minute
+signals, the separate live-trip panel, and rendered full-year history charts
+with current-day observations excluded from closed subgroups. Full completion,
+reset and access revocation were verified by the automated session checks.
 
+Known remaining items:
 
-## Shared trip synchronization
+- The Supervisor day-demo module check emits 12 R warnings that `tzone`
+  attributes are inconsistent. Its chronology, fixed-limit and isolation checks
+  pass; the run is not warning-free.
+- The hosted link was added in the subsequent teammate update. This local audit
+  does not verify that hosted release, deployed cross-session behavior or device installation.
+- SPEC records the team's challenge summary. `docs/prompts.md` links to Devpost
+  for the exact prompt and describes a web frontend plus a package/library or
+  API; SPEC and CLAUDE permit the Shiny dashboard with sourced R functions.
+  Reconcile the required delivery format with the organizer's current wording
+  before claiming complete submission compliance. No packaged R library or
+  public statistical API is implemented by this app.
+- Verify the documented live URL, complete the independent fresh-clone walkthrough,
+  reconcile stale ledger entries and submit the repository/demo on Devpost.
 
-One active synthetic Q-12 trip persists across role changes and browser sessions
-in this R process. Each new call gets a unique incident ID. Caller links refer to
-that trip, never create a second replay, and stop authorizing it after reset or
-replacement. A confirmed hospital supplies a hospital map marker and legend item.
-The ambulance follows the same road geometry and transport progress as Responder.
-Supervisor ordinary mode shows the active trip and upserts one canonical record
-at scene arrival, updating it on transport departure and manual hospital arrival.
-No hospital completion is inferred merely from the marker reaching its destination.
-Synthetic event timestamps use the demo clock; hospital confirmation also displays
-local wall-clock time separately. Multiple open roles do not multiply replay speed.
-Process restart clears this in-memory state; this is not a multi-worker backend.
-Regression command: `Rscript tests/verify-shared-trip.R`.
-
-
-The shared-incident merge consolidates canonical records and Caller lookup in
-`app/shared-incidents.R`, preserving the collaborator's frozen assignment-time
-ETA and full hospital route. `app/shared-trip.R` now holds shared responder UI
-state only. The legacy responder-bridge helper is no longer wired into app.R.
-Replay ticks continue in Caller mode, are deduplicated across sessions, and staff
-role changes reuse the same claimed incident. Hospital arrival remains an explicit
-crew confirmation. Both integration regression scripts cover the merged behavior.
-
-## Final local verification — 2026-10-17
-
-Verified integrated commit `5ce127f` in Safari at `http://127.0.0.1:5795`.
-This is local verification, not a hosted deployment or device-installation claim.
-
-| Check | Evidence / result |
-|---|---|
-| Staff access | Supervisor wrong password rejected; correct Supervisor and Responder credentials open their respective workspaces; caller needs no staff login. |
-| Supervisor ordinary mode | Opens on October 17, 2026; reads shared canonical records; no developer-generated calls leak into ordinary mode. |
-| Developer simulation | Added SIM-0001 and SIM-0002 in the selected group; Individuals/MR plots render; hospital metric switches to its own durations; End developer mode discards those simulated records. |
-| Caller-originated incident | Created a private caller link, selected its incident from the Responder queue, and received that same incident/link. |
-| Scene replay | Pause/resume works; replay automatically reaches 12:00 and stops its scene clock; already-open caller updates to confirmed arrival. |
-| Hospital guards | Stroke-care no-match case supplies no hospital; Confirm & begin trip before scene arrival reports Reach the scene first. |
-| Hospital handoff | Explicit Hospital A confirmation automatically updates the already-open caller panel, route, hospital marker and legend; house marker is absent during hospital transport. Recenter works. |
-| Prediction preservation | Both roles retain the original assignment prediction (09:25:10 EDT with the same range) through scene arrival and transport. |
-| Hospital arrival | Transport reaches 08:00 and waits for crew confirmation; after confirmation, Supervisor shows the same incident at hospital. |
-| Supervisor measurements | Scene milestone for the tested incident is 12.0 minutes; hospital milestone is 8.0 minutes. Day/week/month controls change the period; Patterns tab is available. |
-| Reset and private access | Responder reset immediately clears the open caller's map/destination and shows Link no longer available. Automated tests cover expiry, invalid tokens and isolation. |
-| Return to roles | Caller Change role removes the fragment and reloads the clean role picker. JavaScript checks also verify subpath/query preservation and exactly one reload per action. |
-| Caller initialization | Browser click-through passes; isolated JavaScript checks pass before/after DOMContentLoaded, reconnect, and hash removal. |
-| Browser assets | Six browser scripts parse; both manifests reference nonempty icons. Isolated worker checks verify public-only precaching, private-request bypass and offline fallback. |
-
-Regression evidence on this integrated version:
-
-- Root testthat suites: QC 88, shared incidents 1, Supervisor 37 expectations pass.
-- ETA/feed suites: 100 + 39 expectations pass; no suite failures, warnings or skips.
-- `tests/verify-shared-trip.R`: PASS for shared identity, map/legend,
-  Caller-active movement, crew arrival, Supervisor upsert and reset isolation.
-- `app/caller/verify.R`: all nine PASS checks.
-- `app/smoke.R`: `SMOKE PASS` (mean 4.8, I UCL 7.459574, MR UCL 3.267).
-- `app/eta-view.R`: `H-12 ETA VIEW PASS`.
-- `demo/run-datasets.R`: `H-05 DATASET DEMO PASS`.
-
-Observed limitation: the live server emitted two `.check_tzones` warnings about
-inconsistent timezone attributes during the session. No incorrect metric or
-crash was observed (scene 12.0 min; transport 8.0 min); an isolated Developer-mode
-follow-up did not reproduce the warnings. This is recorded rather than treated
-as a warning-free browser run.
-
-Remaining environment checks: Posit Connect deployment, shared state across its
-worker/session configuration, actual phone/PWA installation, and real offline
-browser behavior. Current shared records are process-local and disappear on
-server restart. H-15 automatic dispatch selection remains deferred.
+The implemented incident-level QC and synthetic scenarios address the recorded
+problem of variation and extreme delays hidden by averages. They demonstrate
+software behavior; they do not establish reduced real response times, lives
+saved, causal weather effects or operational deployment readiness.
