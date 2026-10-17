@@ -266,6 +266,67 @@ supervisor_history_replay_days <- function(historical, zone, priority, metric_id
 }
 
 # Presentation metadata only: no measurements or statistical formulas change.
+# Interpret existing results; do not fit limits or infer a cause.
+supervisor_plain_summary <- function(m, flags_enabled, status, target_misses, service) {
+  n <- nrow(m)
+  if (!n) return(list(history='No completed records in this view yet. Pending trips are not zero-minute responses.',
+    target='Target performance is not available until records complete.',
+    goal='Configured service-goal performance is not available yet.',
+    action='Wait for completed records or choose another display period.'))
+  history <- if (!isTRUE(flags_enabled)) paste('Historical signals unavailable:',status,
+    '— do not interpret this as zero signals.') else sprintf(
+      '%d of %d completed records exceed the historical upper duration limit; %d show an unusually large change from the preceding record.',
+      sum(m$individual_signal %in% TRUE),n,sum(m$variation_signal %in% TRUE))
+  known <- sum(!is.na(target_misses))
+  target <- if (!known) 'Context target unavailable for these records.' else sprintf(
+    '%d of %d records with an available context target missed it. A target miss can overlap a historical signal.',
+    sum(target_misses %in% TRUE),known)
+  goal <- if (!nrow(service) || !is.finite(service$goal[1]))
+    'No service goal is configured for this metric / zone / priority.' else sprintf(
+      '%.0f%% of %d completed records met the configured %.1f-minute service goal.',
+      100*service$within_goal[1],service$n[1],service$goal[1])
+  list(history=history,target=target,goal=goal,
+    action='Review the signal details and verify timestamps and recorded circumstances. Signals do not establish a cause; no signal does not prove acceptable service. Display filters never change the fixed baseline limits.')
+}
+
+supervisor_history_summary <- function(d, service, aggregation, enabled, status, open_count) {
+  unit <- if (identical(aggregation,'week')) 'weekly' else 'daily'
+  known <- if(nrow(d)) sum(!is.na(d$signal)) else 0L
+  history <- if(!nrow(d)) 'No completed subgroups are available for this selection.' else
+    if(!isTRUE(enabled) || !known) paste('Subgroup limit comparisons unavailable:',status,
+      '— this is not evidence of zero signals.') else sprintf(
+      '%d of %d assessable %s means fall outside the baseline-derived control limits. These are period averages, not counts of unusually slow individual responses.',
+      sum(d$signal %in% TRUE),known,unit)
+  goal <- if(!nrow(service) || service$n[1]==0) 'No completed individual responses are available for service-goal comparison.' else
+    if(!is.finite(service$goal[1])) sprintf('Individual-response p90 is %.1f minutes across %d responses; no service goal is configured.',service$p90[1],service$n[1]) else sprintf(
+      'Individual-response p90 is %.1f minutes; %.0f%% of %d responses met the configured %.1f-minute goal. This goal is separate from control limits.',
+      service$p90[1],100*service$within_goal[1],service$n[1],service$goal[1])
+  list(history=history,goal=goal,coverage=sprintf(
+    '%d completed %s subgroups are displayed. %d current-day responses are excluded from closed-period history. The distribution chart summarizes daily means even when the control chart uses weekly means.',
+    nrow(d),unit,open_count),
+    action='Investigate unusual periods using incident details in Active tracking. Baseline-period comparisons describe the reference data, not prospective monitoring. Adjusted comparisons show associations, not causes; no signal does not prove acceptable service. Historical baseline limits remain fixed.')
+}
+
+supervisor_patterns_summary <- function(records, zone, priority) {
+  all_zones <- records[records$call_priority == priority,,drop=FALSE]
+  selected <- all_zones[all_zones$zone == zone,,drop=FALSE]
+  describe <- function(boxes) {
+    present <- boxes[vapply(boxes,function(b)b$n > 0,logical(1))]
+    if(!length(present)) return('No completed records for this selection.')
+    paste(vapply(names(present),function(name) sprintf('%s: median %.1f min (n=%d)',
+      name,present[[name]]$median,present[[name]]$n),character(1)),collapse='; ')
+  }
+  grid <- qc_heatmap(selected)
+  populated <- grid[grid$n > 0,,drop=FALSE]
+  time <- if(!nrow(populated)) 'No populated hour/weekday cells for this zone and priority.' else sprintf(
+    '%d of 168 hour/weekday cells contain records; observed cell medians range from %.1f to %.1f minutes. Read each cell with its sample count; blank cells mean no data.',
+    nrow(populated),min(populated$median),max(populated$median))
+  list(zones=describe(qc_boxes(all_zones,'zone')),
+    weather=describe(qc_boxes(selected,'weather_condition')),time=time,
+    scope=sprintf('Neighborhood chart: %d completed records across all zones at %s priority. Weather and time charts: %d records in %s / %s.',nrow(all_zones),priority,nrow(selected),zone,priority),
+    action='Use these patterns to choose incidents or periods to investigate in Active tracking. Small samples can give unstable comparisons. These are unadjusted descriptions, not proof of a weather effect, a zone ranking, or new control-chart signals. Changing these views never refits baseline limits.')
+}
+
 supervisor_chart_guides <- function() {
   key <- function(symbol,label,color='#2C3E50') c(symbol=symbol,label=label,color=color)
   box <- list(text='Compare completed durations across categories. The box spans the middle 50%; its line is the median. Whiskers extend to the most extreme values within 1.5 box lengths. Dots are individual records. Counts show sample size; comparisons are descriptive, not adjusted rankings or causes.',
@@ -401,6 +462,7 @@ supervisor_ui <- function(id) {
               tags$p(class = 'subhead', 'Select a signal to locate it on the charts and review the evidence.'),
               uiOutput(ns('flag_cards')),
               uiOutput(ns('investigation_drawer')))),
+          uiOutput(ns('findings_summary')),
           panel_card('Completed metric records in this view',
             'The display filters change which completed metric records you see, not the baseline or control limits.',
             tableOutput(ns('completed_table')))
@@ -415,7 +477,8 @@ supervisor_ui <- function(id) {
               supervisor_chart(ns, 'heatmap', height = 420)),
             panel_card('Weather context',
               'Synthetic assignment-time weather. Descriptive only; weather does not change QC limits or establish cause.',
-              supervisor_chart(ns, 'weather_boxplot', height = 420)))
+              supervisor_chart(ns, 'weather_boxplot', height = 420))),
+          uiOutput(ns('patterns_findings_summary'))
         ),
         tabPanel('History analysis',
           div(class = 'history-filter-bar',
@@ -477,7 +540,8 @@ supervisor_ui <- function(id) {
                 reading_key(
                   key_item('Adjusted mean', 'key-dot'),
                   key_item('95% model interval', 'key-interval')),
-                p('Each point is an adjusted geometric mean. The horizontal line is its 95% model interval. Differences are descriptive associations after adjustment for the available synthetic context—not causal effects.'))))
+                p('Each point is an adjusted geometric mean. The horizontal line is its 95% model interval. Differences are descriptive associations after adjustment for the available synthetic context—not causal effects.')))),
+          uiOutput(ns('history_findings_summary'))
         )
       )
     )
@@ -1054,6 +1118,20 @@ supervisor_server <- function(id, production_records) {
   output$kpi_flags <- renderText({ nrow(visible_flags()) })
   output$flag_count <- renderText({ nrow(signal_groups()) })
 
+  output$findings_summary <- renderUI({
+    m <- visible_monitoring(); g <- selected_group(); targets <- visible_targets()
+    misses <- ifelse(is.finite(targets),m$response_minutes > targets,NA)
+    service <- supervisor_service_performance(m,state$service_goals,input$metric)
+    service <- service[service$zone == input$zone & service$priority == input$priority,,drop=FALSE]
+    summary <- supervisor_plain_summary(m,g$flags_enabled,g$status,misses,service)
+    panel_card('What this view tells you',
+      paste(metric_info()$short_label,'·',input$zone,'/',input$priority,'· selected display period'),
+      p(strong('Historical variation: '),summary$history),
+      p(strong('Context target: '),summary$target),
+      p(strong('Configured service goal: '),summary$goal),
+      tags$small(summary$action))
+  })
+
   output$target_notice <- renderUI({
     if (identical(state$mode, 'developer'))
       return(div(class = 'target-notice', strong('Target source: '),
@@ -1274,6 +1352,17 @@ supervisor_server <- function(id, production_records) {
   descriptive <- reactive({
     window <- display_window()
     dashboard_descriptive_records(analysis(), window[1L], window[2L])
+  })
+
+  output$patterns_findings_summary <- renderUI({
+    summary <- supervisor_patterns_summary(descriptive(),input$zone,input$priority)
+    panel_card('What this view tells you',
+      paste(metric_info()$short_label,'· selected display period'),
+      p(strong('Included data: '),summary$scope),
+      p(strong('Neighborhood medians: '),summary$zones),
+      p(strong('Weather medians in the selected zone: '),summary$weather),
+      p(strong('Time patterns: '),summary$time),
+      tags$small(summary$action))
   })
 
   box_plot <- function(d, group_col, groups, title) {
@@ -1623,6 +1712,20 @@ supervisor_server <- function(id, production_records) {
     row <- if (any(exact)) tail(which(exact), 1L) else if (any(fallback)) tail(which(fallback), 1L)
       else integer()
     if (!length(row)) 'not configured' else goals$source[row]
+  })
+
+  output$history_findings_summary <- renderUI({
+    g <- history_group()
+    summary <- supervisor_history_summary(history_subgroups(),service_scope(),history_aggregation(),
+      g$flags_enabled,g$status,subgroup_open_count())
+    panel_card('What this view tells you',
+      paste(response_metric_info(input$history_metric)$short_label,'·',input$history_zone,'/',input$history_priority,
+        '·',switch(input$history_period,'full'='Full baseline year',paste('Latest',input$history_period,'calendar days')),
+        '·',switch(input$history_phase,'baseline'='Baseline only','monitoring'='Closed monitoring only','Baseline + monitoring')),
+      p(strong('Historical variation: '),summary$history),
+      p(strong('Service-goal performance: '),summary$goal),
+      p(strong('Included data: '),summary$coverage),
+      tags$small(summary$action))
   })
 
   output$service_goal_status <- renderUI({

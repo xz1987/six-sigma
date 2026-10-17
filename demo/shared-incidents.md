@@ -6,11 +6,13 @@ same server process. This in-memory demonstration resets on server restart and
 is not a multi-worker deployment or operational dispatch system.
 
 1. Open Caller, choose Create demo tracking link, then Open caller tracking.
-   Record the synthetic incident ID, assignment-time median and 95% prediction
-   range. Keep the private link private. No caller login or code entry is needed.
+   Open Trip details to identify the incident. Before responder acceptance the
+   Caller shows Waiting for assignment. After acceptance it shows the initial
+   scene-arrival clock estimate and duration when available; it does not display
+   the model's full 95% range. No caller login or code entry is needed.
 2. In another tab open Primary responder and use its displayed disposable demo
-   credentials. In Incident to receive select that same ID, then Simulate incoming
-   call. A previously assigned incident cannot be taken by another session.
+   credentials. In Caller incident to receive select that same ID, then
+   Accept assignment & begin response. A previously assigned incident cannot be taken by another session.
    Alternatively create a new incident from the responder and use its private
    caller tracking link. A new incident has a new ID and prediction.
 3. The responder replay advances 30 simulated seconds per real second. Caller
@@ -18,15 +20,16 @@ is not a multi-worker deployment or operational dispatch system.
    record. Pause freezes progress; Advance to scene is an explicitly synthetic
    shortcut. Scene arrival is assignment +12 simulated minutes, independent of
    the model estimate. The assignment-time prediction never changes on arrival.
-4. After scene arrival choose a matching fictional hospital, then Confirm & begin
+4. After scene arrival choose a matching real hospital from the sourced directory, then Confirm & begin
    trip. The already-open caller tab displays the crew-confirmed destination. Shared-store writes notify caller sessions immediately; no page refresh or new link is required. Selecting an option alone does not confirm it; press Confirm & begin trip and look for the success message.
-   The facility location is explicitly synthetic coordinates, not an invented
-   real street address. Scene arrival alone must not display a destination.
-5. After the 8-minute accelerated transport replay, select Arrived at hospital.
+   Names, published capabilities and addresses are sourced; stored road routes
+   use approximate facility locations. Hospital availability is not live or
+   verified. Scene arrival alone must not display a destination.
+5. After the 8-minute accelerated transport replay, select Confirm hospital arrival.
    A supervisor session in ordinary mode receives one canonical incident record
    with a 12-minute call-to-scene value (receipt and assignment coincide in this
    demo) and an 8-minute transport-to-hospital value. Choose today's period,
-   Astoria and High priority. Simulated completion times may be ahead of the
+   the incident's actual zone and priority. Simulated completion times may be ahead of the
    wall clock; wait/use the appropriate displayed period around midnight.
    No baseline is re-estimated by these updates. Baseline review and QC eligibility
    gates still apply; synthetic ETA does not approve a QC baseline.
@@ -67,7 +70,7 @@ confirmed hospital name/location, a 🏥 hospital marker and a blue stored hospi
 The 🏠 house marker is shown during scene response and hidden during the hospital trip. The map fits the hospital route once;
 subsequent replay ticks move the ambulance without resetting the caller's zoom.
 Recenter includes the route and hospital. Every route is a stored OSRM/OpenStreetMap
-snapshot to a fictional facility, not live navigation or a hospital ETA.
+snapshot to an approximate real facility location, not live navigation or a hospital ETA.
 
 Transport advances 30 simulated seconds per second along the shared route. The
 scene-response ETA remains fixed and refers to scene arrival only. At the end of
