@@ -116,12 +116,13 @@ Jamaica uses QN1201; Forest Hills QN0602; Far Rockaway QN1401. These app-defined
 statistical-area groupings are not official EMS districts or definitive neighborhood
 boundaries. Source: https://data.cityofnewyork.us/resource/9nt8-h7nd.geojson
 
-Hospital A/B/C are entirely fictional; positions and treatment capabilities are
-invented for this demo. `demo-hospitals.json` documents their road distance from
-the synthetic scene. A dispatcher/crew-provided scenario requirement filters
-matching facilities and sorts them by road distance, without diagnosing symptoms
-or selecting a destination automatically. No real capacity or diversion data exists.
-Stroke care demonstrates a no-match result. Crew confirms a matching destination
+The app lists real hospitals serving Astoria, Flushing, Jamaica, Forest Hills and
+Far Rockaway, plus nearby specialty centers. `hospital-directory.json` records
+published services, adult/pediatric trauma designations, address coordinates,
+source links and review date. No quality ranking or live availability is inferred.
+All nine facilities are considered regardless of incident zone and matching
+options sort by stored road distance. See `data/hospitals/README.md` for provenance.
+Crew confirms a matching destination
 after scene arrival (Advance to scene is a demo shortcut). The map switches to its
 OSRM road snapshot; an 8-minute simulated replay follows, unrelated to predicted
 travel time. At its end the responder manually confirms Arrived at hospital.
@@ -150,7 +151,7 @@ are retained; the new session starts at the role picker without prior access.
 
 
 After confirming a hospital in the Responder demo, View caller tracking opens an
-expiring incident-scoped link with that exact hospital name and fictional map
+expiring incident-scoped link with that exact hospital name and real facility map
 location. The Caller map uses the responder's scene route and shows scene arrival,
 without restarting the standalone caller replay. Switching to Caller ends staff
 access. The link does not send a message or EMS request; it is a demo handoff.

@@ -10,7 +10,7 @@ for(zone in names(store$zone_trips)) {
     route <- shared_points(fixture$hospital_routes[[h$id]])
     stopifnot(nrow(route)>2,h$distance_m>0,
       max(abs(unlist(tail(d$route,1))-unlist(head(route,1))))<0.0001,
-      max(abs(unlist(tail(route,1))-c(h$lng,h$lat)))<0.0001)
+      max(abs(unlist(tail(route,1))-c(h$lng,h$lat)))<0.003)
   }
   shared_advance(store,d$incident_id,720)
   h <- hospital_candidates('Trauma assessment',fixture$hospitals)[[1]]

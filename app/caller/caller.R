@@ -106,7 +106,7 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
   shiny::tagList(
     if (include_leaflet) shiny::tagList(shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'vendor/leaflet/leaflet.css')), shiny::tags$script(src=paste0(asset_prefix,'vendor/leaflet/leaflet.js'))),
     shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css?v=role-steps-3')),
-    shiny::tags$script(src=paste0(asset_prefix,'caller.js?v=shared-service-2'),defer=NA),
+    shiny::tags$script(src=paste0(asset_prefix,'caller.js?v=real-hospitals-1'),defer=NA),
     shiny::div(class='caller-workspace',
       shiny::div(class='caller-heading',shiny::span(class='caller-eyebrow','HERE FOR YOU'),shiny::h2('Your EMS updates'),shiny::p('Follow your ambulance and see where you’re headed.')),
       shiny::div(class='caller-connection',role='status','Connection lost. These are your last updates. Reconnect for the latest.'),
@@ -120,7 +120,7 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
           shiny::p(class='caller-tile-status',role='status'),
           shiny::p(class='caller-route-status',role='status'),
           shiny::uiOutput(ns('legend')),
-          shiny::tags$details(class='caller-trip-details',shiny::tags$summary('About this demo map'),shiny::p(class='caller-map-note','Queens street map with simulated ambulance movement. After crew confirmation, the blue line shows a stored road-route snapshot to a fictional hospital. No live GPS, navigation or emergency request.')),
+          shiny::tags$details(class='caller-trip-details',shiny::tags$summary('About this demo map'),shiny::p(class='caller-map-note','Queens street map with simulated ambulance movement. After crew confirmation, the blue line shows a stored road-route snapshot to the confirmed hospital. No live GPS, navigation or emergency request.')),
 
           shiny::uiOutput(ns('lastUpdate')))),
       shiny::uiOutput(ns('destination'))))
@@ -140,6 +140,7 @@ caller_server <- function(id, lookup) {
     output$tracking<-shiny::renderUI({
       d<-current();if(is.null(d))return(NULL)
       status<-switch(d$status,assigned='Ambulance assigned',approaching='Approaching the scene',arrived='Ambulance has arrived','Status unavailable')
+      if(identical(d$claimed,FALSE)) status <- 'Waiting for responder assignment'
       if(!is.null(d$hospital_arrived_at)) status <- 'Hospital arrival confirmed'
       else if(!is.null(d$transport_departed_at)) status <- 'Transporting to confirmed hospital'
       format_time<-function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
@@ -153,7 +154,7 @@ caller_server <- function(id, lookup) {
           shiny::tags$ol(class='caller-steps workflow-steps', `aria-label`='Your trip progress', lapply(seq_len(4),function(i) {
             stage <- if(!is.null(d$hospital_arrived_at))4L else if(!is.null(d$transport_departed_at))3L else if(d$status=='arrived')2L else 1L
             shiny::tags$li(class=if(i==stage)'is-current' else if(i<stage)'is-complete' else '', `aria-current`=if(i==stage)'step' else NULL,
-              shiny::span(class='step-number',i),c('On the way','At your location','To hospital','Arrived')[i])
+              shiny::span(class='step-number',i),c(if(identical(d$claimed,FALSE))'Assignment pending' else 'On the way','At your location','To hospital','Arrived')[i])
           })),
           if(exists('shared_eta_card',mode='function')) shared_eta_card(d,caller_view=TRUE) else
             shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ETA'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'))))

@@ -50,7 +50,7 @@ local({
         !grepl('95% prediction range',paste(as.character(output$tracking),collapse=' ')),
         grepl('Arrival confirmed',paste(as.character(output$tracking),collapse=' ')),
         grepl('95% prediction range',as.character(shared_eta_card(current()))),
-        grepl('Demo Hospital A',paste(as.character(output$destination),collapse=' ')))
+        grepl(demo_hospitals[[1]]$name,paste(as.character(output$destination),collapse=' '),fixed=TRUE))
       shared_revoke(store,a$incident_id)
       session$setInputs(linkToken='invalid');session$flushReact()
       stopifnot(is.null(current()),is.null(output$tracking),is.null(output$destination))
@@ -88,11 +88,11 @@ local({
         is.null(jsonlite::fromJSON(output$map)$hospital_route))
       shared_transport(live,live_link$incident_id,demo_hospitals[[1]])
       session$flushReact()
-      stopifnot(grepl('Demo Hospital A',paste(as.character(output$destination),collapse=' ')),
+      stopifnot(grepl(demo_hospitals[[1]]$name,paste(as.character(output$destination),collapse=' '),fixed=TRUE),
         grepl('Your crew confirmed the hospital',paste(as.character(output$destination),collapse=' ')))
       map <- jsonlite::fromJSON(output$map)
       stopifnot(map$hospital$id=='a',length(map$hospital_route)>2,map$transporting,
-        !grepl('Demo Hospital C',output$map))
+        !grepl(demo_hospitals[[3]]$name,output$map,fixed=TRUE))
       initial <- map$ambulance
       shared_transport_advance(live,live_link$incident_id,240)
       session$flushReact()
@@ -123,7 +123,7 @@ local({
       stopifnot(responder_store$incidents[[id]]$status=='arrived',nrow(shared_records(responder_store))==1)
       session$setInputs(care_requirement='Trauma assessment',hospital_choice='a',begin_transport=1)
       session$flushReact()
-      stopifnot(responder_store$incidents[[id]]$confirmed_destination$name=='Demo Hospital A')
+      stopifnot(responder_store$incidents[[id]]$confirmed_destination$name==demo_hospitals[[1]]$name)
       shared_transport_advance(responder_store,id,480)
       transport_elapsed(480)
       session$setInputs(arrived_hospital=1);session$flushReact()

@@ -455,3 +455,53 @@ tasks:
     notes: "Choose the zone once at incident creation; share the zone, street route, fictional nearby hospitals and completion records across roles. Retain existing queued incident locations."
     definition_of_done: "All five zones have nonempty road snapshots with matching scene/transport endpoints; shared-trip, Caller and role-stage checks pass."
     result: "PASS: all five zone routes, matching hospital endpoints, shared records, and randomized creation. Shared-trip, role-stage, Caller, full testthat and smoke checks pass. Safari confirmed a randomized Far Rockaway incident, matching road route and hospitals, and the Caller hospital emoji/legend after confirmation."
+
+  - id: H-38
+    title: Replace fictional destination options with sourced real hospital capabilities
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/", "tests/", "data/hospitals/", "scripts/update-hospital-routes.py"]
+    notes: "Use official hospital and NYS trauma sources; distinguish adult and pediatric designation, link dated evidence, and retain simulated trips and crew confirmation. Replace all zone routes with road snapshots to real facility locations."
+    definition_of_done: "Hospital filtering and route/location tests, existing shared-trip/Caller/role checks and smoke pass; real destination and source links verified in the app."
+    result: "PASS: nine sourced hospitals, age/trauma matching, no-match handling, distance ordering and cross-zone eligibility. All 45 routes and shared-trip, role, Caller, full testthat and smoke checks pass. Safari verified local St. John’s versus outside-zone adult trauma options, dated source links and real hospital confirmation."
+
+  - id: H-34
+    title: Make hospital-arrival completion and next-call actions clear
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/responder-server.R", "tests/verify-role-steps.R"]
+    notes: "At the end of transport, show awaiting arrival confirmation rather than ongoing transport. After crew confirmation, show a visible next-call action and retain the completed trip and private caller link."
+    definition_of_done: "Workflow checks confirm arrival remains manual, next call starts a fresh shared trip, and prior completion remains saved; shared-trip and browser verification pass."
+    result: "PASS: responder stages, premature action guards, arrival confirmation, next-call history retention and reset. Shared-trip and shared-incident checks pass. Safari verified manual arrival confirmation, visible completion/next-call button, and a fresh Flushing incident starting at 00:00."
+
+  - id: H-35
+    title: Keep role progress and role-switch links on the same incident
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/app.R", "app/responder-server.R", "app/shared-incidents.R", "app/shared-trip.R", "app/www/navigation.js", "tests/verify-role-sync.R"]
+    notes: "Derive responder progress from shared milestone records; retain the existing private caller link in the same browser tab across role changes, without overriding explicit links. Show the actual zone in Supervisor trip summaries."
+    definition_of_done: "Regression checks demonstrate all phases agree for the same incident, mismatched UI counters reconcile, and same-tab Caller role navigation reuses the active trip."
+    result: "PASS: shared role stages, mismatched counter recovery, canonical timer and actual Supervisor zone. Role-step, shared-trip, full testthat and Caller checks pass. JavaScript behavior check passes same-tab private-link reuse, explicit-link protection and reset; app restarted with the fix."
+
+  - id: H-36
+    title: Fix coordination text width and phase-aware Caller arrival card
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/app.R", "app/www/responder.css", "app/shared-incidents.R", "tests/verify-role-sync.R", "tests/verify-caller-eta.R"]
+    notes: "Remove Shiny's fixed-width checkbox constraint inside coordination cards; wrap text to available width. Caller ETA must distinguish scene arrival, hospital transport, pending confirmation and confirmed hospital arrival. Do not relabel the scene ETA as a hospital prediction."
+    definition_of_done: "Caller phase-card checks and role-sync regression pass; checklist full-width layout reviewed in browser."
+    result: "PASS: caller scene ETA, on-scene status, hospital transport, pending arrival and crew-confirmed arrival. Role-sync, Caller and full testthat checks pass. Browser verified checklist inputs expand to 463px inside 495px cards (previously 300px), with no text overflow; refreshed CSS URL avoids stale cached styles."
+
+  - id: H-37
+    title: Start caller-created demos at responder assignment step
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/app.R", "app/shared-trip.R", "app/shared-incidents.R", "app/responder-server.R", "app/caller/caller.R", "tests/verify-caller-first.R"]
+    notes: "Creating a caller demo must replace the displayed old responder trip with the fresh pending incident, reset replay controls, and select that incident for acceptance. Preserve prior incident records and require responder acceptance before replay movement."
+    definition_of_done: "Caller-first regression recreates prior step-3 trip, creates a new caller dispatch, checks responder step 1 and zero progress until acceptance, then matching incident IDs through response and scene arrival; existing role/shared-trip tests pass."
+    result: "PASS: caller-created demo resets old step 3 to step 1; acceptance starts the exact queued incident. Role, shared-trip, Caller ETA and full testthat checks pass. Browser verified caller Waiting for assignment, then Responder step 1 with the same queued incident preselected and an explicit Accept assignment action."

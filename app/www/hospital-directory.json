@@ -1,0 +1,333 @@
+{
+  "note": "Selected real hospital directory, not exhaustive. Published capabilities, not clinical rankings or live acceptance status. Trips remain simulated.",
+  "hospitals": [
+    {
+      "id": "a",
+      "pfi": "1626",
+      "name": "NYC Health + Hospitals/Elmhurst",
+      "patient_group": "Adult",
+      "trauma_designation": "Level I adult trauma",
+      "capabilities": [
+        "Emergency assessment",
+        "Trauma assessment",
+        "Head injury",
+        "Bone/joint injury",
+        "Cardiac care",
+        "Stroke care"
+      ],
+      "specialty_summary": "Trauma surgery with orthopedic, neurosurgical and facial-trauma specialist access.",
+      "address": "79-01 Broadway, Elmhurst, NY 11373",
+      "lat": 40.74432,
+      "lng": -73.885719,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "NYS trauma designation",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "NYS facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "Hospital services",
+          "url": "https://www.nychealthandhospitals.org/pressrelease/nyc-health-hospitals-elmhurst-successfully-re-verified-as-level-i-trauma-center/"
+        },
+        {
+          "label": "Hospital services",
+          "url": "https://www.nychealthandhospitals.org/elmhurst/about/"
+        }
+      ],
+      "verified_on": "2026-10-17",
+      "neighborhood": "Elmhurst"
+    },
+    {
+      "id": "b",
+      "pfi": "1629",
+      "name": "Jamaica Hospital Medical Center",
+      "patient_group": "Adult",
+      "trauma_designation": "Level I adult trauma",
+      "capabilities": [
+        "Emergency assessment",
+        "Trauma assessment",
+        "Head injury",
+        "Bone/joint injury"
+      ],
+      "specialty_summary": "Major injury care including falls and vehicle crashes; orthopedic, neurosurgical and maxillofacial services.",
+      "address": "89th Avenue & Van Wyck Expressway, Jamaica, NY 11418",
+      "lat": 40.701412,
+      "lng": -73.816299,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "NYS trauma designation",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "NYS facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "Hospital services",
+          "url": "https://jamaicahospital.org/clinical-services/trauma-center/"
+        }
+      ],
+      "verified_on": "2026-10-17",
+      "neighborhood": "Jamaica"
+    },
+    {
+      "id": "c",
+      "pfi": "1637",
+      "name": "NewYork-Presbyterian Queens",
+      "patient_group": "Adult",
+      "trauma_designation": "Level I adult trauma",
+      "capabilities": [
+        "Emergency assessment",
+        "Trauma assessment",
+        "Head injury",
+        "Bone/joint injury",
+        "Cardiac care",
+        "Stroke care"
+      ],
+      "specialty_summary": "Trauma surgery and neurocritical care; orthopedic, cardiac and thrombectomy-capable stroke services.",
+      "address": "56-45 Main Street, Flushing, NY 11355",
+      "lat": 40.747517,
+      "lng": -73.826035,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "NYS trauma designation",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "NYS facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "Hospital services",
+          "url": "https://www.nyp.org/locations/queens/services/surgery/trauma-critical-care"
+        },
+        {
+          "label": "Hospital services",
+          "url": "https://www.nyp.org/locations/queens/services"
+        },
+        {
+          "label": "Hospital services",
+          "url": "https://www.nyp.org/locations/queens/services/neuro/stroke"
+        }
+      ],
+      "verified_on": "2026-10-17",
+      "neighborhood": "Flushing"
+    },
+    {
+      "id": "d",
+      "pfi": "1630 (pediatric trauma program)",
+      "name": "Cohen Children\u2019s Medical Center",
+      "patient_group": "Pediatric",
+      "trauma_designation": "Level I pediatric trauma",
+      "capabilities": [
+        "Pediatric assessment",
+        "Pediatric trauma"
+      ],
+      "specialty_summary": "Dedicated pediatric Level I trauma program for injured children; adult trauma designation is not implied.",
+      "address": "269-01 76th Avenue, New Hyde Park, NY 11040",
+      "lat": 40.752772772686,
+      "lng": -73.707508751214,
+      "coordinate_note": "Census street-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "NYS pediatric trauma designation and address",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "Census address geocoder",
+          "url": "https://geocoding.geo.census.gov/geocoder/"
+        }
+      ],
+      "verified_on": "2026-10-17",
+      "neighborhood": "Glen Oaks / New Hyde Park"
+    },
+    {
+      "id": "e",
+      "pfi": "1639",
+      "name": "Mount Sinai Queens",
+      "neighborhood": "Astoria",
+      "patient_group": "All ages",
+      "trauma_designation": "No trauma-center designation listed in this directory",
+      "capabilities": [
+        "Emergency assessment",
+        "Pediatric assessment",
+        "Cardiac care",
+        "Stroke care",
+        "Bone/joint injury"
+      ],
+      "specialty_summary": "Emergency care for adults and children, orthopedic injuries and cardiac emergencies; published stroke treatment services.",
+      "address": "25-10 30th Avenue, Long Island City, NY 11102",
+      "lat": 40.768269,
+      "lng": -73.924461,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "Facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "NYS trauma center list",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "Published services",
+          "url": "https://www.mountsinai.org/locations/queens/care/emergency-medicine"
+        },
+        {
+          "label": "Published services",
+          "url": "https://www.mountsinai.org/locations/queens/care/stroke"
+        }
+      ],
+      "verified_on": "2026-10-17"
+    },
+    {
+      "id": "f",
+      "pfi": "1638",
+      "name": "Long Island Jewish Forest Hills",
+      "neighborhood": "Forest Hills",
+      "patient_group": "Adult",
+      "trauma_designation": "No trauma-center designation listed in this directory",
+      "capabilities": [
+        "Emergency assessment",
+        "Stroke care"
+      ],
+      "specialty_summary": "Emergency department and NYS-designated Primary Stroke Center.",
+      "address": "102-01 66th Road, Forest Hills, NY 11375",
+      "lat": 40.728745,
+      "lng": -73.851036,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "Facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "NYS trauma center list",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "Published services",
+          "url": "https://profiles.health.ny.gov/hospital/printview/103074"
+        },
+        {
+          "label": "Published services",
+          "url": "https://www.health.ny.gov/diseases/cardiovascular/stroke/designation/stroke_designated_centers.htm"
+        }
+      ],
+      "verified_on": "2026-10-17"
+    },
+    {
+      "id": "g",
+      "pfi": "1635",
+      "name": "St. John\u2019s Episcopal Hospital",
+      "neighborhood": "Far Rockaway",
+      "patient_group": "Adult",
+      "trauma_designation": "No trauma-center designation listed in this directory",
+      "capabilities": [
+        "Emergency assessment",
+        "Cardiac care",
+        "Stroke care"
+      ],
+      "specialty_summary": "24/7 emergency evaluation and treatment for cardiovascular emergencies, stroke and head injuries.",
+      "address": "327 Beach 19th Street, Far Rockaway, NY 11691",
+      "lat": 40.598637,
+      "lng": -73.752769,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "Facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "NYS trauma center list",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "Published services",
+          "url": "https://ehs.org/services/emergency-medicine/"
+        },
+        {
+          "label": "Published services",
+          "url": "https://ehs.org/about/contact-us/"
+        }
+      ],
+      "verified_on": "2026-10-17"
+    },
+    {
+      "id": "h",
+      "pfi": "1633",
+      "name": "NYC Health + Hospitals/Queens",
+      "neighborhood": "Jamaica",
+      "patient_group": "All ages",
+      "trauma_designation": "No trauma-center designation listed in this directory",
+      "capabilities": [
+        "Emergency assessment",
+        "Pediatric assessment",
+        "Stroke care"
+      ],
+      "specialty_summary": "Adult and pediatric emergency services; Primary Stroke Center.",
+      "address": "82-68 164th Street, Jamaica, NY 11432",
+      "lat": 40.71722,
+      "lng": -73.803581,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "Facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "NYS trauma center list",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "Published services",
+          "url": "https://www.nychealthandhospitals.org/queens/contact/"
+        },
+        {
+          "label": "Published services",
+          "url": "https://www.nychealthandhospitals.org/stroke/our-stroke-treatment-centers/"
+        }
+      ],
+      "verified_on": "2026-10-17"
+    },
+    {
+      "id": "i",
+      "pfi": "1628",
+      "name": "Flushing Hospital Medical Center",
+      "neighborhood": "Flushing",
+      "patient_group": "All ages",
+      "trauma_designation": "No trauma-center designation listed in this directory",
+      "capabilities": [
+        "Emergency assessment",
+        "Pediatric assessment",
+        "Stroke care"
+      ],
+      "specialty_summary": "24/7 adult and pediatric emergency care; published NYS-designated stroke services.",
+      "address": "45th Avenue & Parsons Blvd, Flushing, NY 11355",
+      "lat": 40.755531,
+      "lng": -73.815475,
+      "coordinate_note": "NYS facility mailing-address geocode; ambulance entrance not verified",
+      "sources": [
+        {
+          "label": "Facility location",
+          "url": "https://health.data.ny.gov/Health/Health-Facility-General-Information/vn5v-hh5r"
+        },
+        {
+          "label": "NYS trauma center list",
+          "url": "https://www.health.ny.gov/professionals/ems/state_trauma/trauma2.htm"
+        },
+        {
+          "label": "Published services",
+          "url": "https://flushinghospital.org/clinical-services/emergency-department/"
+        }
+      ],
+      "verified_on": "2026-10-17"
+    }
+  ]
+}

@@ -1,3 +1,8 @@
+# All role progress derives from confirmed milestones on the shared incident.
+shared_workflow_stage <- function(d) {
+  if(is.null(d) || identical(d$claimed,FALSE)) 'assignment' else if(!is.null(d$hospital_arrived_at)) 'complete' else
+    if(!is.null(d$transport_departed_at)) 'transport' else if(!is.null(d$arrived_at)) 'hospital' else 'respond'
+}
 shared_points <- function(feature) {
   points <- as.data.frame(matrix(as.numeric(unlist(feature$geometry$coordinates)),ncol=2,byrow=TRUE)); names(points)<-c('x','y'); points
 }
@@ -86,8 +91,8 @@ shared_advance <- function(store,id,elapsed,now=Sys.time()) {
 shared_transport <- function(store,id,hospital,now=Sys.time()) {
   d <- store$incidents[[id]]
   if(is.null(d)||is.null(d$arrived_at)||!is.null(d$transport_departed_at)) stop('Transport requires confirmed scene arrival')
-  # Fictional facilities have synthetic coordinates, not verified street addresses.
-  address <- sprintf('Synthetic location %.6f, %.6f · Queens (fictional facility)',hospital$lat,hospital$lng)
+  # Real directory addresses are distinct from unverified ambulance entrances.
+  address <- if(!is.null(hospital$address)) hospital$address else sprintf('Synthetic location %.6f, %.6f',hospital$lat,hospital$lng)
   d <- caller_confirm_destination(d,hospital$name,address,max(now,d$arrived_at))
   d$hospital <- list(id=hospital$id,name=hospital$name,lat=hospital$lat,lng=hospital$lng)
   d$hospital_route <- if(is.null(d$zone_fixture)) store$hospital_routes[[hospital$id]] else shared_points(d$zone_fixture$hospital_routes[[hospital$id]])
@@ -117,12 +122,22 @@ shared_revoke <- function(store,id) {
   store$grants <- Filter(function(g)!identical(g$incident_id,id),store$grants)
   store$revision(shiny::isolate(store$revision()) + 1L)
 }
-# Display uses only the frozen prediction, never refits after arrival.
+# Scene predictions remain frozen; caller copy follows the current trip milestone.
 shared_eta_card <- function(d, caller_view=FALSE) {
   p <- if(is.null(d$eta)) NULL else d$eta$prediction
   available <- !is.null(p) && identical(p$status,'experimental_synthetic')
   clock <- function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
   if(isTRUE(caller_view)) {
+    if(identical(d$claimed,FALSE)) return(shiny::div(class='caller-eta',
+      shiny::span(class='caller-eyebrow','RESPONDER ASSIGNMENT'),shiny::h2('Waiting for assignment')))
+    if(!is.null(d$hospital_arrived_at)) return(shiny::div(class='caller-eta',
+      shiny::span(class='caller-eyebrow','HOSPITAL ARRIVAL'),shiny::h2('Arrival confirmed')))
+    if(!is.null(d$transport_departed_at)) return(shiny::div(class='caller-eta',
+      shiny::span(class='caller-eyebrow','HOSPITAL TRIP'),
+      shiny::h2(if(!is.null(d$transport_elapsed) && d$transport_elapsed>=480) 'Awaiting arrival confirmation' else 'On the way to hospital'),
+      shiny::p('Hospital ETA is not available.')))
+    if(!is.null(d$arrived_at) || identical(d$status,'arrived')) return(shiny::div(class='caller-eta',
+      shiny::span(class='caller-eyebrow','SCENE ARRIVAL'),shiny::h2('Ambulance on scene')))
     value <- if(identical(d$status,'arrived')) 'Arrival confirmed' else if(!available) 'Not available yet' else NULL
     arrival <- if(available) format(p$arrival_median,'%I:%M %p %Z',tz='America/New_York') else NULL
     return(shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ETA'),

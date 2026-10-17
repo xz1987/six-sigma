@@ -23,9 +23,12 @@ source(file.path(repo_root, 'app', 'eta.R'), local=TRUE)
 source(file.path(repo_root, 'app', 'shared-incidents.R'), local=TRUE)
 source(file.path(repo_root, 'app', 'shared-trip.R'), local=TRUE)
 if (!requireNamespace("jsonlite", quietly = TRUE)) stop("Install jsonlite.")
-demo_hospitals <- jsonlite::fromJSON(file.path(repo_root, "app", "www", "demo-hospitals.json"), simplifyVector = FALSE)$hospitals
+hospital_trips <- jsonlite::fromJSON(file.path(repo_root,'app/www/demo-zone-trips.json'),simplifyVector=FALSE)
+demo_hospitals <- hospital_trips$Astoria$hospitals
 hospital_candidates <- function(requirement, hospitals=demo_hospitals) {
-  matches <- Filter(function(h) requirement %in% h$capabilities, hospitals)
+  pediatric <- requirement %in% c('Pediatric assessment','Pediatric trauma')
+  matches <- Filter(function(h) requirement %in% h$capabilities &&
+    (is.null(h$patient_group) || h$patient_group == 'All ages' || identical(h$patient_group,if(pediatric)'Pediatric' else 'Adult')), hospitals)
   matches[order(vapply(matches, function(h) h$distance_m, numeric(1)))]
 }
 brief_item <- function(symbol, label, value) div(class = "brief-item", span(class = "brief-symbol", icon(symbol), `aria-hidden` = "true"), div(span(class = "eyebrow", label), div(class = "brief-value", value)))
@@ -43,12 +46,12 @@ eta_bundle <- tryCatch(eta_validate(read.csv(file.path(repo_root,'data/eta/v1/we
 route_json <- jsonlite::fromJSON(file.path(repo_root,'app/www/demo-road-route.json'))
 shared_route <- as.data.frame(route_json$geometry$coordinates)
 names(shared_route) <- c('x','y')
-hospital_routes <- setNames(lapply(c('a','b','c'),function(id) {
+hospital_routes <- setNames(lapply(vapply(demo_hospitals,`[[`,character(1),'id'),function(id) {
   feature <- jsonlite::fromJSON(file.path(repo_root,'app/www',paste0('hospital-route-',id,'.json')))
   points <- as.data.frame(feature$geometry$coordinates);names(points) <- c('x','y');points
-}),c('a','b','c'))
+}),vapply(demo_hospitals,`[[`,character(1),'id'))
 incident_service <- shared_new(eta_bundle, shared_route, publish=production_response_records,hospital_routes=hospital_routes)
-incident_service$zone_trips <- jsonlite::fromJSON(file.path(repo_root,'app/www/demo-zone-trips.json'),simplifyVector=FALSE)
+incident_service$zone_trips <- hospital_trips
 incident_service$ui_state <- new_shared_responder_state()
 shared_responder_state <- incident_service$ui_state
 
@@ -63,11 +66,11 @@ ui <- fluidPage(
     tags$link(rel = 'icon', type = 'image/png', href = 'icons/diis-icon-192.png'),
     tags$link(rel = 'apple-touch-icon', href = 'icons/diis-apple-touch-icon.png'),
     tags$script(src = 'pwa.js', defer = NA),
-    tags$script(src = 'navigation.js', defer = NA),
+    tags$script(src = 'navigation.js?v=shared-trip-2', defer = NA),
     tags$link(rel = 'stylesheet', href = 'vendor/leaflet.css'),
-    tags$link(rel = 'stylesheet', href = 'responder.css'),
+    tags$link(rel = 'stylesheet', href = 'responder.css?v=coordination-width-2'),
     tags$script(src = 'vendor/leaflet.js'),
-    tags$script(src = 'responder-map.js?v=zone-trips-1', defer = NA),
+    tags$script(src = 'responder-map.js?v=real-hospitals-1', defer = NA),
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'styles.css'),
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'supervisor.css'),
     tags$link(rel = 'stylesheet', href = 'workflow.css')
@@ -151,6 +154,7 @@ server <- function(input, output, session) {
     authenticated_role(NULL)
     requested_role(NULL)
     active_role('caller')
+    session$sendCustomMessage('diis-open-active-trip',list())
   })
   observeEvent(input$cancel_login, {
     removeModal()
@@ -199,7 +203,11 @@ server <- function(input, output, session) {
   created_dispatch <- reactiveVal(NULL)
   observeEvent(input$createDispatch, {
     req(active_role() == 'caller')
-    created_dispatch(shared_create(incident_service))
+    link <- shared_create(incident_service)
+    shared_focus_pending(incident_service,link)
+    created_dispatch(link)
+    d <- incident_service$incidents[[link$incident_id]]
+    session$sendCustomMessage('diis-active-trip',list(fragment=link$fragment,expires=as.numeric(d$dispatched_at+1800)*1000))
   })
   observeEvent(input$trackingLinkOpened, {
     if (isTRUE(input$trackingLinkOpened)) {
@@ -210,7 +218,7 @@ server <- function(input, output, session) {
     if (active_role() != 'caller' || isTRUE(input$trackingLinkOpened)) return(NULL)
     created <- created_dispatch()
     div(class='caller-demo-bar', strong('DEMO DISPATCH'),
-      p('Open your private tracking link. For this demo, create a synthetic dispatch below.'),
+      p('Use the private link for your responder’s incident. Creating a new dispatch creates a separate incident.'),
       actionButton('createDispatch','Create demo tracking link',class='btn-primary'),
       if(!is.null(created)) tagList(tags$br(),tags$a(class='btn btn-primary',href=created$fragment,'Open caller tracking'),
         p('Private demo link expires in 30 minutes. No message or EMS request is sent.')))
