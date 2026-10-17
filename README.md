@@ -53,7 +53,7 @@ the roles. [Shared workflow details](demo/shared-incidents.md).
 ## Demonstrate a supervisor's day
 
 In Supervisor **Active tracking**, select a metric, zone and priority, then
-**Try demo mode**. Choose **Normal day** or **Day with delays**, select
+**Try daily simulation**. Choose **Normal day** or **Day with delays**, select
 **Start demo day**, and reveal cases with **Next completed case** or
 **Complete demo day**. Twelve synthetic cases illustrate a day; the delayed
 scenario plants three final 30-minute durations. Counts, day-so-far average,
@@ -80,6 +80,25 @@ ones for the full year. Its histogram always summarizes completed daily means.
 A first-entry tutorial can be skipped or replayed with **Show page tutorial**.
 Service goals start with explicitly synthetic suggestions and can be edited;
 no intervention-tracking workflow is included.
+
+### Demonstrate a historical year
+
+Set the desired metric, zone and priority in **Active tracking**, then open
+**History analysis** and select **Try yearly simulation**. Choose **Stable days**
+or **Days with planted delays**, then **Start at Jan 1**. Use **Add next day**,
+**Add next 7 days**, or **Complete 2026**. Each completed synthetic day contains
+12 responses; a complete year contains 365 days and 4,380 responses. The delayed
+scenario plants three final 30-minute selected-metric durations per generated day.
+The simulated clock advances past midnight so these days qualify as closed
+monitoring subgroups. Read the replay's displayed scope before continuing.
+
+Daily and yearly records and clocks are separate. Switching pages preserves
+both replays; **Reset replay** clears only the History replay. To change its
+locked generation scope or scenario, set the desired Active tracking scope and
+restart with **Start at Jan 1**. History filters independently select displayed
+results; they do not change the already-generated records. **Exit demo mode**
+discards both simulations and reconnects ordinary data. **Patterns** has no
+replay controls and describes the Active tracking records, not the yearly stream.
 
 ## What the data contributes
 

@@ -167,14 +167,36 @@ returns scope, zone, weather, time and interpretation text. These helpers return
 named text lists; they do not fit models, refit limits, identify causes or add
 new signal rules.
 
-**Try demo mode** isolates generated observations. Choose Normal day or Day with
+**Try daily simulation** in Active tracking isolates generated observations. Choose Normal day or Day with
 delays, then Start demo day. Next completed case reveals one of 12 hourly cases
 (08:00–19:00 on the current New York date); Complete demo day reveals all 12.
 The delayed scenario sets the final three selected-metric durations to 30 minutes.
 The day-so-far average is the arithmetic mean of revealed durations. Replay time
 is synthetic, including any displayed future time. Advanced settings retain
 single-case and event controls. The connected live trip stays visible but its
-records never enter generated graphs. Exit discards the generated records.
+records never enter generated graphs. Exit discards both generated streams.
+
+History has a separate **Try yearly simulation** action and **History scenario**
+selector: Stable days or Days with planted delays. Before starting, set the
+metric, zone and priority in Active tracking; the current implementation captures
+those selections when the first History day is generated. Select Start at Jan 1
+to generate January 1, 2026, then Add next day, Add next 7 days or Complete 2026.
+The scenario plants three final 30-minute durations per day when enabled. Each
+day has 12 completed canonical calls; the year ends at 365 days / 4,380 calls.
+The replay advances its own clock to 00:01 on the next day, keeping generated
+days closed. Its displayed scope and scenario lock until restarted. Starting
+sets the History metric/zone/priority to the replay scope, period to Full baseline
+year and records to Baseline + monitoring; filters can then select the view.
+
+Reset replay clears History records without clearing the daily simulation or
+ordinary records. Start at Jan 1 restarts using the current Active tracking scope
+and History scenario. Page navigation preserves both simulations, but their
+records and clocks never mix. Patterns shows no simulation bar and uses Active
+tracking's descriptive records. Exit demo mode clears both generated streams.
+`supervisor_history_replay_days(historical, zone, priority, metric_id, days,
+scenario=c('stable','abnormal'))` returns deterministic completed canonical
+records for valid dates in 2026, with unique HIST-prefixed incident IDs; it rejects
+empty, invalid or out-of-year date vectors.
 
 ## Publishing and limitations
 
@@ -269,3 +291,23 @@ The module still emitted 12 timezone-attribute warnings. These checks are local;
 they do not confirm the deployed release or phone installation. The earlier
 audit above retains its own commit and counts rather than claiming a new full
 ETA/feed run for every text-only change.
+
+
+## Final merged release documentation check — 2026-10-17
+
+Documentation now matches merged `1f746aa`, including the isolated daily and
+2026 History replays. Root tests passed 321 assertions (47 History replay and
+37 summary checks included); the separate ETA/feed suites passed 139, for 460
+combined assertions. The dataset demonstration and standalone deployment-bundle
+startup passed. The direct daily-demo script was updated to the renamed button
+and the separate History source; its rerun passed with 12 existing timezone
+attribute warnings. Smoke also printed SMOKE PASS.
+The documented hosted URL returned HTTP 200 with the DIIS Emergency Response
+Monitor page title. This confirms page delivery, not a deployed cross-role
+WebSocket walkthrough, installed-device behavior or hosted commit identity.
+Local documentation links and runtime manifest checksums passed.
+
+A teammate reported opening the app successfully. Running from a fresh clone
+with only the README instructions has not yet been specifically confirmed by
+that teammate. The written documentation is complete; that independent H-07
+reproduction check remains separate from local automated verification.

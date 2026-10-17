@@ -23,9 +23,11 @@ Start at the role picker:
 - **Supervisor:** Sign in with the disposable account shown in the login dialog.
   Review the shared stream in Active tracking, descriptive Patterns, or History
   analysis. Every section includes a **What this view tells you** summary after
-  its charts, with reading guides and legends. **Try demo mode** reveals a normal
-  or delayed 12-case day while keeping the live trip separate. History has
-  independent filters and a skippable, replayable page tutorial.
+  its charts, with reading guides and legends. **Try daily simulation** reveals a normal
+  or delayed 12-case day. History has a separate **Try yearly simulation** with
+  one-day, seven-day or full-2026 progression, independent filters and a
+  skippable tutorial. Daily, yearly and ordinary live-trip records stay separate;
+  Patterns has no replay controls.
 
 The staff accounts are generated when the app process starts. The caller,
 responder, and supervisor views share one in-memory synthetic incident while

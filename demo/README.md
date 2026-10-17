@@ -123,7 +123,7 @@ shape and no unresolved seasonal structure; see [SPEC](../SPEC.md).
 With the app dependencies installed, run `Rscript app/testme.R` and open
 `http://127.0.0.1:3838`. Log in as Supervisor using the disposable credentials
 shown by the app. In Active tracking select the metric, zone and priority, then
-**Try demo mode**. Choose **Normal day** or **Day with delays**, select
+**Try daily simulation**. Choose **Normal day** or **Day with delays**, select
 **Start demo day**, then **Next completed case** or **Complete demo day**.
 The day contains 12 generated cases; the delayed scenario plants three final
 30-minute selected-metric durations. Exit demo mode discards generated cases.
@@ -135,7 +135,14 @@ so its counts are not the full-dataset counts above. The console command remains
 the exact reference for those fixtures and edge cases; there is no CSV upload.
 Each Supervisor section ends with **What this view tells you**. History has
 independent completed-period filters; the current open day is excluded from its
-closed subgroups. The app also provides per-chart reading guides and legends.
+closed subgroups. A separate **Try yearly simulation** in History generates
+closed 2026 days with Start at Jan 1, Add next day, Add next 7 days and Complete
+2026. Set the generation metric/zone/priority in Active tracking before starting;
+the displayed History replay scope then stays locked until restarted. Reset
+replay clears History alone. This yearly stream is independent of the daily
+simulation and ordinary Caller/Responder records. Patterns has no replay controls.
+Neither UI simulation reproduces the full CSV scenario counts above.
+The app also provides per-chart reading guides and legends.
 See the [shared workflow](shared-incidents.md) for the connected role demo.
 
 ## Independent reproduction completed
