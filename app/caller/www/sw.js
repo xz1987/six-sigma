@@ -1,9 +1,9 @@
 /* Only public static assets are cached. Never cache Shiny sessions or records. */
 const CACHE_PREFIX = 'diis-caller-public-';
-const CACHE_NAME = `${CACHE_PREFIX}v2`;
+const CACHE_NAME = `${CACHE_PREFIX}v4`;
 const ROOT = new URL('./', self.location.href);
-const PUBLIC_ASSETS = ['offline.html', 'manifest.webmanifest', 'icons/icon-192.png',
-  'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
+const PUBLIC_ASSETS = ['offline.html', 'manifest.webmanifest', 'icons/diis-icon-192.png',
+  'icons/diis-icon-512.png', 'icons/diis-icon-maskable-512.png', 'icons/diis-apple-touch-icon.png'];
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache =>
     cache.addAll(PUBLIC_ASSETS.map(path => new URL(path, ROOT).href))));

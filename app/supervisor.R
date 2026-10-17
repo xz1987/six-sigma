@@ -111,30 +111,13 @@ supervisor_visible_monitoring <- function(group, window, responder = 'all') {
   m[keep, , drop = FALSE]
 }
 
-# Replay one completed response-system record per beat. Other events are still processed in time order,
-# so active calls and the simulated clock remain consistent with the feed.
-supervisor_advance_one_completion <- function(feed) {
-  before <- nrow(feed_completed(feed))
-  while (any(!feed$processed)) {
-    remaining <- which(!feed$processed)
-    ranked <- order(feed$events$event_time[remaining],
-      match(feed$events$event_type[remaining], feed_event_types),
-      feed$events$event_id[remaining])
-    i <- remaining[ranked[1L]]
-    feed$simulated_time <- feed$events$event_time[i]
-    feed_apply_event(feed, feed$events[i, , drop = FALSE])
-    feed$processed[i] <- TRUE
-    if (nrow(feed_completed(feed)) > before) break
-  }
-  as.integer(nrow(feed_completed(feed)) - before)
-}
-
 # Display a readable moving window; this does not change QC order or limits.
 supervisor_chart_window <- function(m, focus_id = NULL, width = 24L) {
   if (!nrow(m)) return(m)
   focus <- match(focus_id, m$incident_id)
-  last <- if (length(focus) == 1L && !is.na(focus)) focus else
-    which.max(m$on_scene_time)
+  # Rows are in metric-start (QC) order, so the newest sequence position is the
+  # last row even when an earlier-started call completed later.
+  last <- if (length(focus) == 1L && !is.na(focus)) focus else nrow(m)
   first <- max(1L, last - width + 1L)
   m[seq.int(first, last), , drop = FALSE]
 }
@@ -160,6 +143,54 @@ supervisor_attach_responder_ids <- function(analysis, completed) {
     analysis$groups[[key]]$monitoring <- monitoring
   }
   analysis
+}
+
+supervisor_developer_responders <- c('EMS-101', 'EMS-102', 'EMS-103')
+
+# Baseline (2025) mean and SD of one metric for one zone/priority group, read
+# from the bundled synthetic fixture. Used only to draw developer simulations.
+supervisor_baseline_moments <- function(historical, metric_id, zone, priority) {
+  d <- response_metric_to_qc(historical, metric_id, allow_mock = TRUE)
+  start <- qc_parse_time(d$dispatch_time)
+  minutes <- as.numeric(difftime(qc_parse_time(d$on_scene_time), start, units = 'mins'))
+  period <- dashboard_period()
+  keep <- d$zone == zone & d$call_priority == priority & !is.na(minutes) &
+    start >= period$baseline_start & start < period$baseline_end
+  x <- minutes[keep]
+  if (length(x) < 2L) stop('no baseline records for ', zone, '/', priority)
+  list(mean = mean(x), sd = stats::sd(x))
+}
+
+# One explicitly synthetic completed call in canonical response-system shape.
+# Both metric durations are drawn from the selected group's own 2025 baseline,
+# so a stable process is simulated; no limit is refitted. Deterministic for a
+# given seed and index, and the global RNG state is left untouched.
+supervisor_simulate_call <- function(historical, zone, priority, index, start_time,
+                                     responder = NULL, seed = 20261016L) {
+  scene <- supervisor_baseline_moments(historical, 'call_to_scene', zone, priority)
+  transport <- supervisor_baseline_moments(historical, 'transport_to_hospital', zone, priority)
+  old_seed <- if (exists('.Random.seed', envir = globalenv())) get('.Random.seed', envir = globalenv())
+  on.exit(if (is.null(old_seed)) rm('.Random.seed', envir = globalenv())
+    else assign('.Random.seed', old_seed, envir = globalenv()))
+  set.seed(as.integer(seed) + as.integer(index))
+  scene_minutes <- max(1, stats::rnorm(1, scene$mean, scene$sd))
+  transport_minutes <- max(1, stats::rnorm(1, transport$mean, transport$sd))
+  dwell_minutes <- stats::runif(1, 8, 16)
+  weather <- sample(c('Dry', 'Rain', 'Snow/Ice'), 1, prob = c(.7, .25, .05))
+  if (is.null(responder) || identical(responder, 'all'))
+    responder <- sample(supervisor_developer_responders, 1)
+  received <- as.POSIXct(start_time, tz = 'America/New_York')
+  arrived <- received + scene_minutes * 60
+  departed <- arrived + dwell_minutes * 60
+  hospital <- departed + transport_minutes * 60
+  stamp <- function(t) format(t, '%Y-%m-%dT%H:%M:%S%z', tz = 'America/New_York')
+  data.frame(incident_id = sprintf('SIM-%04d', as.integer(index)), zone = zone,
+    call_priority = priority, weather_condition = weather,
+    call_received_time = stamp(received), scene_arrival_time = stamp(arrived),
+    transport_departure_time = stamp(departed), hospital_arrival_time = stamp(hospital),
+    responder_id = responder,
+    response_system_source = 'Synthetic developer simulation',
+    stringsAsFactors = FALSE)
 }
 
 supervisor_ui <- function(id) {
@@ -213,6 +244,7 @@ supervisor_ui <- function(id) {
         uiOutput(ns('developer_controls')))
     ),
     tags$main(class = 'workspace',
+      uiOutput(ns('developer_bar')),
       div(class = 'dashboard-heading',
         div(div(class = 'kpi-label', 'Response quality / Supervisor'),
           h1(textOutput(ns('dashboard_title'), inline = TRUE)),
@@ -237,7 +269,7 @@ supervisor_ui <- function(id) {
             kpi('QC signals', 'kpi_flags', 'in selected time / group', ns)),
           uiOutput(ns('review_notice')),
           panel_card('Latest completed response milestones',
-            'Each scene arrival and hospital arrival creates its own Supervisor completion record. The selected metric determines which of these records enters the control chart.',
+            'Completion records for the selected response metric only: scene arrivals for call to scene, hospital arrivals for transport to hospital.',
             tableOutput(ns('milestone_table'))),
           div(class = 'analysis-layout',
             div(class = 'chart-stack',
@@ -277,9 +309,9 @@ supervisor_ui <- function(id) {
 
 supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
-  state <- reactiveValues(mode = 'ordinary', feed = NULL, developer_records = NULL,
-    baseline_records = dashboard_load_fixture(repo_root, 'stable'), scenario = NULL,
-    seed = NULL, ui_tick = 0L, completed_tick = 0L, last_step = NULL)
+  state <- reactiveValues(mode = 'ordinary', developer_calls = NULL,
+    baseline_records = dashboard_load_fixture(repo_root, 'stable'),
+    ui_tick = 0L, completed_tick = 0L, last_step = NULL)
 
   set_period_for_mode <- function(day) {
     values <- supervisor_period_values(day)
@@ -288,30 +320,18 @@ supervisor_server <- function(id, production_records) {
     updateSelectInput(session, 'month_start', selected = as.character(values$month))
   }
 
-  reset_developer_feed <- function() {
-    scenario <- if (is.null(input$scenario)) 'stable' else input$scenario
-    seed <- if (is.null(input$seed) || is.na(input$seed)) 20261016L else as.integer(input$seed)
-    records <- dashboard_load_fixture(repo_root, scenario)
-    state$feed <- feed_new(dashboard_build_feed(records, seed))
-    state$developer_records <- records
-    state$scenario <- scenario
-    state$seed <- seed
+  enter_developer_mode <- function() {
+    state$mode <- 'developer'
+    state$developer_calls <- response_metric_empty_records()
     state$last_step <- NULL
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
-  }
-
-  enter_developer_mode <- function() {
-    state$mode <- 'developer'
-    reset_developer_feed()
-    set_period_for_mode(as.Date('2026-02-01'))
+    set_period_for_mode(supervisor_today())
   }
 
   leave_developer_mode <- function() {
-    if (!is.null(state$feed)) feed_pause(state$feed)
     state$mode <- 'ordinary'
-    state$feed <- NULL
-    state$developer_records <- NULL
+    state$developer_calls <- NULL
     state$last_step <- NULL
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
@@ -328,90 +348,57 @@ supervisor_server <- function(id, production_records) {
     if (identical(state$mode, 'developer')) leave_developer_mode()
   }, ignoreInit = TRUE)
 
-  observeEvent(input$start, {
-    req(identical(state$mode, 'developer'), state$feed)
-    feed_start(state$feed)
-    state$ui_tick <- state$ui_tick + 1L
-  })
-  observeEvent(input$pause_resume, {
-    req(identical(state$mode, 'developer'), state$feed)
-    if (isTRUE(state$feed$running)) feed_pause(state$feed) else feed_start(state$feed)
-    state$ui_tick <- state$ui_tick + 1L
-  })
-  observeEvent(input$reset, {
-    req(identical(state$mode, 'developer'))
-    reset_developer_feed()
-  })
-  observeEvent(input$step, {
-    req(identical(state$mode, 'developer'), state$feed)
-    added <- supervisor_advance_one_completion(state$feed)
-    if (all(state$feed$processed)) feed_pause(state$feed)
-    if (added) {
-      completed <- feed_completed(state$feed)
-      latest <- completed[which.max(completed$on_scene_time), , drop = FALSE]
-      metric_event <- response_metric_completion_events(latest, allow_mock = TRUE)
-      metric_event <- metric_event[metric_event$metric_id == input$metric, , drop = FALSE]
-      latest$display_minutes <- if (nrow(metric_event)) metric_event$duration_minutes[[1L]]
-        else NA_real_
-      latest$display_metric <- metric_info()$short_label
-      state$last_step <- latest
-      updateSelectInput(session, 'zone', selected = latest$zone)
-      updateSelectInput(session, 'priority', selected = latest$call_priority)
-      state$completed_tick <- isolate(state$completed_tick) + 1L
-    } else {
-      state$last_step <- data.frame()
-    }
-    state$ui_tick <- isolate(state$ui_tick) + 1L
-  })
-
-  observe({
-    cadence <- suppressWarnings(as.integer(input$cadence_ms))
-    if (length(cadence) != 1L || is.na(cadence) || cadence < 100L) cadence <- 500L
-    invalidateLater(cadence, session)
-    if (!identical(state$mode, 'developer') || is.null(state$feed)) return()
-    if (!isTRUE(state$feed$running)) return()
-    added <- supervisor_advance_one_completion(state$feed)
-    if (all(state$feed$processed)) feed_pause(state$feed)
-    if (added) state$completed_tick <- isolate(state$completed_tick) + 1L
+  # Developer mode: each click adds one simulated completed call to the zone,
+  # priority and responder currently selected, so it lands on the visible chart.
+  observeEvent(input$add_call, {
+    req(identical(state$mode, 'developer'), input$zone, input$priority)
+    calls <- state$developer_calls
+    # Each simulated call starts after the previous one reaches the hospital, so
+    # both metrics keep start order = completion order and the newest call is
+    # always the latest point on either chart.
+    start_time <- Sys.time()
+    if (nrow(calls)) start_time <- max(start_time,
+      max(qc_parse_time(calls$hospital_arrival_time)) + 60)
+    call <- supervisor_simulate_call(state$baseline_records, input$zone, input$priority,
+      index = nrow(calls) + 1L, start_time = start_time, responder = input$responder)
+    state$developer_calls <- rbind(calls, call[, names(calls), drop = FALSE])
+    event <- response_metric_completion_events(call, allow_mock = FALSE)
+    event <- event[event$metric_id == input$metric, , drop = FALSE]
+    call$display_minutes <- event$duration_minutes[[1L]]
+    call$display_metric <- metric_info()$short_label
+    state$last_step <- call
+    state$completed_tick <- isolate(state$completed_tick) + 1L
     state$ui_tick <- isolate(state$ui_tick) + 1L
   })
 
   snapshot <- reactive({
     state$ui_tick
-    if (identical(state$mode, 'developer')) {
-      req(state$feed)
-      return(feed_snapshot(state$feed))
-    }
-    records <- production_records()
-    list(simulated_time = Sys.time(), running = FALSE, pending = records[FALSE, , drop = FALSE],
+    records <- if (identical(state$mode, 'developer')) state$developer_calls
+      else production_records()
+    as_of <- Sys.time()
+    if (identical(state$mode, 'developer') && nrow(records))
+      as_of <- max(qc_parse_time(records$call_received_time))
+    list(simulated_time = as_of, running = FALSE, pending = records[FALSE, , drop = FALSE],
       completed = records, processed_events = nrow(records), total_events = nrow(records))
   })
   active_completed <- reactive({
-    # The replay is an environment, so mutations do not invalidate Shiny on
-    # their own. completed_tick makes every completed-call beat observable.
     state$completed_tick
-    if (identical(state$mode, 'developer')) feed_completed(state$feed)
+    if (identical(state$mode, 'developer')) state$developer_calls
     else production_records()
   })
-  active_source_records <- reactive({
-    if (identical(state$mode, 'developer')) state$developer_records
-    else production_records()
-  })
+  active_source_records <- reactive(active_completed())
   metric_info <- reactive({ req(input$metric); response_metric_info(input$metric) })
   analysis <- reactive({
     req(input$metric)
     state$completed_tick
-    historical_source <- if (identical(state$mode, 'developer'))
-      state$developer_records else state$baseline_records
-    req(historical_source)
-    historical <- response_metric_to_qc(historical_source, input$metric, allow_mock = TRUE)
+    req(state$baseline_records)
+    historical <- response_metric_to_qc(state$baseline_records, input$metric, allow_mock = TRUE)
     completed <- response_metric_to_qc(active_completed(), input$metric,
-      allow_mock = identical(state$mode, 'developer'))
+      allow_mock = FALSE)
     review_baseline <- if (identical(state$mode, 'developer'))
       isTRUE(input$demo_review) else TRUE
-    period <- if (identical(state$mode, 'developer')) dashboard_period()
-      else supervisor_live_period()
-    result <- supervisor_analyze(historical, completed, review_baseline, period)
+    result <- supervisor_analyze(historical, completed, review_baseline,
+      supervisor_live_period())
     supervisor_attach_responder_ids(result, completed)
   })
 
@@ -446,32 +433,7 @@ supervisor_server <- function(id, production_records) {
     tagList(
       div(class = 'developer-mode-card',
         tags$strong('Developer mode active'),
-        tags$p('The ordinary stream is disconnected from this view while an isolated historical-fixture replay is active.')),
-      selectInput(session$ns('scenario'), 'Bundled scenario',
-        choices = c('Stable process' = 'stable', 'Planted delay' = 'planted'),
-        selected = if (is.null(state$scenario)) 'stable' else state$scenario),
-      numericInput(session$ns('seed'), 'Shuffle seed',
-        value = if (is.null(state$seed)) 20261016 else state$seed, min = 1, step = 1),
-      selectInput(session$ns('cadence_ms'), 'Add one completed call every',
-        choices = c('0.25 seconds' = 250, '0.5 seconds' = 500,
-          '1 second' = 1000, '2 seconds' = 2000), selected = 500),
-      div(class = 'button-row',
-        actionButton(session$ns('start'), 'Start', class = 'btn-primary'),
-        actionButton(session$ns('pause_resume'), 'Pause / resume')),
-      actionButton(session$ns('step'), 'Add next completed call', width = '100%'),
-      if (!is.null(state$last_step)) {
-        if (nrow(state$last_step))
-          div(class = 'developer-step-status', role = 'status',
-            tags$strong(sprintf('%s added to the control chart', state$last_step$display_metric)),
-            tags$span(sprintf('%s · %s / %s · %.1f min',
-              state$last_step$incident_id, state$last_step$zone,
-              state$last_step$call_priority,
-              state$last_step$display_minutes)))
-        else
-          div(class = 'developer-step-status', role = 'status',
-            tags$strong('Replay complete'), tags$span('No completed calls remain.'))
-      },
-      actionButton(session$ns('reset'), 'Reset replay', width = '100%'),
+        tags$p('The ordinary stream is disconnected from this view. Use Add simulated call above the dashboard to add synthetic completed calls; they are discarded when you leave developer mode.')),
       div(class = 'review-box',
         checkboxInput(session$ns('demo_review'),
           'Use synthetic baseline-review fixture', value = TRUE),
@@ -480,10 +442,36 @@ supervisor_server <- function(id, production_records) {
         class = 'btn-warning', width = '100%'))
   })
 
+  # The bar itself renders only when the mode changes, so the button keeps focus
+  # across clicks; the status text updates separately.
+  output$developer_bar <- renderUI({
+    if (!identical(state$mode, 'developer')) return(NULL)
+    div(class = 'developer-bar', role = 'region', `aria-label` = 'Developer simulation',
+      uiOutput(session$ns('developer_bar_text'), class = 'developer-bar-text'),
+      actionButton(session$ns('add_call'), 'Add simulated call', class = 'btn-primary',
+        icon = icon('plus')))
+  })
+  output$developer_bar_text <- renderUI({
+    req(identical(state$mode, 'developer'))
+    target <- sprintf('%s · %s priority%s', input$zone, input$priority,
+      if (!is.null(input$responder) && !identical(input$responder, 'all'))
+        paste(' ·', input$responder) else '')
+    last <- state$last_step
+    n <- nrow(state$developer_calls)
+    tagList(
+      div(class = 'kpi-label', 'Developer mode · synthetic simulation'),
+      tags$strong(sprintf('%d simulated call%s', n, if (n == 1L) '' else 's')),
+      tags$span(class = 'developer-bar-detail', role = 'status',
+        if (is.null(last)) paste('Next call goes to', target)
+        else sprintf('Last: %s · %s / %s · %s %.1f min · next call goes to %s',
+          last$incident_id, last$zone, last$call_priority,
+          tolower(last$display_metric), last$display_minutes, target)))
+  })
+
   output$mode_chip <- renderUI({
     if (identical(state$mode, 'developer'))
       return(div(class = 'baseline-chip mode-chip-developer',
-        'Developer mode', tags$small('Isolated fixture replay')))
+        'Developer mode', tags$small('Simulated calls only')))
     div(class = 'baseline-chip', 'Ordinary mode',
       tags$small('Caller + responder stream'))
   })
@@ -491,7 +479,7 @@ supervisor_server <- function(id, production_records) {
   output$source_notice <- renderUI({
     if (identical(state$mode, 'developer')) {
       return(div(class = 'alert-note',
-        'Developer replay is isolated from ordinary response records. Close Developer settings or select End developer mode to stop replay and reconnect.'))
+        'Developer mode · simulated calls are isolated from ordinary response records and use the fixed 2025 synthetic baseline. Close Developer settings or select End developer mode to discard them and reconnect.'))
     }
     count <- nrow(production_records())
     milestones <- nrow(response_metric_completion_events(production_records(), allow_mock = FALSE))
@@ -522,7 +510,7 @@ supervisor_server <- function(id, production_records) {
       tags$p(class = 'filter-note', 'Responder selection changes visible completed metric records; fixed metric/zone/priority control limits remain unchanged.')
     else tags$p(class = 'filter-note',
       if (identical(state$mode, 'developer'))
-        'Responder assignments are not recorded in the developer replay. This filter becomes active when IDs are supplied.'
+        'Simulated calls are assigned synthetic responder IDs. This filter activates after the first simulated call in this group.'
       else
         'No responder IDs are present in the ordinary stream yet. This filter activates when responder records arrive.')
   })
@@ -556,11 +544,6 @@ supervisor_server <- function(id, production_records) {
   observeEvent(input$selected_flag, selected_flag_id(input$selected_flag), ignoreInit = TRUE)
   observeEvent(input$follow_live, selected_flag_id(NULL), ignoreInit = TRUE)
 
-  output$run_status <- renderText({
-    if (!identical(state$mode, 'developer')) return('ordinary stream')
-    s <- snapshot()
-    if (isTRUE(s$running)) 'running' else if (all(state$feed$processed)) 'complete' else 'paused'
-  })
   output$sim_time <- renderText({
     format(snapshot()$simulated_time, '%b %d, %Y %H:%M:%S %Z', tz = 'America/New_York')
   })
@@ -573,15 +556,12 @@ supervisor_server <- function(id, production_records) {
   output$latest_arrival <- renderText({
     d <- selected_group()$monitoring
     if (!nrow(d)) return(if (identical(state$mode, 'developer'))
-      'Waiting for the first completed metric record · isolated developer replay'
+      'No simulated calls in this group yet · select Add simulated call'
     else 'Waiting for completed response records from Caller and Responder')
     row <- d[which.max(d$on_scene_time), , drop = FALSE]
     sprintf('Latest %s: %s · %s / %s · %.1f min',
       tolower(metric_info()$short_label), row$incident_id,
       row$zone, row$call_priority, row$response_minutes)
-  })
-  output$event_progress <- renderText({
-    s <- snapshot(); sprintf('%d / %d', s$processed_events, s$total_events)
   })
   output$qc_status <- renderText({ selected_group()$status })
   output$scope_label <- renderText({
@@ -590,19 +570,12 @@ supervisor_server <- function(id, production_records) {
       format(window[1L], '%b %d, %Y'), format(window[2L], '%b %d, %Y'),
       input$zone, input$priority, metric_info()$short_label)
   })
-  output$kpi_active <- renderText({ nrow(snapshot()$pending) })
   output$kpi_completed <- renderText({ selected_monitor_summary()$n })
   output$kpi_median <- renderText({ fmt_num(selected_monitor_summary()$median, 1) })
   output$kpi_p90 <- renderText({ fmt_num(selected_monitor_summary()$p90, 1) })
   output$kpi_flags <- renderText({ nrow(visible_flags()) })
   output$flag_count <- renderText({ nrow(visible_flags()) })
 
-  output$replay_notice <- renderUI({
-    scenario <- if (state$scenario == 'planted') 'Planted delay' else 'Stable process'
-    div(class = 'alert-note',
-      sprintf('%s scenario · seed %d · %d completed of 405 synthetic response-system records. Both metric timestamps are released together in this demo.',
-        scenario, state$seed, nrow(snapshot()$completed)))
-  })
   output$shared_trip <- renderUI({
     if(!identical(state$mode,'ordinary') || !exists('responder_trip_snapshot',mode='function')) return(NULL)
     trip <- responder_trip_snapshot()
@@ -643,20 +616,6 @@ supervisor_server <- function(id, production_records) {
     }
   })
 
-  output$active_table <- renderTable({
-    s <- snapshot(); d <- s$pending
-    if (!nrow(d)) return(data.frame(Status = 'No active calls at this simulated time.'))
-    elapsed <- pmax(0, as.numeric(difftime(s$simulated_time, d$dispatch_time, units = 'secs')))
-    shown <- data.frame(
-      Incident = d$incident_id, Neighborhood = d$zone, Priority = d$call_priority,
-      Weather = d$weather_condition,
-      Status = d$status,
-      `Elapsed simulated time` = sprintf('%02d:%02d', floor(elapsed / 60), floor(elapsed %% 60)),
-      check.names = FALSE
-    )
-    head(shown[order(elapsed, decreasing = TRUE), ], 18)
-  }, striped = TRUE, hover = TRUE, spacing = 's', rownames = FALSE)
-
   output$completed_table <- renderTable({
     d <- visible_monitoring()
     if (!nrow(d)) return(data.frame(Status = 'No completed metric records in this view yet.'))
@@ -675,9 +634,12 @@ supervisor_server <- function(id, production_records) {
       allow_mock = identical(state$mode, 'developer'))
   })
   output$milestone_table <- renderTable({
+    # Only milestones of the selected metric: scene arrivals for call to scene,
+    # hospital arrivals for transport to hospital.
     d <- completion_events()
-    if (!nrow(d)) return(data.frame(Status =
-      'No scene-arrival or hospital-arrival milestones have been completed yet.'))
+    d <- d[d$metric_id == input$metric, , drop = FALSE]
+    if (!nrow(d)) return(data.frame(Status = sprintf(
+      'No %s milestones have been completed yet.', tolower(metric_info()$short_label))))
     d <- d[order(d$completed_at, decreasing = TRUE), , drop = FALSE]
     shown <- data.frame(
       Incident = d$incident_id,
@@ -762,16 +724,16 @@ supervisor_server <- function(id, production_records) {
     right <- if (nrow(m)) max(left + 24, max(m$monitoring_sequence) + 1.5) else 24.5
     ggplot() +
       geom_segment(data = segments, aes(x = x, xend = xend, y = y, yend = yend),
-        color = '#625B68', linewidth = .8) +
+        color = '#5B6B7A', linewidth = .8) +
       geom_point(data = mplot, aes(sequence, value, color = signal), size = 2.7) +
       geom_point(data = mplot[mplot$new, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#3B0A0A') +
+        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#2C3E50') +
       geom_point(data = mplot[mplot$selected, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#272030') +
-      geom_hline(yintercept = g$limits$center, color = '#3B0A0A', linewidth = .75) +
+        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#1F2D3B') +
+      geom_hline(yintercept = g$limits$center, color = '#2C3E50', linewidth = .75) +
       geom_hline(yintercept = c(g$limits$i_lcl, g$limits$i_ucl),
-        color = '#d34747', linetype = 'dashed', linewidth = .65) +
-      scale_color_manual(values = c(`FALSE` = '#625B68', `TRUE` = '#d34747'), guide = 'none') +
+        color = '#D15B4A', linetype = 'dashed', linewidth = .65) +
+      scale_color_manual(values = c(`FALSE` = '#5B6B7A', `TRUE` = '#D15B4A'), guide = 'none') +
       coord_cartesian(xlim = c(left, right)) +
       labs(x = 'Monitoring incident #',
         y = 'Duration (minutes)',
@@ -779,7 +741,7 @@ supervisor_server <- function(id, production_records) {
           metric_info()$short_label),
         subtitle = sprintf('Baseline n=%d · visible n=%d',
           nrow(b), nrow(visible_monitoring())),
-        caption = 'Green ring: latest selected-group metric record · black: selected signal') +
+        caption = 'Ring: latest selected-group metric record · larger ring: selected signal') +
       theme_minimal(base_size = 11)
   })
 
@@ -797,16 +759,16 @@ supervisor_server <- function(id, production_records) {
     right <- if (nrow(m)) max(left + 24, max(m$monitoring_sequence) + 1.5) else 24.5
     ggplot() +
       geom_segment(data = segments, aes(x = x, xend = xend, y = y, yend = yend),
-        color = '#625B68', linewidth = .8, na.rm = TRUE) +
+        color = '#5B6B7A', linewidth = .8, na.rm = TRUE) +
       geom_point(data = mmr, aes(sequence, value, color = signal), size = 2.4) +
       geom_point(data = mmr[mmr$new, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#3B0A0A') +
+        shape = 21, size = 6.5, stroke = 1.4, fill = NA, color = '#2C3E50') +
       geom_point(data = mmr[mmr$selected, , drop = FALSE], aes(sequence, value),
-        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#272030') +
-      geom_hline(yintercept = g$limits$mr_center, color = '#3B0A0A', linewidth = .75) +
+        shape = 21, size = 8, stroke = 1.3, fill = NA, color = '#1F2D3B') +
+      geom_hline(yintercept = g$limits$mr_center, color = '#2C3E50', linewidth = .75) +
       geom_hline(yintercept = g$limits$mr_ucl,
-        color = '#d34747', linetype = 'dashed', linewidth = .65) +
-      scale_color_manual(values = c(`FALSE` = '#625B68', `TRUE` = '#d34747'), guide = 'none') +
+        color = '#D15B4A', linetype = 'dashed', linewidth = .65) +
+      scale_color_manual(values = c(`FALSE` = '#5B6B7A', `TRUE` = '#D15B4A'), guide = 'none') +
       coord_cartesian(xlim = c(left, right)) +
       labs(x = 'Monitoring incident #', y = 'Moving range (minutes)',
         subtitle = sprintf('MR UCL %.2f min · visible n=%d',
@@ -834,12 +796,12 @@ supervisor_server <- function(id, production_records) {
     }))
     if (is.null(pts)) pts <- data.frame(x = numeric(), value = numeric())
     ggplot() +
-      geom_jitter(data = pts, aes(x, value), width = .12, color = '#3B0A0A', alpha = .2, size = 1.2) +
+      geom_jitter(data = pts, aes(x, value), width = .12, color = '#2C3E50', alpha = .2, size = 1.2) +
       geom_segment(data = frame, aes(x = x, xend = x, y = low, yend = high), linewidth = .7, na.rm = TRUE) +
       geom_rect(data = frame, aes(xmin = x - .27, xmax = x + .27, ymin = q1, ymax = q3),
-        fill = '#E8D0CF', color = '#3B0A0A', linewidth = .7, na.rm = TRUE) +
+        fill = '#AFC6D9', color = '#2C3E50', linewidth = .7, na.rm = TRUE) +
       geom_segment(data = frame, aes(x = x - .27, xend = x + .27, y = median, yend = median),
-        color = '#d34747', linewidth = 1, na.rm = TRUE) +
+        color = '#D15B4A', linewidth = 1, na.rm = TRUE) +
       scale_x_continuous(breaks = frame$x, labels = sprintf('%s\n(n=%d)', frame$group, frame$n)) +
       labs(x = NULL, y = 'Duration (minutes)', title = title) +
       theme_minimal(base_size = 11) + theme(axis.text.x = element_text(angle = 18, hjust = 1))
@@ -865,8 +827,8 @@ supervisor_server <- function(id, production_records) {
     grid$label <- ifelse(grid$n == 0, '', sprintf('%.1f\nn=%d', grid$median, grid$n))
     ggplot(grid, aes(hour, weekday, fill = median)) +
       geom_tile(color = 'white', linewidth = .25) +
-      geom_text(aes(label = label), size = 2.2, color = '#272030') +
-      scale_fill_gradient(low = '#E3EBF2', high = '#C79A99', na.value = '#F4E9E8',
+      geom_text(aes(label = label), size = 2.2, color = '#1F2D3B') +
+      scale_fill_gradient(low = '#EFEAE2', high = '#6F93B4', na.value = '#FFFFFF',
         name = 'Median\nminutes') +
       scale_x_continuous(breaks = seq(0, 23, 3)) +
       labs(x = 'Assignment hour (America/New_York)', y = NULL,

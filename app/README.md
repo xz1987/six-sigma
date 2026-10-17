@@ -5,7 +5,7 @@ and the responder/map/transport work from main. Run `Rscript app/testme.R`
 (default http://127.0.0.1:3838); set PORT=5300 for the existing preview.
 Dependencies: shiny, openssl, jsonlite, ggplot2. Tests additionally need testthat.
 
-- Supervisor: ordinary mode and isolated developer replay, in `supervisor.R`.
+- Supervisor: ordinary mode, and a developer mode whose top bar adds one synthetic completed call to the selected zone/priority per click, in `supervisor.R`.
 - Responder: call replay, weather cards, road maps, hospital transport, in `responder-server.R`.
 - Caller: password-free expiring incident links and tracking, in `caller/caller.R`.
 
@@ -138,7 +138,7 @@ and styles in www/responder.css. Set PORT=5300 for the existing local preview.
 ## Shared palette and caller presentation
 
 Reference palette: https://i.pinimg.com/736x/fe/1f/30/fe1f30a657adaf103eac7a4e23f263ff.jpg
-Exact colors: ink #272030, cloud #E3EBF2, mauve #C79A99, maroon #3B0A0A.
+Exact colors: ink #1F2D3B, cloud #EFEAE2, mauve #AFC6D9, maroon #2C3E50.
 Cloud is the canvas, ink the main text, mauve the soft accent and maroon the primary
 control color. Map colors remain distinct and labeled. Caller uses larger text,
 softer cards, plain-language status, and expandable trip/map details. Private-link

@@ -83,9 +83,9 @@
         lastRoute=L.polyline(points,{color:'#2468c4',weight:5,opacity:0.85})
           .bindPopup('OSRM road snapshot · No live traffic, weather, or emergency-vehicle routing.').addTo(movement);
         lastRoute._demoKey=key;
-        if(key==='scene') L.circleMarker(points[points.length-1],{radius:11,color:'#b54736',fillColor:'#b54736',fillOpacity:1})
+        if(key==='scene') L.circleMarker(points[points.length-1],{radius:11,color:'#D15B4A',fillColor:'#D15B4A',fillOpacity:1})
           .bindPopup('Synthetic incident scene').addTo(movement);
-        else L.circleMarker(points[0],{radius:11,color:'#b54736',fillColor:'#b54736',fillOpacity:1})
+        else L.circleMarker(points[0],{radius:11,color:'#D15B4A',fillColor:'#D15B4A',fillOpacity:1})
           .bindPopup('Synthetic incident scene / transport origin').addTo(movement);
         L.circleMarker(current,{radius:9,color:'#135b63',fillColor:'#135b63',fillOpacity:1})
           .bindPopup('Q-12 · simulated responder position').addTo(movement);

@@ -41,29 +41,6 @@ test_that('display filters retain fixed limits, original sequence and signals', 
     as.Date(c('2026-02-01', '2026-02-02')), 'Crew 1')), 0L)
 })
 
-test_that('developer replay adds exactly one completed call per step', {
-  times <- as.POSIXct('2026-02-01 12:00:00', tz = 'UTC') + c(0, 10, 60, 80)
-  events <- data.frame(
-    event_id = paste0('event-', 1:4),
-    incident_id = c('A', 'B', 'A', 'B'),
-    event_type = c('dispatched', 'dispatched', 'on_scene', 'on_scene'),
-    event_time = times,
-    zone = rep('Astoria', 4), call_priority = rep('High', 4),
-    weather_condition = rep('Dry', 4),
-    data_classification = rep(feed_label, 4), stringsAsFactors = FALSE)
-  feed <- feed_new(events)
-  expect_equal(nrow(feed_completed(feed)), 0L)
-  expect_equal(supervisor_advance_one_completion(feed), 1L)
-  expect_equal(feed_completed(feed)$incident_id, 'A')
-  expect_equal(feed_snapshot(feed)$processed_events, 3L)
-  expect_equal(feed$simulated_time, times[3])
-  expect_equal(supervisor_advance_one_completion(feed), 1L)
-  expect_equal(feed_completed(feed)$incident_id, c('A', 'B'))
-  expect_equal(feed$simulated_time, times[4])
-  expect_equal(supervisor_advance_one_completion(feed), 0L)
-  expect_true(all(feed$processed))
-})
-
 test_that('rolling chart window and line segments preserve chronological gaps', {
   m <- data.frame(incident_id = paste0('I', 1:30),
     monitoring_sequence = 1:30, response_minutes = as.numeric(1:30),
@@ -77,16 +54,53 @@ test_that('rolling chart window and line segments preserve chronological gaps', 
   expect_equal(c(segments$x, segments$xend, segments$y, segments$yend), c(1, 2, 1, 2))
 })
 
-test_that('stepped arrivals never refit the 2025 control limits', {
+test_that('chart window ends at the newest sequence row, not the latest completion', {
+  m <- data.frame(incident_id = c('A', 'B'), monitoring_sequence = 1:2,
+    response_minutes = c(14, 12),
+    on_scene_time = as.POSIXct('2026-02-01 12:00:00', tz = 'UTC') + c(900, 600))
+  expect_equal(supervisor_chart_window(m)$incident_id, c('A', 'B'))
+})
+
+test_that('simulated developer calls are deterministic, synthetic and leave the RNG alone', {
   records <- dashboard_load_fixture(repo_root, 'stable')
-  feed <- feed_new(dashboard_build_feed(records, seed = 20261016))
-  before <- dashboard_analyze(records, feed_completed(feed), TRUE)
-  expect_equal(supervisor_advance_one_completion(feed), 1L)
-  after <- dashboard_analyze(records, feed_completed(feed), TRUE)
-  before_limits <- lapply(before$groups, function(group) group$limits)
-  after_limits <- lapply(after$groups, function(group) group$limits)
-  expect_equal(after_limits, before_limits)
-  expect_equal(nrow(feed_completed(feed)), 1L)
+  start <- as.POSIXct('2026-10-17 09:00:00', tz = 'America/New_York')
+  set.seed(1); before <- runif(1); set.seed(1)
+  a <- supervisor_simulate_call(records, 'Astoria', 'Medium', 1L, start)
+  expect_equal(runif(1), before)
+  b <- supervisor_simulate_call(records, 'Astoria', 'Medium', 1L, start)
+  expect_identical(a, b)
+  expect_true(response_metric_has_contract(a))
+  expect_equal(c(a$zone, a$call_priority, a$incident_id), c('Astoria', 'Medium', 'SIM-0001'))
+  expect_match(a$response_system_source, 'Synthetic')
+  expect_true(a$responder_id %in% supervisor_developer_responders)
+  expect_equal(supervisor_simulate_call(records, 'Astoria', 'Medium', 2L, start,
+    responder = 'EMS-102')$responder_id, 'EMS-102')
+  events <- response_metric_completion_events(a, allow_mock = FALSE)
+  expect_equal(sort(events$metric_id), c('call_to_scene', 'transport_to_hospital'))
+  expect_true(all(events$duration_minutes >= 1))
+  expect_error(supervisor_simulate_call(records, 'Nowhere', 'Medium', 1L, start), 'no baseline')
+})
+
+test_that('simulated calls form one consecutive group sequence without refitting limits', {
+  records <- dashboard_load_fixture(repo_root, 'stable')
+  start <- as.POSIXct('2026-10-17 09:00:00', tz = 'America/New_York')
+  calls <- do.call(rbind, lapply(1:5, function(i)
+    supervisor_simulate_call(records, 'Astoria', 'Medium', i, start + (i - 1) * 60)))
+  historical <- response_metric_to_qc(records, 'call_to_scene')
+  with_calls <- supervisor_analyze(historical,
+    response_metric_to_qc(calls, 'call_to_scene', allow_mock = FALSE), TRUE,
+    supervisor_live_period())
+  without <- supervisor_analyze(historical,
+    response_metric_to_qc(calls[FALSE, ], 'call_to_scene', allow_mock = FALSE), TRUE,
+    supervisor_live_period())
+  g <- with_calls$groups[['Astoria/Medium']]
+  expect_equal(g$monitoring$incident_id, sprintf('SIM-%04d', 1:5))
+  expect_equal(lapply(with_calls$groups, `[[`, 'limits'),
+    lapply(without$groups, `[[`, 'limits'))
+  view <- supervisor_visible_monitoring(g, as.Date(c('2026-10-17', '2026-10-17')))
+  expect_equal(view$monitoring_sequence, 1:5)
+  expect_equal(nrow(supervisor_consecutive_segments(supervisor_chart_window(view),
+    'response_minutes')), 4L)
 })
 
 test_that('live canonical records enter the I-MR monitoring sequence with true durations', {

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "shiny-app",
+      "runtimeExecutable": "Rscript",
+      "runtimeArgs": ["app/testme.R"],
+      "port": 3838,
+      "url": "http://127.0.0.1:3838"
+    }
+  ]
+}

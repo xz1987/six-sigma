@@ -392,3 +392,24 @@ tasks:
     notes: "User reports the responder's Open this incident's caller tracking link does not work on their system, although it opens on collaborators' systems. Preserve the private URL-fragment token flow and role authorization."
     definition_of_done: "Caller link token is delivered to the namespaced Shiny module when the page initializes whether caller.js loads before or after DOMContentLoaded/Shiny connection; existing caller verification passes and browser click-through opens the incident."
     result: "Caller initialization now reads the fragment immediately when the script executes, including after DOMContentLoaded, while retaining the Shiny-connected and hashchange handlers. JavaScript syntax check passes. R caller verification, browser click-through, and Posit Cloud sync remain pending because GitHub DNS/push and embedded RStudio UI actions were unavailable from this session."
+
+  - id: H-27
+    title: Apply DIIS logo, role elements and brand palette to the web app
+    status: in_progress
+    owner: "Claude"
+    started_at: "2026-10-17"
+    owns: ["app/"]
+    notes: "User supplied a DIIS brand sheet (main logo, Supervisor/EMS Responder/Caller role elements, palette #2C3E50 #AFC6D9 #6B8F7A #D15B4A #E6C35A #EFEAE2). Logo and role elements cropped from the supplied brand sheet with the background keyed to transparent (PNG, app/www/brand/). Installed-app (PWA) icons for both the main and caller apps are regenerated from that logo on a cream tile; service-worker caches bumped to v3 so installed copies refresh. User then approved replacing the maroon H-21 palette with the brand palette across all roles (CSS, manifests, offline pages, map markers, ggplot chart colors). Presentation only; no statistics, authentication or navigation behavior changes."
+    definition_of_done: "Header shows the DIIS logo, each role card shows its role element, existing testthat suites and tests/verify-shared-trip.R pass, and the role picker is checked in the browser."
+    result: "Logo in header, three role elements, brand palette across Supervisor/Responder/Caller; testthat suites, verify-shared-trip and caller verify PASS; role picker, Caller and Supervisor viewed in browser preview. Awaiting teammate review before check-in."
+
+  - id: H-28
+    title: Simplify Supervisor developer mode to on-demand simulated calls
+    status: in_progress
+    owner: "Claude"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "app/www/supervisor.css", "tests/test-supervisor-view.R", "CONTRACT.yaml"]
+    notes: "User reported that added developer calls did not form continuous chart points and asked for a top control bar that only adds a simulated call (no start/pause/replay/interval), with filters working as in ordinary mode. Root causes: each step pulled the next fixture completion from any of 15 groups and auto-switched the zone/priority filter, and supervisor_chart_window ended at the latest completion rather than the newest sequence row. Each simulated call now goes to the selected zone/priority (and responder, if one is selected), with both metric durations drawn from that group's 2025 synthetic baseline mean/SD. Calls are spaced so start order matches completion order. Limits stay fixed; the QC formulas are unchanged."
+    definition_of_done: "Supervisor view tests pass (deterministic synthetic simulation, chart-window ordering, consecutive group sequence, unchanged limits); full testthat suite, verify-shared-trip, smoke and caller verify pass; in the browser, repeated Add simulated call clicks form a connected I-MR line, and zone/metric filters change the visible counts."
+    result: "Tests pass (supervisor-view 37 expectations, qc, shared incidents, shared trip, SMOKE PASS, 9 caller checks). Browser: 5 Far Rockaway/High calls plotted as connected I and MR points; switching to Astoria showed 0 calls, then 3 after adding; switching back showed 5; the transport metric showed 5. Awaiting teammate review."
+

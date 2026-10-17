@@ -1,15 +1,15 @@
 :root {
-  --ink: #272030;
-  --muted: #625B68;
-  --line: #D1C8CE;
+  --ink: #1F2D3B;
+  --muted: #5B6B7A;
+  --line: #D8D2C7;
   --paper: #ffffff;
-  --soft: #F5F0F1;
-  --canvas: #E3EBF2;
-  --accent: #3B0A0A;
-  --accent-dark: #272030;
-  --accent-soft: #F4E9E8;
-  --amber: #C79A99;
-  --red: #d34747;
+  --soft: #F7F4EF;
+  --canvas: #EFEAE2;
+  --accent: #2C3E50;
+  --accent-dark: #1F2D3B;
+  --accent-soft: #E6EEF5;
+  --amber: #AFC6D9;
+  --red: #D15B4A;
 }
 
 [hidden] { display: none !important; }
@@ -62,7 +62,7 @@ html, body {
   background: var(--soft) !important;
   box-shadow: none !important;
 }
-.selectize-input.focus, .form-control:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(199,154,153,.25) !important; }
+.selectize-input.focus, .form-control:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(175,198,217,.45) !important; }
 .btn { border-radius: 8px; font-weight: 750; border-color: var(--line); box-shadow: none; }
 .btn:hover, .btn:focus { border-color: #c9ccc6; background: #f1f2ef; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
@@ -99,12 +99,27 @@ html, body {
   .topbar { align-items: flex-start; flex-direction: column; }
 }
 
-/* Blue / Cloud / Mauve / Maroon reference palette */
-:root{--palette-ink:#272030;--palette-cloud:#E3EBF2;--palette-mauve:#C79A99;--palette-maroon:#3B0A0A}
+/* Palette aliases (legacy names, DIIS brand values) */
+:root{--palette-ink:#1F2D3B;--palette-cloud:#EFEAE2;--palette-mauve:#AFC6D9;--palette-maroon:#2C3E50}
 .topbar{border-top:5px solid var(--palette-maroon)}
 .brand::before{content:"+";color:var(--palette-maroon);margin-right:8px}
-.synthetic-badge{background:#F4E9E8;color:#3B0A0A;border-color:#C79A99}
-.role-card{border-top:4px solid #C79A99;box-shadow:0 8px 22px #27203008}
-.role-number{color:#3B0A0A}.btn-primary{background:#3B0A0A;border-color:#3B0A0A;color:white}
-.btn-primary:hover,.btn-primary:focus{background:#272030;border-color:#272030;color:white}
-.baseline-chip,.replay-timeline{background:#F4E9E8;color:#3B0A0A;border-color:#C79A99}
+.synthetic-badge{background:#E6EEF5;color:#2C3E50;border-color:#AFC6D9}
+.role-card{border-top:4px solid #AFC6D9;box-shadow:0 8px 22px #1F2D3B08}
+.role-number{color:#2C3E50}.btn-primary{background:#2C3E50;border-color:#2C3E50;color:white}
+.btn-primary:hover,.btn-primary:focus{background:#1F2D3B;border-color:#1F2D3B;color:white}
+.baseline-chip,.replay-timeline{background:#E6EEF5;color:#2C3E50;border-color:#AFC6D9}
+
+/* DIIS logo and role elements */
+.brand{display:flex;align-items:center;gap:14px}
+.brand::before{content:none}
+.brand-logo{height:50px;width:auto;display:block}
+.brand-text{line-height:1.15}
+.role-icon{height:72px;width:auto;align-self:flex-start;margin-bottom:12px}
+@media (max-width:600px){.brand-logo{height:34px}.brand-text{font-size:18px}.role-icon{height:52px}}
+
+/* DIIS brand palette: navy #2C3E50, sky #AFC6D9, sage #6B8F7A, coral #D15B4A, mustard #E6C35A, cream #EFEAE2 */
+:root{--brand-navy:#2C3E50;--brand-sky:#AFC6D9;--brand-sage:#6B8F7A;--brand-coral:#D15B4A;--brand-mustard:#E6C35A;--brand-cream:#EFEAE2}
+.topbar{border-top-color:var(--brand-navy)}
+.role-card.role-supervisor{border-top-color:var(--brand-sage)}
+.role-card.role-responder{border-top-color:var(--brand-coral)}
+.role-card.role-caller{border-top-color:var(--brand-mustard)}
