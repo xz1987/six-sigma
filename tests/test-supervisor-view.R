@@ -128,3 +128,36 @@ test_that('ordinary-mode today follows the dispatch area calendar', {
   expect_equal(supervisor_today(as.POSIXct('2026-10-17 02:30:00', tz = 'UTC')),
     as.Date('2026-10-16'))
 })
+
+test_that('history subgroups adapt between daily and weekly completed periods', {
+  m <- data.frame(dispatch_time = as.POSIXct(c('2025-01-06 08:00:00',
+    '2025-01-06 09:00:00', '2025-01-13 08:00:00'), tz = 'America/New_York'),
+    response_minutes = c(8, 10, 14))
+  daily <- supervisor_period_subgroups(m, center = 10, sigma = 2, 'day')
+  weekly <- supervisor_period_subgroups(m, center = 10, sigma = 2, 'week')
+  expect_equal(daily$n, c(2, 1))
+  expect_equal(daily$mean, c(9, 14))
+  expect_equal(weekly$n, c(2, 1))
+  expect_equal(as.character(weekly$period), c('2025-01-06', '2025-01-13'))
+  expect_equal(supervisor_daily_subgroups(m, 10, 2)$mean, daily$mean)
+})
+
+test_that('service goals use zone overrides and never alter observed performance', {
+  goals <- supervisor_empty_service_goals()
+  goals <- supervisor_set_service_goal(goals, 'call_to_scene', 'High', 'All zones', 12,
+    as.POSIXct('2026-10-17', tz = 'UTC'))
+  goals <- supervisor_set_service_goal(goals, 'call_to_scene', 'High', 'Astoria', 10,
+    as.POSIXct('2026-10-17', tz = 'UTC'))
+  expect_equal(supervisor_service_goal_value(goals, 'call_to_scene', 'Astoria', 'High'), 10)
+  expect_equal(supervisor_service_goal_value(goals, 'call_to_scene', 'Flushing', 'High'), 12)
+  expect_true(is.na(supervisor_service_goal_value(goals, 'call_to_scene', 'Astoria', 'Low')))
+  m <- data.frame(zone = c('Astoria', 'Astoria'), call_priority = c('High', 'High'),
+    response_minutes = c(8, 12))
+  result <- supervisor_service_performance(m, goals, 'call_to_scene')
+  astoria <- result[result$zone == 'Astoria' & result$priority == 'High', ]
+  expect_equal(astoria$goal, 10)
+  expect_equal(astoria$within_goal, .5)
+  expect_equal(astoria$p90, 11.6)
+  expect_equal(supervisor_clear_service_goal(goals, 'call_to_scene', 'High', 'Astoria')$zone,
+    'All zones')
+})

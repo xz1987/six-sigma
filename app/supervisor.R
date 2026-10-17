@@ -12,6 +12,7 @@ find_repo_root <- function() {
 repo_root <- find_repo_root()
 source(file.path(repo_root, 'app', 'qc.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'response-metrics.R'), local = TRUE)
+source(file.path(repo_root, 'app', 'supervisor-analytics.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'feed.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'workflow.R'), local = TRUE)
 
@@ -145,7 +146,7 @@ supervisor_attach_responder_ids <- function(analysis, completed) {
   analysis
 }
 
-supervisor_developer_responders <- c('EMS-101', 'EMS-102', 'EMS-103')
+supervisor_developer_responders <- 'EMS-101'
 
 # Baseline (2025) mean and SD of one metric for one zone/priority group, read
 # from the bundled synthetic fixture. Used only to draw developer simulations.
@@ -200,40 +201,21 @@ supervisor_ui <- function(id) {
       div(id = 'connection-status', class = 'alert-note danger', role = 'status', hidden = NA,
         "You're offline. Reconnect to use login, incident records, and response updates."),
       div(class = 'pwa-tools',
-        tags$button(id = 'install-app', type = 'button', class = 'btn btn-primary',
-          hidden = NA, 'Install app'),
-        tags$details(tags$summary('Add this supervisor dashboard to your device'),
+        tags$button(id = 'supervisor-install-app', type = 'button', class = 'btn btn-primary',
+          'Install app'),
+        tags$details(id = 'supervisor-install-help',
+          tags$summary('Installation help'),
           p("iPhone/iPad: use the browser Share menu → Add to Home Screen. Safari on Mac: File → Add to Dock. Chrome/Edge: use the install option in the address bar or browser menu."),
           p('Live features require a connection. This remains a synthetic hackathon demonstration.')),
-        tags$span(id = 'pwa-setup-status', role = 'status'))),
+        tags$span(id = 'supervisor-pwa-status', role = 'status'))),
     div(class = 'app-shell',
     tags$aside(class = 'control-rail',
-      div(class = 'rail-heading', div(class = 'kpi-label', 'Supervisor workspace'), h2('View controls')),
-      selectInput(ns('time_span'), 'Time span',
-        choices = c('Day' = 'day', 'Week' = 'week', 'Month' = 'month'),
-        selected = 'day'),
-      selectInput(ns('metric'), 'Response metric',
-        choices = setNames(response_metric_catalog()$id,
-          response_metric_catalog()$label), selected = 'call_to_scene'),
-      conditionalPanel(sprintf("input['%s'] === 'day'", ns('time_span')),
-        dateInput(ns('day_date'), 'Date', value = supervisor_today(),
-          min = as.Date('2026-01-01'), max = as.Date('2026-12-31'))),
-      conditionalPanel(sprintf("input['%s'] === 'week'", ns('time_span')),
-        selectInput(ns('week_start'), 'Week', choices = supervisor_week_choices(),
-          selected = '2026-01-26')),
-      conditionalPanel(sprintf("input['%s'] === 'month'", ns('time_span')),
-        selectInput(ns('month_start'), 'Month', choices = supervisor_month_choices(),
-          selected = '2026-02-01')),
-      selectInput(ns('zone'), 'Incident zone', choices = qc_zones,
-        selected = 'Far Rockaway'),
-      selectInput(ns('priority'), 'Call priority · QC group', choices = qc_priorities),
-      selectInput(ns('responder'), 'Responder',
-        choices = c('All responders · IDs not yet available' = 'all'), selected = 'all'),
-      uiOutput(ns('responder_note')),
+      div(class = 'rail-heading', div(class = 'kpi-label', 'Supervisor workspace'), h2('Response quality')),
       div(class = 'rail-note',
         strong('Response-time definition'), br(),
         textOutput(ns('metric_definition'), inline = TRUE), br(),
         tags$small('Each metric has its own fixed baseline limits. Display filters never refit them.')),
+      uiOutput(ns('workspace_nav')),
       tags$details(id = ns('developer_panel'), class = 'developer-settings',
         ontoggle = sprintf("Shiny.setInputValue('%s', this.open, {priority: 'event'});",
           ns('developer_panel_open')),
@@ -244,30 +226,51 @@ supervisor_ui <- function(id) {
         uiOutput(ns('developer_controls')))
     ),
     tags$main(class = 'workspace',
+      conditionalPanel(sprintf("input['%s'] !== 'History analysis'", ns('main_tabs')),
+        div(class = 'supervisor-filter-bar',
+        div(class = 'filter-field', selectInput(ns('time_span'), 'Time span',
+          choices = c('Day' = 'day', 'Week' = 'week', 'Month' = 'month'), selected = 'day')),
+        conditionalPanel(sprintf("input['%s'] === 'day'", ns('time_span')), class = 'filter-field',
+          dateInput(ns('day_date'), 'Date', value = supervisor_today(),
+            min = as.Date('2026-01-01'), max = as.Date('2026-12-31'))),
+        conditionalPanel(sprintf("input['%s'] === 'week'", ns('time_span')), class = 'filter-field',
+          selectInput(ns('week_start'), 'Week', choices = supervisor_week_choices(), selected = '2026-01-26')),
+        conditionalPanel(sprintf("input['%s'] === 'month'", ns('time_span')), class = 'filter-field',
+          selectInput(ns('month_start'), 'Month', choices = supervisor_month_choices(), selected = '2026-02-01')),
+        div(class = 'filter-field filter-field-wide', selectInput(ns('metric'), 'Response metric',
+          choices = setNames(response_metric_catalog()$id, response_metric_catalog()$label),
+          selected = 'call_to_scene')),
+        div(class = 'filter-field', selectInput(ns('zone'), 'Incident zone', choices = qc_zones,
+          selected = 'Far Rockaway')),
+        div(class = 'filter-field', selectInput(ns('priority'), 'Priority · QC group', choices = qc_priorities)),
+        actionButton(ns('clear_filters'), 'Reset', class = 'btn-default filter-reset'))),
       uiOutput(ns('developer_bar')),
       div(class = 'dashboard-heading',
         div(div(class = 'kpi-label', 'Response quality / Supervisor'),
           h1(textOutput(ns('dashboard_title'), inline = TRUE)),
-          p('Completed response-system records enter the selected metric view. Historical limits stay fixed.')),
+          p(textOutput(ns('dashboard_subtitle'), inline = TRUE))),
         uiOutput(ns('mode_chip'))),
-      div(class = 'scope-strip',
-        textOutput(ns('scope_label'), inline = TRUE),
-        div(class = 'status-pill', strong('QC status: '), textOutput(ns('qc_status'), inline = TRUE))),
-      uiOutput(ns('source_notice')),
-      uiOutput(ns('shared_trip')),
-      div(class = 'replay-timeline',
-        div(class = 'timeline-clock', span(class = 'timeline-pulse'),
-          strong(textOutput(ns('time_context_label'), inline = TRUE)),
-          textOutput(ns('overview_sim_time'), inline = TRUE)),
-        textOutput(ns('latest_arrival'), inline = TRUE)),
-      tabsetPanel(id = ns('main_tabs'),
-        tabPanel('Overview',
+      conditionalPanel(sprintf("input['%s'] !== 'History analysis'", ns('main_tabs')),
+        div(class = 'scope-strip',
+          textOutput(ns('scope_label'), inline = TRUE),
+          div(class = 'status-pill', strong('QC status: '), textOutput(ns('qc_status'), inline = TRUE))),
+        uiOutput(ns('source_notice')),
+        uiOutput(ns('shared_trip')),
+        div(class = 'replay-timeline',
+          div(class = 'timeline-clock', span(class = 'timeline-pulse'),
+            strong(textOutput(ns('time_context_label'), inline = TRUE)),
+            textOutput(ns('overview_sim_time'), inline = TRUE)),
+          textOutput(ns('latest_arrival'), inline = TRUE))),
+      tabsetPanel(id = ns('main_tabs'), type = 'hidden', selected = 'Active tracking',
+        tabPanel('Active tracking',
           div(class = 'kpi-grid',
             kpi('Completed records', 'kpi_completed', 'for selected metric / group', ns),
             kpi('Median duration', 'kpi_median', 'minutes', ns),
-            kpi('90th percentile', 'kpi_p90', 'minutes', ns),
-            kpi('QC signals', 'kpi_flags', 'in selected time / group', ns)),
+            kpi('Context target', 'kpi_target', 'minutes', ns),
+            kpi('Performance signals', 'kpi_flags', 'SPC + target misses', ns)),
+          uiOutput(ns('target_notice')),
           uiOutput(ns('review_notice')),
+          uiOutput(ns('data_quality_panel')),
           panel_card('Latest completed response milestones',
             'Completion records for the selected response metric only: scene arrivals for call to scene, hospital arrivals for transport to hospital.',
             tableOutput(ns('milestone_table'))),
@@ -284,7 +287,7 @@ supervisor_ui <- function(id) {
                 span(class = 'flag-count', textOutput(ns('flag_count'), inline = TRUE))),
               tags$p(class = 'subhead', 'Select a signal to locate it on the charts and review the evidence.'),
               uiOutput(ns('flag_cards')),
-              uiOutput(ns('flag_detail')))),
+              uiOutput(ns('investigation_drawer')))),
           panel_card('Completed metric records in this view',
             'The display filters change which completed metric records you see, not the baseline or control limits.',
             tableOutput(ns('completed_table')))
@@ -300,6 +303,49 @@ supervisor_ui <- function(id) {
             panel_card('Weather context',
               'Synthetic assignment-time weather. Descriptive only; weather does not change QC limits or establish cause.',
               plotOutput(ns('weather_boxplot'), height = 420)))
+        ),
+        tabPanel('History analysis',
+          div(class = 'history-filter-bar',
+            div(class = 'filter-field filter-field-wide', selectInput(ns('history_metric'), 'Response metric',
+              choices = setNames(response_metric_catalog()$id, response_metric_catalog()$label),
+              selected = 'call_to_scene')),
+            div(class = 'filter-field', selectInput(ns('history_zone'), 'Incident zone',
+              choices = qc_zones, selected = 'Far Rockaway')),
+            div(class = 'filter-field', selectInput(ns('history_priority'), 'Priority',
+              choices = qc_priorities, selected = 'High')),
+            div(class = 'filter-field', selectInput(ns('history_period'), 'History period',
+              choices = c('Last 30 available days' = '30', 'Last 90 available days' = '90',
+                'Full baseline year' = 'full'), selected = 'full')),
+            div(class = 'filter-field', selectInput(ns('history_aggregation'), 'Subgroup interval',
+              choices = c('Automatic' = 'auto', 'Daily' = 'day', 'Weekly' = 'week'),
+              selected = 'auto')),
+            div(class = 'filter-field', selectInput(ns('history_phase'), 'Records',
+              choices = c('Baseline + monitoring' = 'both', 'Baseline only' = 'baseline',
+                'Closed monitoring only' = 'monitoring'), selected = 'both')),
+            actionButton(ns('reset_history'), 'Reset', class = 'btn-default filter-reset')),
+          uiOutput(ns('subgroup_status')),
+          uiOutput(ns('history_chart_layout')),
+          panel_card('Performance against configured service goals',
+            'The observed 90th percentile and percent within goal are management comparisons. Service goals are editable and do not change SPC control limits.',
+            plotOutput(ns('service_goal_plot'), height = 520),
+            tags$details(class = 'service-goal-settings',
+              tags$summary('Configure service goals'),
+              div(class = 'service-goal-controls',
+                selectInput(ns('goal_priority'), 'Priority', choices = qc_priorities),
+                selectInput(ns('goal_zone'), 'Scope', choices = c('All zones', qc_zones)),
+                numericInput(ns('goal_minutes'), 'Goal (minutes)', value = 12, min = 1,
+                  max = 120, step = .5),
+                actionButton(ns('save_goal'), 'Save goal', class = 'btn-primary'),
+                actionButton(ns('clear_goal'), 'Clear goal', class = 'btn-default')),
+              uiOutput(ns('service_goal_summary')))),
+          div(class = 'two-col',
+            panel_card('Weather-adjusted zone comparison',
+              'Marginal model estimates hold priority, weather, hour and weekday at the synthetic reference mix.',
+              plotOutput(ns('adjusted_zone_plot'), height = 360)),
+            panel_card('Weather-adjusted priority comparison',
+              'Marginal model estimates hold zone, weather, hour and weekday at the synthetic reference mix.',
+              plotOutput(ns('adjusted_priority_plot'), height = 360))),
+          uiOutput(ns('intervention_panel'))
         )
       )
     )
@@ -311,7 +357,13 @@ supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
   state <- reactiveValues(mode = 'ordinary', developer_calls = NULL,
     baseline_records = dashboard_load_fixture(repo_root, 'stable'),
-    ui_tick = 0L, completed_tick = 0L, last_step = NULL)
+    ui_tick = 0L, completed_tick = 0L, last_step = NULL,
+    service_goals = supervisor_empty_service_goals(),
+    developer_quality = data.frame(issue_id = character(), incident_id = character(),
+      severity = character(), issue = character(), stringsAsFactors = FALSE),
+    interventions = data.frame(id = character(), action = character(), note = character(),
+      zone = character(), priority = character(), metric_id = character(),
+      started_at = as.POSIXct(character()), call_index = integer(), stringsAsFactors = FALSE))
 
   set_period_for_mode <- function(day) {
     values <- supervisor_period_values(day)
@@ -324,6 +376,8 @@ supervisor_server <- function(id, production_records) {
     state$mode <- 'developer'
     state$developer_calls <- response_metric_empty_records()
     state$last_step <- NULL
+    state$developer_quality <- state$developer_quality[FALSE, , drop = FALSE]
+    state$interventions <- state$interventions[FALSE, , drop = FALSE]
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
     set_period_for_mode(supervisor_today())
@@ -333,6 +387,8 @@ supervisor_server <- function(id, production_records) {
     state$mode <- 'ordinary'
     state$developer_calls <- NULL
     state$last_step <- NULL
+    state$developer_quality <- state$developer_quality[FALSE, , drop = FALSE]
+    state$interventions <- state$interventions[FALSE, , drop = FALSE]
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
     set_period_for_mode(supervisor_today())
@@ -348,26 +404,97 @@ supervisor_server <- function(id, production_records) {
     if (identical(state$mode, 'developer')) leave_developer_mode()
   }, ignoreInit = TRUE)
 
-  # Developer mode: each click adds one simulated completed call to the zone,
-  # priority and responder currently selected, so it lands on the visible chart.
-  observeEvent(input$add_call, {
+  observeEvent(input$clear_filters, {
+    updateSelectInput(session, 'time_span', selected = 'day')
+    updateSelectInput(session, 'metric', selected = 'call_to_scene')
+    updateSelectInput(session, 'zone', selected = 'Far Rockaway')
+    updateSelectInput(session, 'priority', selected = 'High')
+    set_period_for_mode(supervisor_today())
+  })
+
+  observeEvent(input$nav_active, updateTabsetPanel(session, 'main_tabs', selected = 'Active tracking'))
+  observeEvent(input$nav_patterns, updateTabsetPanel(session, 'main_tabs', selected = 'Patterns'))
+  observeEvent(input$nav_history, updateTabsetPanel(session, 'main_tabs', selected = 'History analysis'))
+  output$workspace_nav <- renderUI({
+    selected <- input$main_tabs %||% 'Active tracking'
+    nav_button <- function(id, label, icon_name, tab) actionButton(session$ns(id), label,
+      icon = icon(icon_name), class = paste('rail-nav-button', if (identical(selected, tab)) 'is-active'))
+    div(class = 'rail-nav',
+      div(class = 'kpi-label', 'Workspace'),
+      nav_button('nav_active', 'Active tracking', 'wave-square', 'Active tracking'),
+      nav_button('nav_patterns', 'Patterns', 'chart-column', 'Patterns'),
+      nav_button('nav_history', 'History analysis', 'clock-rotate-left', 'History analysis'))
+  })
+
+  observeEvent(input$reset_history, {
+    updateSelectInput(session, 'history_metric', selected = 'call_to_scene')
+    updateSelectInput(session, 'history_zone', selected = 'Far Rockaway')
+    updateSelectInput(session, 'history_priority', selected = 'High')
+    updateSelectInput(session, 'history_period', selected = 'full')
+    updateSelectInput(session, 'history_aggregation', selected = 'auto')
+    updateSelectInput(session, 'history_phase', selected = 'both')
+  })
+
+  observeEvent(input$save_goal, {
+    req(input$history_metric, input$goal_priority, input$goal_zone, input$goal_minutes)
+    state$service_goals <- supervisor_set_service_goal(state$service_goals,
+      input$history_metric, input$goal_priority, input$goal_zone, input$goal_minutes)
+  })
+  observeEvent(input$clear_goal, {
+    req(input$history_metric, input$goal_priority, input$goal_zone)
+    state$service_goals <- supervisor_clear_service_goal(state$service_goals,
+      input$history_metric, input$goal_priority, input$goal_zone)
+  })
+
+  developer_target <- reactive({
+    if (identical(input$metric, 'transport_to_hospital')) input$developer_transport_target
+    else input$developer_scene_target
+  })
+
+  add_developer_call <- function(event_type = 'stable') {
     req(identical(state$mode, 'developer'), input$zone, input$priority)
     calls <- state$developer_calls
-    # Each simulated call starts after the previous one reaches the hospital, so
-    # both metrics keep start order = completion order and the newest call is
-    # always the latest point on either chart.
+    if (identical(event_type, 'data_quality')) {
+      state$developer_quality <- rbind(state$developer_quality, data.frame(
+        issue_id = sprintf('DEMO-DQ-%02d', nrow(state$developer_quality) + 1L),
+        incident_id = sprintf('SIM-%04d', nrow(calls) + 1L), severity = 'Warning',
+        issue = 'Demo-only missing weather context', stringsAsFactors = FALSE))
+      state$ui_tick <- isolate(state$ui_tick) + 1L
+      return(invisible(NULL))
+    }
     start_time <- Sys.time()
     if (nrow(calls)) start_time <- max(start_time,
       max(qc_parse_time(calls$hospital_arrival_time)) + 60)
     call <- supervisor_simulate_call(state$baseline_records, input$zone, input$priority,
-      index = nrow(calls) + 1L, start_time = start_time, responder = input$responder)
+      index = nrow(calls) + 1L, start_time = start_time,
+      responder = supervisor_developer_responders[[1L]])
+    call <- supervisor_apply_demo_event(call, event_type, input$metric,
+      developer_target(), nrow(calls) + 1L)
     state$developer_calls <- rbind(calls, call[, names(calls), drop = FALSE])
     event <- response_metric_completion_events(call, allow_mock = FALSE)
     event <- event[event$metric_id == input$metric, , drop = FALSE]
     call$display_minutes <- event$duration_minutes[[1L]]
     call$display_metric <- metric_info()$short_label
+    call$display_event <- event_type
     state$last_step <- call
     state$completed_tick <- isolate(state$completed_tick) + 1L
+    state$ui_tick <- isolate(state$ui_tick) + 1L
+  }
+
+  # Developer mode: each click adds one simulated completed call to the zone,
+  # priority and responder currently selected, so it lands on the visible chart.
+  observeEvent(input$add_call, {
+    add_developer_call('stable')
+  })
+  observeEvent(input$trigger_demo_event, add_developer_call(input$demo_event_type))
+
+  observeEvent(input$record_intervention, {
+    req(identical(state$mode, 'developer'), input$intervention_type)
+    row <- data.frame(id = sprintf('INT-%02d', nrow(state$interventions) + 1L),
+      action = input$intervention_type, note = if (nzchar(input$intervention_note)) input$intervention_note else '—',
+      zone = input$zone, priority = input$priority, metric_id = input$metric,
+      started_at = Sys.time(), call_index = nrow(state$developer_calls), stringsAsFactors = FALSE)
+    state$interventions <- rbind(state$interventions, row)
     state$ui_tick <- isolate(state$ui_tick) + 1L
   })
 
@@ -438,6 +565,13 @@ supervisor_server <- function(id, production_records) {
         checkboxInput(session$ns('demo_review'),
           'Use synthetic baseline-review fixture', value = TRUE),
         tags$small('Demonstration only. This is not approval of a real EMS baseline.')),
+      div(class = 'review-box',
+        tags$strong('Manual demo targets'),
+        numericInput(session$ns('developer_scene_target'), 'Call → scene target (minutes)',
+          value = 12, min = 1, max = 120, step = .5),
+        numericInput(session$ns('developer_transport_target'), 'Departure → hospital target (minutes)',
+          value = 8, min = 1, max = 120, step = .5),
+        tags$small('Developer mode only. Ordinary mode uses the frozen synthetic context model.')),
       actionButton(session$ns('end_developer'), 'End developer mode',
         class = 'btn-warning', width = '100%'))
   })
@@ -448,14 +582,18 @@ supervisor_server <- function(id, production_records) {
     if (!identical(state$mode, 'developer')) return(NULL)
     div(class = 'developer-bar', role = 'region', `aria-label` = 'Developer simulation',
       uiOutput(session$ns('developer_bar_text'), class = 'developer-bar-text'),
-      actionButton(session$ns('add_call'), 'Add simulated call', class = 'btn-primary',
-        icon = icon('plus')))
+      div(class = 'developer-actions',
+        actionButton(session$ns('add_call'), 'Add stable call', class = 'btn-primary',
+          icon = icon('plus')),
+        selectInput(session$ns('demo_event_type'), NULL,
+          choices = c('Extreme point' = 'extreme', 'Shift' = 'shift', 'Trend' = 'trend',
+            'Target miss' = 'target_miss', 'Data-quality warning' = 'data_quality',
+            'Post-intervention improvement' = 'improvement'), selected = 'extreme'),
+        actionButton(session$ns('trigger_demo_event'), 'Trigger demo event', class = 'btn-warning')))
   })
   output$developer_bar_text <- renderUI({
     req(identical(state$mode, 'developer'))
-    target <- sprintf('%s · %s priority%s', input$zone, input$priority,
-      if (!is.null(input$responder) && !identical(input$responder, 'all'))
-        paste(' ·', input$responder) else '')
+    target <- sprintf('%s · %s priority', input$zone, input$priority)
     last <- state$last_step
     n <- nrow(state$developer_calls)
     tagList(
@@ -463,9 +601,9 @@ supervisor_server <- function(id, production_records) {
       tags$strong(sprintf('%d simulated call%s', n, if (n == 1L) '' else 's')),
       tags$span(class = 'developer-bar-detail', role = 'status',
         if (is.null(last)) paste('Next call goes to', target)
-        else sprintf('Last: %s · %s / %s · %s %.1f min · next call goes to %s',
+        else sprintf('Last: %s · %s / %s · %s %.1f min · %s · next call goes to %s',
           last$incident_id, last$zone, last$call_priority,
-          tolower(last$display_metric), last$display_minutes, target)))
+          tolower(last$display_metric), last$display_minutes, last$display_event, target)))
   })
 
   output$mode_chip <- renderUI({
@@ -492,30 +630,19 @@ supervisor_server <- function(id, production_records) {
         'Ordinary mode · connected to the shared Caller/Responder stream. No completed response records have been emitted yet.')
   })
 
-  responder_ids <- reactive({
-    m <- selected_group()$monitoring
-    if (!'responder_id' %in% names(m)) return(character())
-    sort(unique(as.character(m$responder_id[!is.na(m$responder_id) & nzchar(as.character(m$responder_id))])))
+  output$metric_definition <- renderText({
+    metric <- if (identical(input$main_tabs, 'History analysis')) input$history_metric else input$metric
+    req(metric); response_metric_info(metric)$definition
   })
-  observe({
-    ids <- responder_ids()
-    choices <- if (length(ids)) c('All responders' = 'all', setNames(ids, ids))
-      else c('All responders · IDs not yet available' = 'all')
-    current <- isolate(input$responder)
-    updateSelectInput(session, 'responder', choices = choices,
-      selected = if (!is.null(current) && current %in% c('all', ids)) current else 'all')
+  output$dashboard_title <- renderText({
+    if (identical(input$main_tabs, 'History analysis')) 'Historical response analysis'
+    else paste(metric_info()$short_label, 'overview')
   })
-  output$responder_note <- renderUI({
-    if (length(responder_ids()))
-      tags$p(class = 'filter-note', 'Responder selection changes visible completed metric records; fixed metric/zone/priority control limits remain unchanged.')
-    else tags$p(class = 'filter-note',
-      if (identical(state$mode, 'developer'))
-        'Simulated calls are assigned synthetic responder IDs. This filter activates after the first simulated call in this group.'
-      else
-        'No responder IDs are present in the ordinary stream yet. This filter activates when responder records arrive.')
+  output$dashboard_subtitle <- renderText({
+    if (identical(input$main_tabs, 'History analysis'))
+      'Review completed baseline and closed monitoring periods with independent history filters.'
+    else 'Completed response-system records enter the selected metric view. Historical limits stay fixed.'
   })
-  output$metric_definition <- renderText({ metric_info()$definition })
-  output$dashboard_title <- renderText({ paste(metric_info()$short_label, 'overview') })
   display_window <- reactive({
     req(input$time_span)
     if (identical(input$time_span, 'day')) {
@@ -530,18 +657,40 @@ supervisor_server <- function(id, production_records) {
     supervisor_date_window('month', as.Date(input$month_start))
   })
   visible_monitoring <- reactive({
-    supervisor_visible_monitoring(selected_group(), display_window(), input$responder)
+    supervisor_visible_monitoring(selected_group(), display_window(), 'all')
   })
   selected_monitor_summary <- reactive({ qc_summary(visible_monitoring()$response_minutes) })
+  target_model <- reactive(supervisor_target_model(state$baseline_records, input$metric))
+  visible_targets <- reactive({
+    m <- visible_monitoring()
+    if (identical(state$mode, 'developer')) {
+      value <- developer_target()
+      if (is.null(value) || !is.finite(value)) value <- NA_real_
+      return(rep(value, nrow(m)))
+    }
+    supervisor_target_predict(target_model(), m)
+  })
+  signal_rules <- reactive({
+    m <- visible_monitoring(); g <- selected_group()
+    sigma <- (g$limits$i_ucl - g$limits$center) / 3
+    supervisor_signal_rules(m, g$limits$center, sigma, visible_targets())
+  })
   visible_flags <- reactive({
     if (!isTRUE(selected_group()$flags_enabled)) return(visible_monitoring()[FALSE, , drop = FALSE])
-    m <- visible_monitoring()
-    hit <- (!is.na(m$individual_signal) & m$individual_signal) |
-      (!is.na(m$variation_signal) & m$variation_signal)
-    m[hit, , drop = FALSE]
+    m <- visible_monitoring(); rules <- signal_rules()
+    cbind(m[rules$performance_signal, , drop = FALSE],
+      rules[rules$performance_signal, c('rule_labels', 'primary_rule', 'target_miss'), drop = FALSE])
   })
+  signal_groups <- reactive(supervisor_group_signals(visible_monitoring(), signal_rules(),
+    input$metric, input$zone, input$priority))
   selected_flag_id <- reactiveVal(NULL)
-  observeEvent(input$selected_flag, selected_flag_id(input$selected_flag), ignoreInit = TRUE)
+  selected_signal_group_id <- reactiveVal(NULL)
+  observeEvent(input$selected_signal_group, {
+    selected_signal_group_id(input$selected_signal_group)
+    group <- signal_groups()
+    hit <- group[group$group_id == input$selected_signal_group, , drop = FALSE]
+    if (nrow(hit)) selected_flag_id(tail(strsplit(hit$incident_ids[[1L]], ', ')[[1L]], 1L))
+  }, ignoreInit = TRUE)
   observeEvent(input$follow_live, selected_flag_id(NULL), ignoreInit = TRUE)
 
   output$sim_time <- renderText({
@@ -572,9 +721,26 @@ supervisor_server <- function(id, production_records) {
   })
   output$kpi_completed <- renderText({ selected_monitor_summary()$n })
   output$kpi_median <- renderText({ fmt_num(selected_monitor_summary()$median, 1) })
-  output$kpi_p90 <- renderText({ fmt_num(selected_monitor_summary()$p90, 1) })
+  output$kpi_target <- renderText({
+    if (identical(state$mode, 'developer')) return(fmt_num(developer_target(), 1))
+    x <- visible_targets()
+    value <- if (any(is.finite(x))) stats::median(x, na.rm = TRUE)
+      else supervisor_target_for_scope(target_model(), input$zone, input$priority)
+    fmt_num(value, 1)
+  })
   output$kpi_flags <- renderText({ nrow(visible_flags()) })
-  output$flag_count <- renderText({ nrow(visible_flags()) })
+  output$flag_count <- renderText({ nrow(signal_groups()) })
+
+  output$target_notice <- renderUI({
+    if (identical(state$mode, 'developer'))
+      return(div(class = 'target-notice', strong('Target source: '),
+        sprintf('manual developer setting · %.1f minutes.', developer_target())))
+    model <- target_model()
+    if (!identical(model$status, 'synthetic_context_model'))
+      return(div(class = 'target-notice danger', 'Context target unavailable: ', model$reason))
+    div(class = 'target-notice', strong('Target source: '),
+      'frozen synthetic 90th-percentile goal using zone, priority, weather, hour and weekday. Traffic is unavailable in the canonical response stream.')
+  })
 
   output$shared_trip <- renderUI({
     if(!identical(state$mode,'ordinary') || !exists('responder_trip_snapshot',mode='function')) return(NULL)
@@ -656,57 +822,55 @@ supervisor_server <- function(id, production_records) {
   selected_signal <- reactive({
     flags <- visible_flags()
     if (!nrow(flags)) return(flags)
-    index <- match(selected_flag_id(), flags$incident_id)
-    if (length(index) != 1L || is.na(index)) return(flags[FALSE, , drop = FALSE])
-    flags[index, , drop = FALSE]
+    group <- signal_groups()
+    hit <- group[group$group_id == selected_signal_group_id(), , drop = FALSE]
+    if (!nrow(hit)) return(flags[FALSE, , drop = FALSE])
+    ids <- strsplit(hit$incident_ids[[1L]], ', ')[[1L]]
+    flags[flags$incident_id %in% ids, , drop = FALSE]
   })
 
   output$flag_cards <- renderUI({
     g <- selected_group()
-    flags <- visible_flags()
+    groups <- signal_groups()
     if (!isTRUE(g$flags_enabled))
       return(div(class = 'flag-empty', 'Signals are unavailable until the baseline review is documented.'))
-    if (!nrow(flags))
+    if (!nrow(groups))
       return(div(class = 'flag-empty', 'No control-chart signals among completed metric records in this view. This does not prove service is acceptable.'))
-    flags <- flags[order(flags$dispatch_time, decreasing = TRUE), , drop = FALSE]
-    current <- selected_signal()$incident_id
-    cards <- lapply(seq_len(nrow(flags)), function(i) {
-      row <- flags[i, , drop = FALSE]
-      kind <- if (isTRUE(row$individual_signal)) 'Long duration' else 'Abrupt variation'
+    current <- selected_signal_group_id()
+    cards <- lapply(seq_len(nrow(groups)), function(i) {
+      row <- groups[i, , drop = FALSE]
       tags$button(type = 'button',
-        class = paste('flag-card', if (identical(row$incident_id, current)) 'is-selected'),
+        class = paste('flag-card', if (identical(row$group_id, current)) 'is-selected'),
         onclick = sprintf('Shiny.setInputValue(%s,%s,{priority:"event"})',
-          jsonlite::toJSON(session$ns('selected_flag'), auto_unbox = TRUE),
-          jsonlite::toJSON(as.character(row$incident_id), auto_unbox = TRUE)),
-        tags$strong(sprintf('%s · %.1f min', kind, row$response_minutes)),
-        tags$small(sprintf('%s · %s', row$incident_id,
-          format(row$dispatch_time, '%b %d %H:%M', tz = 'America/New_York'))))
+          jsonlite::toJSON(session$ns('selected_signal_group'), auto_unbox = TRUE),
+          jsonlite::toJSON(as.character(row$group_id), auto_unbox = TRUE)),
+        tags$strong(sprintf('%s · %d incident%s', row$primary_rule, row$count,
+          if (row$count == 1L) '' else 's')),
+        tags$small(sprintf('New · latest %s · max %.1f min',
+          format(row$latest_at, '%b %d %H:%M', tz = 'America/New_York'), row$max_minutes)))
     })
     div(class = 'flag-list', cards)
   })
 
-  output$flag_detail <- renderUI({
-    row <- selected_signal()
-    if (!nrow(row)) return(NULL)
+  output$investigation_drawer <- renderUI({
+    rows <- selected_signal()
+    if (!nrow(rows)) return(NULL)
     g <- selected_group()
-    long <- isTRUE(row$individual_signal)
-    variation <- isTRUE(row$variation_signal)
-    div(class = 'flag-detail',
-      div(class = 'kpi-label', 'Selected signal / Evidence'),
-      h4(row$incident_id),
-      p(sprintf('%s %.2f min · fixed I UCL %.2f min · moving range %.2f min · fixed MR UCL %.2f min.',
-        metric_info()$short_label,
-        row$response_minutes, g$limits$i_ucl, row$moving_range, g$limits$mr_ucl)),
-      p(sprintf('Metric started %s · %s · %s priority. Baseline: 2025-01-01 to 2025-12-31.',
-        format(row$dispatch_time, '%Y-%m-%d %H:%M:%S %Z', tz = 'America/New_York'),
-        g$zone, g$call_priority)),
+    rules <- unique(unlist(strsplit(rows$rule_labels, '; ', fixed = TRUE)))
+    rules <- rules[nzchar(rules)]
+    targets <- visible_targets()[match(rows$incident_id, visible_monitoring()$incident_id)]
+    div(class = 'investigation-drawer',
+      div(class = 'kpi-label', 'Investigation drawer'),
+      h4(paste(rules, collapse = ' + ')),
+      p(strong('Affected records. '), paste(rows$incident_id, collapse = ', ')),
+      p(sprintf('Observed %.1f–%.1f min · fixed center %.1f · I UCL %.1f min · contextual target median %s min.',
+        min(rows$response_minutes), max(rows$response_minutes), g$limits$center, g$limits$i_ucl,
+        fmt_num(if (any(is.finite(targets))) median(targets, na.rm = TRUE) else NA_real_, 1))),
       p(strong('Interpretation. '),
-        if (long && variation) 'This completed response exceeds both the Individuals and moving-range upper control limits.'
-        else if (long) 'This completed duration is unusually long relative to this metric group’s fixed baseline.'
-        else 'The change from the preceding completed duration exceeds the moving-range upper control limit.'),
+        'The selected group meets at least one supplementary SPC or contextual target rule. The fixed control limits have not been recalculated.'),
       p(strong('Supervisor check. '),
-        'Verify timestamps and assignment details, then review dispatch, travel, weather and staffing context before documenting a cause or intervention.'),
-      tags$small('A control-chart signal requests investigation; it is not a service target or proof of fault.'),
+        'Verify timestamps, then compare weather, assignment hour, responder availability and access conditions before documenting an intervention.'),
+      tags$small('Traffic is not yet in the canonical stream. A signal requests investigation; it is not proof of fault or causality.'),
       actionButton(session$ns('follow_live'), 'Return to latest metric records', class = 'btn-default'))
   })
 
@@ -715,11 +879,15 @@ supervisor_server <- function(id, production_records) {
     focus <- selected_signal()
     latest_id <- if (nrow(m)) m$incident_id[which.max(m$on_scene_time)] else NULL
     m <- supervisor_chart_window(m, selected_flag_id())
+    rule_map <- signal_rules()
     mplot <- data.frame(sequence = m$monitoring_sequence, value = m$response_minutes,
-      signal = !is.na(m$individual_signal) & m$individual_signal,
+      signal = rule_map$performance_signal[match(m$incident_id, rule_map$incident_id)],
       selected = m$incident_id %in% focus$incident_id,
       new = m$incident_id %in% latest_id)
     segments <- supervisor_consecutive_segments(m, 'response_minutes')
+    target_frame <- data.frame(monitoring_sequence = m$monitoring_sequence,
+      target = visible_targets()[match(m$incident_id, visible_monitoring()$incident_id)])
+    target_segments <- supervisor_consecutive_segments(target_frame, 'target')
     left <- if (nrow(m)) max(0.5, min(m$monitoring_sequence) - 0.5) else 0.5
     right <- if (nrow(m)) max(left + 24, max(m$monitoring_sequence) + 1.5) else 24.5
     ggplot() +
@@ -733,6 +901,10 @@ supervisor_server <- function(id, production_records) {
       geom_hline(yintercept = g$limits$center, color = '#2C3E50', linewidth = .75) +
       geom_hline(yintercept = c(g$limits$i_lcl, g$limits$i_ucl),
         color = '#D15B4A', linetype = 'dashed', linewidth = .65) +
+      geom_segment(data = target_segments, aes(x = x, xend = xend, y = y, yend = yend),
+        color = '#6B8F7A', linewidth = .8, linetype = 'dotdash', na.rm = TRUE) +
+      geom_point(data = target_frame, aes(monitoring_sequence, target),
+        color = '#6B8F7A', shape = 95, size = 3, na.rm = TRUE) +
       scale_color_manual(values = c(`FALSE` = '#5B6B7A', `TRUE` = '#D15B4A'), guide = 'none') +
       coord_cartesian(xlim = c(left, right)) +
       labs(x = 'Monitoring incident #',
@@ -741,7 +913,7 @@ supervisor_server <- function(id, production_records) {
           metric_info()$short_label),
         subtitle = sprintf('Baseline n=%d · visible n=%d',
           nrow(b), nrow(visible_monitoring())),
-        caption = 'Ring: latest selected-group metric record · larger ring: selected signal') +
+        caption = 'Red: SPC or target signal · green dot-dash: contextual target · ring: latest/selected') +
       theme_minimal(base_size = 11)
   })
 
@@ -836,6 +1008,284 @@ supervisor_server <- function(id, production_records) {
           metric_info()$short_label, nrow(d))) +
       theme_minimal(base_size = 10) + theme(panel.grid = element_blank())
   })
+
+  data_quality <- reactive({
+    state$ui_tick
+    d <- supervisor_data_quality(active_completed(), input$metric)
+    if (identical(state$mode, 'developer') && nrow(state$developer_quality))
+      d <- rbind(d, state$developer_quality)
+    d
+  })
+  output$data_quality_panel <- renderUI({
+    d <- data_quality()
+    if (!nrow(d)) return(NULL)
+    div(class = 'data-quality-panel',
+      div(class = 'flag-heading', h3('Data-quality warnings'),
+        span(class = 'quality-count', nrow(d))),
+      p(class = 'subhead', 'These are input-integrity issues, not service-performance signals.'),
+      tags$ul(lapply(seq_len(min(nrow(d), 5L)), function(i)
+        tags$li(strong(paste0(d$severity[i], ': ')), d$incident_id[i], ' · ', d$issue[i])))
+    )
+  })
+
+  subgroup_open_day <- reactive({
+    invalidateLater(60000, session)
+    as.Date(snapshot()$simulated_time, tz = 'America/New_York')
+  })
+  history_analysis <- reactive({
+    req(input$history_metric)
+    historical <- response_metric_to_qc(state$baseline_records, input$history_metric,
+      allow_mock = TRUE)
+    completed <- response_metric_to_qc(active_completed(), input$history_metric,
+      allow_mock = FALSE)
+    supervisor_analyze(historical, completed, TRUE, supervisor_live_period())
+  })
+  history_group <- reactive({
+    req(input$history_zone, input$history_priority)
+    history_analysis()$groups[[paste(input$history_zone, input$history_priority, sep = '/')]]
+  })
+  history_all_records <- reactive({
+    make_frame <- function(records, allow_mock, phase) {
+      raw <- response_metric_to_qc(records, input$history_metric, allow_mock = allow_mock)
+      start <- qc_parse_time(raw$dispatch_time)
+      finish <- qc_parse_time(raw$on_scene_time)
+      minutes <- as.numeric(difftime(finish, start, units = 'mins'))
+      data.frame(dispatch_time = start, response_minutes = minutes, zone = raw$zone,
+        call_priority = raw$call_priority, phase = rep(phase, nrow(raw)), stringsAsFactors = FALSE)
+    }
+    baseline <- make_frame(state$baseline_records, TRUE, '2025 baseline')
+    period <- dashboard_period()
+    baseline_stamp <- as.numeric(baseline$dispatch_time)
+    baseline <- baseline[baseline_stamp >= as.numeric(period$baseline_start) &
+      baseline_stamp < as.numeric(period$baseline_end) & is.finite(baseline$response_minutes) &
+      baseline$response_minutes >= 0, , drop = FALSE]
+    closed <- make_frame(active_completed(), FALSE, 'Closed monitoring day')
+    closed_day <- as.Date(closed$dispatch_time, tz = 'America/New_York')
+    closed <- closed[is.finite(closed$response_minutes) & closed$response_minutes >= 0 &
+      !is.na(closed_day) & closed_day < subgroup_open_day(), , drop = FALSE]
+    rbind(baseline, closed)
+  })
+  history_filtered_records <- reactive({
+    d <- history_all_records()
+    if (identical(input$history_phase, 'baseline')) d <- d[d$phase == '2025 baseline', , drop = FALSE]
+    if (identical(input$history_phase, 'monitoring')) d <- d[d$phase == 'Closed monitoring day', , drop = FALSE]
+    supervisor_history_period(d, input$history_period)
+  })
+  subgroup_source <- reactive({
+    d <- history_filtered_records()
+    d[d$zone == input$history_zone & d$call_priority == input$history_priority,
+      c('dispatch_time', 'response_minutes', 'phase'), drop = FALSE]
+  })
+  subgroup_open_count <- reactive({
+    raw <- response_metric_to_qc(active_completed(), input$history_metric, allow_mock = FALSE)
+    start <- qc_parse_time(raw$dispatch_time)
+    finish <- qc_parse_time(raw$on_scene_time)
+    minutes <- as.numeric(difftime(finish, start, units = 'mins'))
+    day <- as.Date(start, tz = 'America/New_York')
+    sum(raw$zone == input$history_zone & raw$call_priority == input$history_priority &
+      is.finite(minutes) & minutes >= 0 & !is.na(day) & day == subgroup_open_day())
+  })
+  output$subgroup_status <- renderUI({
+    all_source <- history_all_records()
+    source <- subgroup_source()
+    baseline_n <- sum(all_source$phase == '2025 baseline' & all_source$zone == input$history_zone &
+      all_source$call_priority == input$history_priority)
+    baseline_days <- length(unique(as.Date(all_source$dispatch_time[all_source$phase == '2025 baseline' &
+      all_source$zone == input$history_zone & all_source$call_priority == input$history_priority],
+      tz = 'America/New_York')))
+    closed_dates <- as.Date(all_source$dispatch_time[all_source$phase == 'Closed monitoring day'],
+      tz = 'America/New_York')
+    through <- if (length(closed_dates)) format(max(closed_dates), '%b %d, %Y') else 'No closed monitoring day yet'
+    visible_dates <- as.Date(source$dispatch_time, tz = 'America/New_York')
+    available <- if (length(visible_dates)) sprintf('%s–%s', format(min(visible_dates), '%b %d, %Y'),
+      format(max(visible_dates), '%b %d, %Y')) else 'No dates for this selection'
+    div(class = 'subgroup-status',
+      div(strong('Available dates: '), available,
+        tags$small(sprintf('%d baseline incidents across %d completed days', baseline_n, baseline_days))),
+      div(strong('Monitoring available through: '), through,
+        tags$small(sprintf('%d current-day record%s pending · refreshed %s ET', subgroup_open_count(),
+          if (subgroup_open_count() == 1L) '' else 's', format(Sys.time(), '%H:%M')))))
+  })
+  history_aggregation <- reactive({
+    if (!identical(input$history_aggregation, 'auto')) input$history_aggregation
+    else if (identical(input$history_period, 'full')) 'week' else 'day'
+  })
+  history_subgroups <- reactive({
+    g <- history_group(); sigma <- (g$limits$i_ucl - g$limits$center) / 3
+    source <- subgroup_source()
+    d <- supervisor_period_subgroups(source, g$limits$center, sigma, history_aggregation())
+    if (nrow(d)) {
+      closed_periods <- as.Date(source$dispatch_time[source$phase == 'Closed monitoring day'],
+        tz = 'America/New_York')
+      if (identical(history_aggregation(), 'week'))
+        closed_periods <- closed_periods - (as.integer(format(closed_periods, '%u')) - 1L)
+      d$phase <- ifelse(d$period %in% unique(closed_periods),
+        'Closed monitoring', '2025 baseline')
+    }
+    d
+  })
+  output$history_control_chart <- renderPlot({
+    g <- history_group(); d <- history_subgroups()
+    validate(need(nrow(d) > 0L, 'No completed subgroup is available for this selection.'))
+    label <- if (identical(history_aggregation(), 'week')) 'Weekly' else 'Daily'
+    ggplot(d, aes(period, mean)) +
+      geom_ribbon(aes(ymin = lcl, ymax = ucl), fill = '#AFC6D9', alpha = .28) +
+      geom_point(aes(color = signal, size = n, shape = phase), alpha = .85) +
+      geom_line(color = '#6F93B4', linewidth = .45, alpha = .65) +
+      geom_hline(yintercept = g$limits$center, color = '#2C3E50', linewidth = .7) +
+      scale_color_manual(values = c(`FALSE` = '#6B8F7A', `TRUE` = '#D15B4A'), guide = 'none') +
+      scale_shape_manual(values = c(`2025 baseline` = 16, `Closed monitoring` = 17),
+        name = 'Completed period') +
+      scale_size_continuous(range = c(3, 7), name = paste(label, 'n')) +
+      labs(x = paste(label, 'start · America/New_York'), y = paste(label, 'mean (minutes)'),
+        title = sprintf('%s · %s priority · %s subgroups', input$history_zone,
+          input$history_priority, tolower(label)),
+        caption = 'Fixed baseline center · variable 3σ limits use each completed subgroup’s n · current day excluded.') +
+      theme_minimal(base_size = 11)
+  })
+
+  output$history_distribution_chart <- renderPlot({
+    d <- history_subgroups(); g <- history_group()
+    validate(need(nrow(d) > 1L, 'At least two completed subgroups are needed for a distribution.'))
+    goal <- supervisor_service_goal_value(state$service_goals, input$history_metric,
+      input$history_zone, input$history_priority)
+    p <- ggplot(d, aes(mean)) +
+      geom_histogram(bins = min(20L, max(6L, ceiling(sqrt(nrow(d))))),
+        fill = '#AFC6D9', color = 'white') +
+      geom_vline(xintercept = g$limits$center, color = '#2C3E50', linewidth = .8) +
+      labs(x = 'Completed subgroup mean (minutes)', y = 'Number of subgroups',
+        title = 'Distribution of completed subgroup means',
+        caption = 'Dark line: fixed baseline center · service-goal marker appears after configuration') +
+      theme_minimal(base_size = 11)
+    if (is.finite(goal)) p <- p + geom_vline(xintercept = goal, color = '#E6A700',
+      linetype = 'dashed', linewidth = .9)
+    p
+  })
+
+  output$history_monthly_chart <- renderPlot({
+    source <- subgroup_source(); g <- history_group()
+    sigma <- (g$limits$i_ucl - g$limits$center) / 3
+    d <- supervisor_period_subgroups(source, g$limits$center, sigma, 'day')
+    validate(need(nrow(d) > 1L, 'Monthly distributions need at least two completed days.'))
+    d$month <- factor(format(d$period, '%b'), levels = month.abb)
+    ggplot(d, aes(month, mean)) +
+      geom_boxplot(fill = '#E6EEF5', color = '#2C3E50', outlier.color = '#D15B4A', width = .62) +
+      geom_hline(yintercept = g$limits$center, color = '#6B8F7A', linetype = 'dashed') +
+      labs(x = NULL, y = 'Daily subgroup mean (minutes)',
+        title = 'Month-to-month distribution',
+        caption = 'Twelve readable monthly summaries of completed daily subgroup means; descriptive only.') +
+      theme_minimal(base_size = 11)
+  })
+
+  output$history_chart_layout <- renderUI({
+    if (identical(input$history_period, '30'))
+      return(panel_card('Recent subgroup control chart',
+        'A focused timeline is clearest for a short review period.',
+        plotOutput(session$ns('history_control_chart'), height = 380)))
+    if (identical(input$history_period, '90'))
+      return(div(class = 'two-col history-chart-grid',
+        panel_card('Subgroup control chart', 'Daily sequence and variable limits.',
+          plotOutput(session$ns('history_control_chart'), height = 360)),
+        panel_card('Subgroup distribution', 'Histogram summarizes the selected completed periods.',
+          plotOutput(session$ns('history_distribution_chart'), height = 360))))
+    tagList(
+      div(class = 'two-col history-chart-grid',
+        panel_card('Subgroup control chart', 'Automatic mode uses weekly subgroups for the full-year view.',
+          plotOutput(session$ns('history_control_chart'), height = 360)),
+        panel_card('Subgroup distribution', 'Histogram keeps a full year readable.',
+          plotOutput(session$ns('history_distribution_chart'), height = 360))),
+      panel_card('Monthly distribution', 'One summary per month avoids an unreadable boxplot for every day.',
+        plotOutput(session$ns('history_monthly_chart'), height = 320)))
+  })
+
+  output$service_goal_plot <- renderPlot({
+    d <- supervisor_service_performance(history_filtered_records(), state$service_goals,
+      input$history_metric)
+    d$status <- ifelse(!is.finite(d$goal), 'Not configured',
+      ifelse(is.finite(d$p90) & d$p90 <= d$goal, 'Meeting goal', 'Missing goal'))
+    d$label <- ifelse(is.finite(d$within_goal),
+      sprintf('%.0f%% within · n=%d', 100 * d$within_goal, d$n),
+      sprintf('Goal not configured · n=%d', d$n))
+    d$zone <- factor(d$zone, levels = rev(qc_zones))
+    ggplot(d, aes(p90, zone, fill = status)) +
+      geom_col(width = .56, na.rm = TRUE) +
+      geom_point(aes(x = goal), shape = 4, size = 3.2, stroke = 1.2,
+        color = '#2C3E50', na.rm = TRUE) +
+      geom_text(aes(label = label), x = 0, hjust = 0, nudge_y = -.33, size = 2.7,
+        color = '#475569') +
+      facet_wrap(~priority, nrow = 1) +
+      scale_fill_manual(values = c('Meeting goal' = '#6B8F7A', 'Missing goal' = '#D15B4A',
+        'Not configured' = '#AFC6D9'), drop = FALSE) +
+      labs(x = 'Observed 90th percentile (minutes) · × configured service goal', y = NULL,
+        title = paste(response_metric_info(input$history_metric)$short_label, 'by zone and priority'),
+        caption = 'Service goals are team-configured management thresholds; fixed SPC limits are unchanged.') +
+      theme_minimal(base_size = 10) + theme(legend.position = 'top', panel.grid.major.y = element_blank())
+  })
+
+  output$service_goal_summary <- renderUI({
+    d <- state$service_goals[state$service_goals$metric_id == input$history_metric, , drop = FALSE]
+    if (!nrow(d)) return(div(class = 'flag-empty',
+      'No service goal is configured for this metric. The chart remains descriptive.'))
+    div(class = 'goal-chip-list', lapply(seq_len(nrow(d)), function(i)
+      span(class = 'goal-chip', sprintf('%s · %s: %.1f min', d$priority[i], d$zone[i], d$minutes[i]))))
+  })
+
+  adjusted_plot <- function(field, title) {
+    d <- supervisor_adjusted_comparison(supervisor_target_model(state$baseline_records,
+      input$history_metric), field)
+    validate(need(nrow(d) > 0L, 'Adjusted comparison unavailable.'))
+    d$group <- factor(d$group, levels = rev(d$group))
+    ggplot(d, aes(estimate, group)) +
+      geom_errorbar(aes(xmin = lower, xmax = upper), width = .18,
+        orientation = 'y', color = '#5B6B7A') +
+      geom_point(aes(size = n), color = '#D15B4A') +
+      scale_size_continuous(range = c(3, 7), name = 'Reference n') +
+      labs(x = 'Adjusted geometric mean (minutes)', y = NULL, title = title,
+        caption = '95% model interval · synthetic reference model · descriptive association, not causal') +
+      theme_minimal(base_size = 11)
+  }
+  output$adjusted_zone_plot <- renderPlot({
+    adjusted_plot('zone', paste(response_metric_info(input$history_metric)$short_label, 'by zone'))
+  })
+  output$adjusted_priority_plot <- renderPlot({
+    adjusted_plot('call_priority', paste(response_metric_info(input$history_metric)$short_label, 'by priority'))
+  })
+
+  output$intervention_panel <- renderUI({
+    if (!identical(state$mode, 'developer'))
+      return(panel_card('Intervention tracking',
+        'Demo-only workflow. Enter Developer settings to record a hypothetical intervention and inspect before/after association.',
+        div(class = 'flag-empty', 'No intervention controls are exposed in ordinary mode.')))
+    panel_card('Demo-only intervention tracking',
+      'Record the action first, then add calls or trigger post-intervention improvement events. Results are associations, not causal estimates.',
+      div(class = 'intervention-controls',
+        selectInput(session$ns('intervention_type'), 'Intervention', choices = c(
+          'Staffing adjustment', 'Dispatch protocol review', 'Route/access coordination',
+          'Timestamp audit')),
+        textInput(session$ns('intervention_note'), 'Supervisor note', placeholder = 'What changed?'),
+        actionButton(session$ns('record_intervention'), 'Record intervention', class = 'btn-primary')),
+      tableOutput(session$ns('intervention_table')))
+  })
+  output$intervention_table <- renderTable({
+    state$ui_tick
+    d <- state$interventions
+    if (!nrow(d)) return(data.frame(Status = 'No demo intervention recorded.'))
+    calls <- state$developer_calls
+    rows <- lapply(seq_len(nrow(d)), function(i) {
+      metric <- response_metric_completion_events(calls, allow_mock = FALSE)
+      metric <- metric[metric$metric_id == d$metric_id[i] & metric$zone == d$zone[i] &
+        metric$call_priority == d$priority[i], , drop = FALSE]
+      call_position <- match(metric$incident_id, calls$incident_id)
+      before <- metric$duration_minutes[call_position <= d$call_index[i]]
+      after <- metric$duration_minutes[call_position > d$call_index[i]]
+      data.frame(ID = d$id[i], Action = d$action[i], Scope = paste(d$zone[i], d$priority[i], sep = ' / '),
+        `Pre n` = length(before), `Post n` = length(after),
+        `Median change` = if (length(before) && length(after))
+          sprintf('%+.1f min', median(after) - median(before)) else 'Pending',
+        Note = d$note[i], check.names = FALSE)
+    })
+    do.call(rbind, rows)
+  }, striped = TRUE, hover = TRUE, spacing = 's', rownames = FALSE)
 
   output$validation_table <- renderTable({
     source_records <- active_source_records()
