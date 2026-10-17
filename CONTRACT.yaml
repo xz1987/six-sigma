@@ -74,9 +74,9 @@ tasks:
   - id: H-04
     title: Working tool - one demo copied to app/ and wired to the H-03 function
     points: "25 - Tool Implementation: an effective, working tool (does it run?)"
-    status: in_progress
-    owner: "Codex (interface scaffold)"
-    started_at: "2026-10-16T21:37:56.875637+00:00"
+    status: done
+    owner: "Codex dashboard implementer + collaborator interface scaffold"
+    started_at: "2026-10-16 17:54"
     owns: ["app/"]
     notes: >
       Copy ONE folder from demos/ (the one named in SPEC section 5) to app/.
@@ -84,11 +84,16 @@ tasks:
       SPEC descriptive charts and weather context, with chart calculations
       validated under H-03; weather does not alter QC limits. Load fastapi-react-scaffold or
       plumber-react-scaffold for an API plus React front end.
+      User-approved interface ownership rule (2026-10-16): dashboard changes
+      from the repository owner's branch apply only after a user continues as
+      Supervisor. During merges, prioritize those Supervisor-workspace edits;
+      preserve collaborator-owned role selection, Primary responder, and Caller
+      interfaces unless the user explicitly expands scope.
     definition_of_done: >
       The testme script in app/ starts the tool with one command, and a call
       on one data/ file (endpoint, function call or app upload) returns the
       same numbers as the H-03 known-answer test.
-    result: "Shiny preview includes role selection, supervisor dashboard, and responder/caller prototype screens; no live EMS dispatch. H-03 statistics, complete deployment scripts, and H-04 definition of done remain pending."
+    result: "Preserved collaborator role-selection, responder, and caller paths while prioritizing the repository owner's functioning Supervisor dashboard; app/smoke.R prints the SPEC known answer (mean=4.8, I_UCL=7.459574, MR_UCL=3.267) and SMOKE PASS, with zero Shiny output errors."
 
   - id: H-05
     title: Demonstration of the tool on every test dataset
@@ -161,9 +166,9 @@ tasks:
   - id: H-09
     title: Simulated dispatch feed and active-call updates
     points: "Supports the working-tool demonstration; no additional rubric points"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex implementer"
+    started_at: "2026-10-16 22:31"
     owns: ["app/feed.R", "tests/testthat/test-feed.R"]
     notes: >
       Proposed implementation task for the team-selected synthetic feed; confirm
@@ -177,7 +182,7 @@ tasks:
       and reset checks. The H-04 Shiny demo shows dispatch then arrival without
       manual incident entry; only completed incidents reach QC, frozen baseline
       limits remain unchanged, and reset reproduces the same sequence.
-    result: ""
+    result: "Deterministic simulated dispatch replay is integrated into Shiny; test-feed.R reports FAIL 0 WARN 0 SKIP 0 PASS 39, automatic arrival completes incidents for QC, pending calls stay excluded, frozen limits remain unchanged, and same-seed reset reproduces the sequence."
 
   - id: H-10
     title: Versioned synthetic wind and weather-informed ETA fixtures
@@ -242,13 +247,13 @@ tasks:
 
   - id: H-13
     title: Staff demo login and open caller access
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/"]
     notes: "User explicitly requested pre-created demo accounts for Supervisor and Primary responder; Caller stays open."
     definition_of_done: "Verify staff role login, wrong password rejection, role separation, caller access, protected data, and logout in server checks and the running UI."
-    result: "Server checks passed for staff login, invalid credentials, role separation and data protection; Supervisor login verified in Safari. Logout reloads session; full UI checks pending."
+    result: "Merged UI checks pass: supervisor login opens the live dashboard, responder login opens only its prototype, wrong credentials are rejected without crashing, caller access requires no login, protected dashboard controls stay hidden by role, and logout/change-role reloads the session."
 
   - id: H-14
     title: Installable PWA shell for the existing Shiny website
@@ -256,7 +261,7 @@ tasks:
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/www/", "app/app.R", "app/README.md"]
-    notes: "User requested PWA delivery. Existing Shiny server and demo role logins remain the runtime."
+    notes: "User requested PWA delivery. Existing Shiny server and demo role logins remain the runtime. Per the H-04 ownership rule, visible PWA controls are limited to the authenticated Supervisor workspace; role selection, Primary responder, and Caller interfaces remain unchanged."
     definition_of_done: "Validate manifest/icon assets, service-worker offline fallback and cache exclusions, R initialization, and browser delivery; document HTTPS and connected-runtime requirements."
     result: "R initialization, JavaScript parsing, subpath manifest, offline fallback and private-traffic exclusions passed; Safari preview checked. Hosted deployment and device installation remain unverified."
 

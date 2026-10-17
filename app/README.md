@@ -3,7 +3,7 @@
 Supervisor interface scaffold built from `demos/shinyapp/app.R`.
 
 From the repository root, run `Rscript app/testme.R`, then open
-http://127.0.0.1:5300. Requires R and the `shiny` and `openssl` packages.
+http://127.0.0.1:3838. Requires R and the `shiny` and `openssl` packages.
 
 Upload a CSV containing `incident_id`, `zone`, `call_priority`,
 `dispatch_time`, and `on_scene_time`. The interface checks the column
@@ -112,3 +112,7 @@ The arrival confirmation uses local wall-clock time, clearly labeled separately
 from simulated elapsed time. It stays in this session and resets with a new call.
 The original scene-response clock remains stopped; hospital transport is separate.
 Requires the `jsonlite` R package in addition to shiny and openssl.
+
+Supervisor integration preserves the collaborator dashboard. Responder UI logic
+is isolated in app/responder-server.R, shared scenario helpers in responder-demo.R,
+and styles in www/responder.css. Set PORT=5300 for the existing local preview.
