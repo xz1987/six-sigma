@@ -11,13 +11,19 @@
   window.addEventListener('online', update);
   window.addEventListener('offline', update);
   window.addEventListener('hashchange', openTrackingLink);
-  document.addEventListener('DOMContentLoaded', () => {
+  function initialize() {
     if (window.jQuery) {
       window.jQuery(document).on('shiny:disconnected', () => { window.callerShinyDisconnected = true; update(); });
       window.jQuery(document).on('shiny:connected', () => { window.callerShinyDisconnected = false; update(); openTrackingLink(); });
     }
     update();
-  });
+    // A dynamically loaded script can run after DOMContentLoaded or Shiny's
+    // first connection event. Read the initial fragment now as well, so the
+    // caller token is not dependent on which event happened first.
+    openTrackingLink();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, {once: true});
+  else initialize();
 })();
 // Persistent map output: position updates move a marker without resetting zoom.
 (() => {
