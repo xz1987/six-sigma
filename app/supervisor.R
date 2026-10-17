@@ -167,9 +167,9 @@ supervisor_baseline_moments <- function(historical, metric_id, zone, priority) {
 # so a stable process is simulated; no limit is refitted. Deterministic for a
 # given seed and index, and the global RNG state is left untouched.
 supervisor_simulate_call <- function(historical, zone, priority, index, start_time,
-                                     responder = NULL, seed = 20261016L) {
-  scene <- supervisor_baseline_moments(historical, 'call_to_scene', zone, priority)
-  transport <- supervisor_baseline_moments(historical, 'transport_to_hospital', zone, priority)
+                                     responder = NULL, seed = 20261016L, baseline_moments = NULL) {
+  scene <- if(is.null(baseline_moments)) supervisor_baseline_moments(historical, 'call_to_scene', zone, priority) else baseline_moments$scene
+  transport <- if(is.null(baseline_moments)) supervisor_baseline_moments(historical, 'transport_to_hospital', zone, priority) else baseline_moments$transport
   old_seed <- if (exists('.Random.seed', envir = globalenv())) get('.Random.seed', envir = globalenv())
   on.exit(if (is.null(old_seed)) rm('.Random.seed', envir = globalenv())
     else assign('.Random.seed', old_seed, envir = globalenv()))
@@ -192,6 +192,74 @@ supervisor_simulate_call <- function(historical, zone, priority, index, start_ti
     responder_id = responder,
     response_system_source = 'Synthetic developer simulation',
     stringsAsFactors = FALSE)
+}
+
+# One synthetic working day, revealed case by case in Active tracking.
+supervisor_simulate_day <- function(historical, zone, priority, metric_id,
+                                     abnormal=FALSE, as_of=Sys.time()) {
+  days <- as.Date(as_of,tz='America/New_York')
+  info <- response_metric_info(metric_id)
+  moments <- list(scene=supervisor_baseline_moments(historical,'call_to_scene',zone,priority),
+    transport=supervisor_baseline_moments(historical,'transport_to_hospital',zone,priority))
+  rows <- lapply(seq_along(days),function(k) do.call(rbind,lapply(seq_len(12),function(j) {
+    start <- as.POSIXct(paste(days[k],'08:00:00'),tz='America/New_York')+(j-1)*60*60
+    call <- supervisor_simulate_call(historical,zone,priority,(k-1L)*12L+j,start,responder='EMS-101',baseline_moments=moments)
+    call$incident_id <- sprintf('DAY-%s-%02d',format(days[k],'%Y%m%d'),j)
+    call$response_system_source <- 'Synthetic active-day demonstration'
+    if(isTRUE(abnormal) && j>=10L) {
+      old_transport <- as.numeric(difftime(qc_parse_time(call$hospital_arrival_time),qc_parse_time(call$transport_departure_time),units='mins'))
+      end <- qc_parse_time(call[[info$start_field]])+30*60
+      stamp <- function(t)format(t,'%Y-%m-%dT%H:%M:%S%z',tz='America/New_York')
+      call[[info$end_field]] <- stamp(end)
+      if(metric_id=='call_to_scene') {
+        call$transport_departure_time <- stamp(end+10*60)
+        call$hospital_arrival_time <- stamp(end+10*60+old_transport*60)
+      }
+      call$response_system_source <- 'Synthetic active-day demonstration: planted 30-minute delay'
+    }
+    call
+  })))
+  do.call(rbind,rows)
+}
+
+# Presentation metadata only: no measurements or statistical formulas change.
+supervisor_chart_guides <- function() {
+  key <- function(symbol,label,color='#2C3E50') c(symbol=symbol,label=label,color=color)
+  box <- list(text='Compare completed durations across categories. The box spans the middle 50%; its line is the median. Whiskers extend to the most extreme values within 1.5 box lengths. Dots are individual records. Counts show sample size; comparisons are descriptive, not adjusted rankings or causes.',
+    legend=list(key('▰','Middle 50%','#AFC6D9'),key('━','Median','#D15B4A'),key('│','Whiskers'),key('●','Individual record'),key('n','Sample count')))
+  list(
+    i_chart=list(text='Each point is one completed selected-metric duration in minutes, ordered within the zone/priority group. Red can mean an SPC rule or contextual-target miss; open its signal details to see which. Control limits describe historical variation, not a response-time promise. Green targets are separate from control limits. Only the latest 24 visible records are plotted unless a signal is selected.',
+      legend=list(key('●','Completed duration','#5B6B7A'),key('●','SPC or target signal','#D15B4A'),key('━','Baseline mean'),key('┄','Control limits','#D15B4A'),key('┄','Dot-dash: contextual target','#6B8F7A'),key('◯','Latest record; larger ring = selected signal'))),
+    mr_chart=list(text='Each point is the absolute change in minutes from the preceding completed duration in the same metric/zone/priority sequence. A large change signals variation, not necessarily a long response. The predecessor can be outside your displayed date filter. Limits stay fixed when filters change.',
+      legend=list(key('●','Consecutive change','#5B6B7A'),key('●','Above MR upper limit','#D15B4A'),key('━','Baseline mean moving range'),key('┄','MR upper limit','#D15B4A'),key('◯','Latest record; larger ring = selected signal'))),
+    zone_boxplot=box, weather_boxplot=box,
+    heatmap=list(text='Columns are the selected metric’s start hour and rows are weekdays in New York time. Each cell shows median minutes and n, the number of completed records. Darker cells mean a higher median. Blank cells have no data; they do not mean zero minutes. These patterns do not identify causes.',
+      legend=list(key('▰','Lighter = lower median','#EFEAE2'),key('▰','Darker = higher median','#6F93B4'),key('□','Blank = no records','#FFFFFF'),key('n','Records in cell'))),
+    history_control_chart=list(text='Each point is the mean duration for one completed day or week, not one incident. The blue band shows baseline-based three-sigma limits adjusted for that period’s sample count; larger samples have narrower limits. The horizontal line is the fixed baseline center. Today’s open day is excluded. No point means no completed subgroup, not zero performance.',
+      legend=list(key('●','Within subgroup limits','#6B8F7A'),key('●','Outside subgroup limits','#D15B4A'),key('▰','Variable control-limit band','#AFC6D9'),key('━','Baseline center'),key('●','Circle = 2025 baseline','#6F93B4'),key('▲','Triangle = closed monitoring','#6F93B4'),key('n','Larger point = more records'))),
+    history_distribution_chart=list(text='Bars count how many completed daily/weekly subgroup means fall in each duration interval. Horizontal units are minutes; vertical units are subgroups. The baseline-center line is a reference, not a control limit. A configured service-goal line is a management threshold, not an SPC limit.',
+      legend=list(key('▰','Count of subgroup means','#AFC6D9'),key('│','Baseline center'),key('┆','Configured service goal, when present','#E6A700'))),
+    history_monthly_chart=list(text='Each monthly box summarizes completed daily means in minutes. It does not show individual incident durations. Boxes show the middle half; the line inside is the median. Red points are boxplot outliers, not automatically control-chart signals. The dashed horizontal reference is the baseline center.',
+      legend=list(key('▰','Middle 50% of daily means','#E6EEF5'),key('━','Median; whiskers show spread'),key('●','Boxplot outlier','#D15B4A'),key('┄','Baseline center','#6B8F7A'))),
+    service_goal_plot=list(text='Each bar is a zone/priority group’s observed 90th-percentile duration in minutes. The cross marks its configured service goal. Green means p90 is at or below the goal; red means above. Labels give the percent of incidents within the goal and n. Service goals are separate from statistical control limits. No observations cannot establish performance.',
+      legend=list(key('▰','p90 meets goal','#6B8F7A'),key('▰','p90 misses goal','#D15B4A'),key('▰','Goal not configured','#AFC6D9'),key('×','Configured goal'),key('n','Completed records'))),
+    adjusted_zone_plot=list(text='Dots are model-adjusted geometric means in minutes, standardized to the synthetic reference mix of weather and time. Horizontal bars are 95% model intervals; point size shows reference sample count. These are model-based associations, not causal effects or a validated ranking.',
+      legend=list(key('●','Adjusted geometric mean','#D15B4A'),key('━','95% model interval','#5B6B7A'),key('n','Larger point = more reference records'))),
+    adjusted_priority_plot=list(text='Dots compare model-adjusted geometric mean minutes across priorities using the synthetic reference mix. Bars are 95% model intervals and size shows reference count. Adjusting for recorded predictors does not remove unmeasured differences or establish causation.',
+      legend=list(key('●','Adjusted geometric mean','#D15B4A'),key('━','95% model interval','#5B6B7A'),key('n','Larger point = more reference records')))
+  )
+}
+
+supervisor_chart <- function(ns,id,height=345) {
+  guide <- supervisor_chart_guides()[[id]]
+  stopifnot(!is.null(guide))
+  tagList(
+    tags$details(class='supervisor-chart-guide',tags$summary('How to read this chart'),p(guide$text)),
+    div(class='supervisor-chart-legend',role='list',`aria-label`='Chart legend',
+      lapply(guide$legend,function(item)span(role='listitem',
+        span(class='chart-key-symbol',style=paste0('color:',item[['color']]),`aria-hidden`='true',item[['symbol']]),
+        item[['label']]))),
+    plotOutput(ns(id),height=height))
 }
 
 supervisor_ui <- function(id) {
@@ -222,7 +290,7 @@ supervisor_ui <- function(id) {
         tags$summary(title = 'Developer settings',
           onclick = sprintf("if (this.parentElement.open) Shiny.setInputValue('%s', Date.now(), {priority: 'event'});",
             ns('developer_panel_closed')),
-          tags$span(class = 'sr-only', 'Developer settings')),
+          tags$span('Advanced demo settings')),
         uiOutput(ns('developer_controls')))
     ),
     tags$main(class = 'workspace',
@@ -255,12 +323,12 @@ supervisor_ui <- function(id) {
           textOutput(ns('scope_label'), inline = TRUE),
           div(class = 'status-pill', strong('QC status: '), textOutput(ns('qc_status'), inline = TRUE))),
         uiOutput(ns('source_notice')),
-        uiOutput(ns('shared_trip')),
         div(class = 'replay-timeline',
           div(class = 'timeline-clock', span(class = 'timeline-pulse'),
             strong(textOutput(ns('time_context_label'), inline = TRUE)),
             textOutput(ns('overview_sim_time'), inline = TRUE)),
           textOutput(ns('latest_arrival'), inline = TRUE))),
+      uiOutput(ns('shared_trip')),
       tabsetPanel(id = ns('main_tabs'), type = 'hidden', selected = 'Active tracking',
         tabPanel('Active tracking',
           div(class = 'kpi-grid',
@@ -278,10 +346,10 @@ supervisor_ui <- function(id) {
             div(class = 'chart-stack',
               panel_card('Individuals control chart',
                 'New completed metric records appear one by one in metric-start order. The chart shows the latest 24 visible incidents; dashed lines are fixed 2025 baseline limits.',
-                plotOutput(ns('i_chart'), height = 345)),
+                supervisor_chart(ns, 'i_chart', height = 345)),
               panel_card('Moving-range control chart',
                 'Each range uses its true predecessor in the full zone/priority sequence, even when this view hides other points.',
-                plotOutput(ns('mr_chart'), height = 265))),
+                supervisor_chart(ns, 'mr_chart', height = 265))),
             div(class = 'flag-panel panel-card',
               div(class = 'flag-heading', h3('Signals to investigate'),
                 span(class = 'flag-count', textOutput(ns('flag_count'), inline = TRUE))),
@@ -295,14 +363,14 @@ supervisor_ui <- function(id) {
         tabPanel('Patterns',
           panel_card('Neighborhood distribution',
             'Selected time span and priority. Type-7 quartiles and 1.5×IQR whiskers; descriptive only.',
-            plotOutput(ns('zone_boxplot'), height = 380)),
+            supervisor_chart(ns, 'zone_boxplot', height = 380)),
           div(class = 'two-col',
-            panel_card('Assignment hour × weekday',
+            panel_card('Metric start hour × weekday',
               'Median response minutes in America/New_York; labels show median and sample count. Blank means no data.',
-              plotOutput(ns('heatmap'), height = 420)),
+              supervisor_chart(ns, 'heatmap', height = 420)),
             panel_card('Weather context',
               'Synthetic assignment-time weather. Descriptive only; weather does not change QC limits or establish cause.',
-              plotOutput(ns('weather_boxplot'), height = 420)))
+              supervisor_chart(ns, 'weather_boxplot', height = 420)))
         ),
         tabPanel('History analysis',
           div(class = 'history-filter-bar',
@@ -327,7 +395,7 @@ supervisor_ui <- function(id) {
           uiOutput(ns('history_chart_layout')),
           panel_card('Performance against configured service goals',
             'The observed 90th percentile and percent within goal are management comparisons. Service goals are editable and do not change SPC control limits.',
-            plotOutput(ns('service_goal_plot'), height = 520),
+            supervisor_chart(ns, 'service_goal_plot', height = 520),
             tags$details(class = 'service-goal-settings',
               tags$summary('Configure service goals'),
               div(class = 'service-goal-controls',
@@ -341,10 +409,10 @@ supervisor_ui <- function(id) {
           div(class = 'two-col',
             panel_card('Weather-adjusted zone comparison',
               'Marginal model estimates hold priority, weather, hour and weekday at the synthetic reference mix.',
-              plotOutput(ns('adjusted_zone_plot'), height = 360)),
+              supervisor_chart(ns, 'adjusted_zone_plot', height = 360)),
             panel_card('Weather-adjusted priority comparison',
               'Marginal model estimates hold zone, weather, hour and weekday at the synthetic reference mix.',
-              plotOutput(ns('adjusted_priority_plot'), height = 360))),
+              supervisor_chart(ns, 'adjusted_priority_plot', height = 360))),
           uiOutput(ns('intervention_panel'))
         )
       )
@@ -355,7 +423,7 @@ supervisor_ui <- function(id) {
 
 supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
-  state <- reactiveValues(mode = 'ordinary', developer_calls = NULL,
+  state <- reactiveValues(mode = 'ordinary', developer_calls = NULL, daily_demo_as_of = NULL, demo_day_cases = NULL,
     baseline_records = dashboard_load_fixture(repo_root, 'stable'),
     ui_tick = 0L, completed_tick = 0L, last_step = NULL,
     service_goals = supervisor_empty_service_goals(),
@@ -373,6 +441,8 @@ supervisor_server <- function(id, production_records) {
   }
 
   enter_developer_mode <- function() {
+    state$daily_demo_as_of <- NULL
+    state$demo_day_cases <- NULL
     state$mode <- 'developer'
     state$developer_calls <- response_metric_empty_records()
     state$last_step <- NULL
@@ -384,6 +454,8 @@ supervisor_server <- function(id, production_records) {
   }
 
   leave_developer_mode <- function() {
+    state$daily_demo_as_of <- NULL
+    state$demo_day_cases <- NULL
     state$mode <- 'ordinary'
     state$developer_calls <- NULL
     state$last_step <- NULL
@@ -454,6 +526,8 @@ supervisor_server <- function(id, production_records) {
   add_developer_call <- function(event_type = 'stable') {
     req(identical(state$mode, 'developer'), input$zone, input$priority)
     calls <- state$developer_calls
+    state$daily_demo_as_of <- NULL
+    state$demo_day_cases <- NULL
     if (identical(event_type, 'data_quality')) {
       state$developer_quality <- rbind(state$developer_quality, data.frame(
         issue_id = sprintf('DEMO-DQ-%02d', nrow(state$developer_quality) + 1L),
@@ -488,6 +562,43 @@ supervisor_server <- function(id, production_records) {
   })
   observeEvent(input$trigger_demo_event, add_developer_call(input$demo_event_type))
 
+  observeEvent(input$load_daily_demo, {
+    req(identical(state$mode,'developer'),input$zone,input$priority,input$metric)
+    state$demo_day_cases <- supervisor_simulate_day(state$baseline_records,input$zone,input$priority,
+      input$metric,abnormal=identical(input$daily_demo_scenario,'abnormal'))
+    state$developer_calls <- response_metric_empty_records()
+    state$developer_quality <- state$developer_quality[FALSE, , drop=FALSE]
+    state$interventions <- state$interventions[FALSE, , drop=FALSE]
+    state$last_step <- NULL
+    state$daily_demo_as_of <- qc_parse_time(state$demo_day_cases$call_received_time[1])
+    state$completed_tick <- isolate(state$completed_tick)+1L
+    state$ui_tick <- isolate(state$ui_tick)+1L
+    updateSelectInput(session,'time_span',selected='day')
+    updateDateInput(session,'day_date',value=as.Date(state$daily_demo_as_of,tz='America/New_York'))
+    updateTabsetPanel(session,'main_tabs',selected='Active tracking')
+  })
+  reveal_day_cases <- function(finish=FALSE) {
+    req(identical(state$mode,'developer'))
+    planned <- state$demo_day_cases
+    if(is.null(planned)) { showNotification('Select Start demo day first.',type='message');return() }
+    n <- nrow(state$developer_calls)
+    if(n>=nrow(planned)) {showNotification('Demo day complete. Start another day to replay.',type='message');return()}
+    end <- if(finish)nrow(planned) else n+1L
+    state$developer_calls <- planned[seq_len(end),,drop=FALSE]
+    last <- planned[end,,drop=FALSE]
+    event <- response_metric_completion_events(last,allow_mock=FALSE)
+    event <- event[event$metric_id==input$metric,,drop=FALSE]
+    last$display_minutes <- event$duration_minutes[[1]]
+    last$display_metric <- metric_info()$short_label
+    last$display_event <- if(grepl('planted',last$response_system_source))'planted delay' else 'normal demo case'
+    state$last_step <- last
+    state$daily_demo_as_of <- qc_parse_time(last$hospital_arrival_time)
+    state$completed_tick <- isolate(state$completed_tick)+1L
+    state$ui_tick <- isolate(state$ui_tick)+1L
+  }
+  observeEvent(input$next_demo_case,reveal_day_cases())
+  observeEvent(input$finish_demo_day,reveal_day_cases(TRUE))
+
   observeEvent(input$record_intervention, {
     req(identical(state$mode, 'developer'), input$intervention_type)
     row <- data.frame(id = sprintf('INT-%02d', nrow(state$interventions) + 1L),
@@ -504,7 +615,7 @@ supervisor_server <- function(id, production_records) {
       else production_records()
     as_of <- Sys.time()
     if (identical(state$mode, 'developer') && nrow(records))
-      as_of <- max(qc_parse_time(records$call_received_time))
+      as_of <- if(!is.null(state$daily_demo_as_of)) state$daily_demo_as_of else max(qc_parse_time(records$call_received_time))
     list(simulated_time = as_of, running = FALSE, pending = records[FALSE, , drop = FALSE],
       completed = records, processed_events = nrow(records), total_events = nrow(records))
   })
@@ -554,13 +665,12 @@ supervisor_server <- function(id, production_records) {
     if (!identical(state$mode, 'developer')) {
       return(tagList(
         tags$p('Ordinary mode is active. The dashboard is reading only the shared Caller and Responder response stream.'),
-        actionButton(session$ns('enter_developer'), 'Enter developer mode',
-          class = 'btn-default', width = '100%')))
+        tags$p('Select Try demo mode above the dashboard to explore generated examples.')))
     }
     tagList(
       div(class = 'developer-mode-card',
         tags$strong('Developer mode active'),
-        tags$p('The ordinary stream is disconnected from this view. Use Add simulated call above the dashboard to add synthetic completed calls; they are discarded when you leave developer mode.')),
+        tags$p('Graphs show only developer cases. The connected Caller/Responder trip remains visible separately. Generated cases are discarded when you leave developer mode.')),
       div(class = 'review-box',
         checkboxInput(session$ns('demo_review'),
           'Use synthetic baseline-review fixture', value = TRUE),
@@ -572,33 +682,49 @@ supervisor_server <- function(id, production_records) {
         numericInput(session$ns('developer_transport_target'), 'Departure → hospital target (minutes)',
           value = 8, min = 1, max = 120, step = .5),
         tags$small('Developer mode only. Ordinary mode uses the frozen synthetic context model.')),
-      actionButton(session$ns('end_developer'), 'End developer mode',
-        class = 'btn-warning', width = '100%'))
+      tags$p('Select Exit demo mode above the graphs to return to the shared live records.'))
   })
 
   # The bar itself renders only when the mode changes, so the button keeps focus
   # across clicks; the status text updates separately.
   output$developer_bar <- renderUI({
-    if (!identical(state$mode, 'developer')) return(NULL)
-    div(class = 'developer-bar', role = 'region', `aria-label` = 'Developer simulation',
-      uiOutput(session$ns('developer_bar_text'), class = 'developer-bar-text'),
-      div(class = 'developer-actions',
-        actionButton(session$ns('add_call'), 'Add stable call', class = 'btn-primary',
-          icon = icon('plus')),
-        selectInput(session$ns('demo_event_type'), NULL,
-          choices = c('Extreme point' = 'extreme', 'Shift' = 'shift', 'Trend' = 'trend',
-            'Target miss' = 'target_miss', 'Data-quality warning' = 'data_quality',
-            'Post-intervention improvement' = 'improvement'), selected = 'extreme'),
-        actionButton(session$ns('trigger_demo_event'), 'Trigger demo event', class = 'btn-warning')))
+    if (!identical(state$mode, 'developer')) return(
+      div(class='developer-bar',role='region',`aria-label`='Demo controls',
+        div(strong('Explore a demo'),p('Generate normal and delayed daily cases. Your connected live trip stays separate.')),
+        actionButton(session$ns('enter_developer'),'Try demo mode',class='btn-primary')))
+    div(class='developer-bar',role='region',`aria-label`='Developer simulation',
+      uiOutput(session$ns('developer_bar_text'),class='developer-bar-text'),
+      div(class='developer-actions',
+        selectInput(session$ns('daily_demo_scenario'),'Daily demo',
+          choices=c('Normal day'='stable','Day with delays'='abnormal')),
+        actionButton(session$ns('load_daily_demo'),'Start demo day',class='btn-primary'),
+        actionButton(session$ns('next_demo_case'),'Next completed case',class='btn-default'),
+        actionButton(session$ns('finish_demo_day'),'Complete demo day',class='btn-default'),
+        actionButton(session$ns('end_developer'),'Exit demo mode',class='btn-default')),
+      p('One day, 12 cases: reveal each completed case or jump to the end. The delay scenario has three 30-minute cases. Live trips stay separate.'),
+      tags$details(tags$summary('Advanced: individual cases and events'),
+        div(class='developer-actions',
+          actionButton(session$ns('add_call'),'Add stable call',class='btn-primary',icon=icon('plus')),
+          selectInput(session$ns('demo_event_type'),'Event',
+            choices=c('Extreme point'='extreme','Shift'='shift','Trend'='trend','Target miss'='target_miss',
+              'Data-quality warning'='data_quality','Post-intervention improvement'='improvement'),selected='extreme'),
+          actionButton(session$ns('trigger_demo_event'),'Trigger demo event',class='btn-warning'))))
   })
   output$developer_bar_text <- renderUI({
     req(identical(state$mode, 'developer'))
     target <- sprintf('%s · %s priority', input$zone, input$priority)
     last <- state$last_step
     n <- nrow(state$developer_calls)
+    day_summary <- NULL
+    if(!is.null(state$demo_day_cases)) {
+      daily <- qc_validate(response_metric_to_qc(state$developer_calls,input$metric,allow_mock=FALSE))$completed
+      day_summary <- tags$p(if(!nrow(daily))'No completed demo cases yet.' else
+        sprintf('Demo-day average: %.1f min · %s · %s / %s · n=%d',mean(daily$response_minutes),
+          metric_info()$short_label,state$demo_day_cases$zone[1],state$demo_day_cases$call_priority[1],nrow(daily)))
+    }
     tagList(
       div(class = 'kpi-label', 'Developer mode · synthetic simulation'),
-      tags$strong(sprintf('%d simulated call%s', n, if (n == 1L) '' else 's')),
+      tags$strong(if(!is.null(state$demo_day_cases))sprintf('Demo day: %d of 12 completed cases%s',n,if(n==12)' · day complete' else '') else sprintf('%d simulated call%s', n, if (n == 1L) '' else 's')),day_summary,
       tags$span(class = 'developer-bar-detail', role = 'status',
         if (is.null(last)) paste('Next call goes to', target)
         else sprintf('Last: %s · %s / %s · %s %.1f min · %s · next call goes to %s',
@@ -743,7 +869,7 @@ supervisor_server <- function(id, production_records) {
   })
 
   output$shared_trip <- renderUI({
-    if(!identical(state$mode,'ordinary') || !exists('responder_trip_snapshot',mode='function')) return(NULL)
+    if(!exists('responder_trip_snapshot',mode='function')) return(NULL)
     trip <- responder_trip_snapshot()
     if(is.null(trip)) return(NULL)
     label <- if(trip$phase=='hospital') 'At hospital' else if(trip$phase=='transport') 'Transporting to hospital' else responder_demo(trip$scene_elapsed,trip$scenario)$status
@@ -751,7 +877,7 @@ supervisor_server <- function(id, production_records) {
       h3(paste(trip$incident_id,'·',trip$unit)),
       p(paste(trip$zone,'·',trip$priority,'·',label)),
       if(!is.null(trip$hospital)) p(strong('Confirmed hospital: '),trip$hospital$name),
-      p(class='filter-note','Same trip as Responder and private Caller tracking. Synthetic event times; developer replay remains separate.'))
+      p(class='filter-note','Same trip as Responder and private Caller tracking. Live trip records stay separate from developer graphs. Synthetic event times.'))
   })
   output$connection_contract <- renderUI({
     info <- metric_info()
@@ -1003,7 +1129,7 @@ supervisor_server <- function(id, production_records) {
       scale_fill_gradient(low = '#EFEAE2', high = '#6F93B4', na.value = '#FFFFFF',
         name = 'Median\nminutes') +
       scale_x_continuous(breaks = seq(0, 23, 3)) +
-      labs(x = 'Assignment hour (America/New_York)', y = NULL,
+      labs(x = 'Metric start hour (America/New_York)', y = NULL,
         title = sprintf('%s / %s · %s · n=%d', input$zone, input$priority,
           metric_info()$short_label, nrow(d))) +
       theme_minimal(base_size = 10) + theme(panel.grid = element_blank())
@@ -1181,21 +1307,21 @@ supervisor_server <- function(id, production_records) {
     if (identical(input$history_period, '30'))
       return(panel_card('Recent subgroup control chart',
         'A focused timeline is clearest for a short review period.',
-        plotOutput(session$ns('history_control_chart'), height = 380)))
+        supervisor_chart(session$ns, 'history_control_chart', height = 380)))
     if (identical(input$history_period, '90'))
       return(div(class = 'two-col history-chart-grid',
         panel_card('Subgroup control chart', 'Daily sequence and variable limits.',
-          plotOutput(session$ns('history_control_chart'), height = 360)),
+          supervisor_chart(session$ns, 'history_control_chart', height = 360)),
         panel_card('Subgroup distribution', 'Histogram summarizes the selected completed periods.',
-          plotOutput(session$ns('history_distribution_chart'), height = 360))))
+          supervisor_chart(session$ns, 'history_distribution_chart', height = 360))))
     tagList(
       div(class = 'two-col history-chart-grid',
         panel_card('Subgroup control chart', 'Automatic mode uses weekly subgroups for the full-year view.',
-          plotOutput(session$ns('history_control_chart'), height = 360)),
+          supervisor_chart(session$ns, 'history_control_chart', height = 360)),
         panel_card('Subgroup distribution', 'Histogram keeps a full year readable.',
-          plotOutput(session$ns('history_distribution_chart'), height = 360))),
+          supervisor_chart(session$ns, 'history_distribution_chart', height = 360))),
       panel_card('Monthly distribution', 'One summary per month avoids an unreadable boxplot for every day.',
-        plotOutput(session$ns('history_monthly_chart'), height = 320)))
+        supervisor_chart(session$ns, 'history_monthly_chart', height = 320)))
   })
 
   output$service_goal_plot <- renderPlot({

@@ -224,3 +224,27 @@ Remaining environment checks: Posit Connect deployment, shared state across its
 worker/session configuration, actual phone/PWA installation, and real offline
 browser behavior. Current shared records are process-local and disappear on
 server restart. H-15 automatic dispatch selection remains deferred.
+
+## Active-tracking day demonstration (H-45)
+
+In Supervisor, select the metric, zone and priority and click **Try demo mode**.
+Choose **Normal day** or **Day with delays**, then **Start demo day**. This resets
+only generated developer cases and stays in **Active tracking** with Day selected.
+Use **Next completed case** to reveal each incident, or **Complete demo day** to
+show the end-of-day view. Counts, demo-day arithmetic mean, existing KPIs, signals
+and I-MR charts update as cases complete. Twelve cases are assigned hourly from
+08:00 to 19:00 on the current New York calendar day; displayed replay time is
+synthetic. The delayed scenario sets the final three selected-metric durations
+to 30 minutes. This is deliberately planted demonstration data, not a forecast.
+
+The active Caller/Responder trip remains visible alongside these graphs. Its
+records are isolated from generated cases and remain in the ordinary stream.
+Exiting demo mode discards generated cases and reconnects ordinary analysis
+without resetting the live trip. History analysis is unchanged: today's open
+day is not presented as a closed historical subgroup. Advanced single-case,
+event and target controls remain available.
+
+Checks: `Rscript tests/verify-supervisor-daily-demo.R` verifies progression,
+chart rendering and isolation. `testthat::test_file('tests/test-supervisor-daily-demo.R')`
+verifies repeatability, planted values, mean calculations, constant/empty cases
+and unchanged limits.
