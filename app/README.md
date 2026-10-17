@@ -1,3 +1,20 @@
+# Combined role interfaces
+
+The main app now integrates `branch-sub-supervisor`, `codex/caller-tracking`,
+and the responder/map/transport work from main. Run `Rscript app/testme.R`
+(default http://127.0.0.1:3838); set PORT=5300 for the existing preview.
+Dependencies: shiny, openssl, jsonlite, ggplot2. Tests additionally need testthat.
+
+- Supervisor: ordinary mode and isolated developer replay, in `supervisor.R`.
+- Responder: call replay, weather cards, road maps, hospital transport, in `responder-server.R`.
+- Caller: password-free expiring incident links and tracking, in `caller/caller.R`.
+
+Caller assets are namespaced under caller-assets; only one Leaflet copy loads.
+Synthetic sessions are still independent: merging the interfaces does not wire
+responder events into the supervisor canonical stream or caller tracking store.
+The ETA branch is preserved, but validated ETA is not yet displayed in the UI.
+No real EMS request is sent. Local data and account state reset with the process.
+
 # Emergency Response Quality Monitor
 
 Supervisor interface scaffold built from `demos/shinyapp/app.R`.

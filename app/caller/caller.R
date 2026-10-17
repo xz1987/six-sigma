@@ -89,13 +89,12 @@ caller_map <- function(d) {
        arrived=identical(d$status,'arrived'),
        stale=as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30)
 }
-caller_ui <- function(id) {
+caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
   ns<-shiny::NS(id)
   shiny::tagList(
-    shiny::tags$link(rel='stylesheet',href='vendor/leaflet/leaflet.css'),
-    shiny::tags$script(src='vendor/leaflet/leaflet.js'),
-    shiny::tags$link(rel='stylesheet',href='caller.css'),
-    shiny::tags$script(src='caller.js',defer=NA),
+    if (include_leaflet) shiny::tagList(shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'vendor/leaflet/leaflet.css')), shiny::tags$script(src=paste0(asset_prefix,'vendor/leaflet/leaflet.js'))),
+    shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css')),
+    shiny::tags$script(src=paste0(asset_prefix,'caller.js'),defer=NA),
     shiny::div(class='caller-workspace',
       shiny::div(class='caller-heading',shiny::span(class='caller-eyebrow','03 / YOUR RESPONSE'),shiny::h2('Your ambulance, at a glance'),shiny::p('Follow the response to your incident in one place.')),
       shiny::div(class='caller-connection',role='status','Connection interrupted. Showing last known information; reconnect for updates.'),

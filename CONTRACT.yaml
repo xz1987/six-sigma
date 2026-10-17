@@ -311,3 +311,24 @@ tasks:
     definition_of_done: "Rscript app/caller/verify.R passes incident isolation, expired/invalid access, status and arrival transitions, ETA unavailable, and module server checks; browser preview reviewed."
     result: "Caller module now uses dispatch-generated private tracking links without passwords; cross-session isolation/expiry/revocation and status/arrival server checks pass. Safari dispatch-generated link click-through now verified; all nine caller verify.R checks pass, including automatic provider destination updates. Shared data merge, validated ETA and hosted installation checks remain pending."
 
+
+  - id: H-19
+    title: Isolate and refocus the Supervisor response-time dashboard
+    status: in_progress
+    owner: "Codex (Supervisor module refactor)"
+    started_at: "2026-10-16"
+    owns: ["SPEC.md", "app/app.R", "app/supervisor.R", "app/response-metrics.R", "app/www/styles.css", "app/www/supervisor.css", "tests/test-supervisor-view.R", "CONTRACT.yaml"]
+    notes: "User requested a physical boundary and then approved a Supervisor-first base interface. app/app.R remains the role/login shell; app/supervisor.R owns the dashboard. Ordinary mode is the default and reads only the process-level in-memory canonical stream shared by Caller, Responder, and Supervisor sessions; the current role prototypes do not emit records yet and durable storage remains a future backend concern. Opening Developer settings and explicitly entering Developer mode creates an isolated fixture replay. Closing the panel or ending Developer mode stops and discards replay state, restores today's production period, and reconnects the dashboard to the ordinary stream. The user finalized two response-system metrics on 2026-10-16: call received to confirmed scene arrival, and transport departure to confirmed hospital arrival. app/response-metrics.R is the shared connection boundary and converts canonical timestamps or explicitly synthetic developer-fixture proxies into the unchanged QC input shape. Day, week, or month selection has no custom range and no Data & method tab. Fixed metric-specific zone/priority baseline limits and full-group moving-range sequence never change with display filters."
+    definition_of_done: "Rscript app/smoke.R prints SMOKE PASS; Rscript -e \"testthat::test_dir('tests')\" reports zero failures; in a running Shiny browser session, Supervisor login opens in ordinary mode on today's date and reads the shared Caller/Responder canonical stream, Developer mode visibly switches to isolated fixture replay, replay adds at most one completed response-system record per beat while simulated time and chart change, ending Developer mode or closing its panel stops replay and restores ordinary mode, day/week/month selectors update the displayed period without a custom range, no Data & method tab appears, and Primary responder and Caller remain accessible without Supervisor content."
+    result: "Dual-metric Supervisor interface now defaults to ordinary mode on today's date and reads a process-level canonical Caller/Responder stream. Developer mode alone creates fixture replay state; both closing its panel and selecting End developer mode stop and discard replay, then restore ordinary mode. SMOKE PASS and the live mode transitions render with zero Shiny output errors. Caller/Responder prototypes still emit no records; durable storage remains unimplemented. Awaiting teammate diff review and commit approval; no commit or push."
+
+
+  - id: H-20
+    title: Merge all role interface branches into one app
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/", "CONTRACT.yaml", "SPEC.md"]
+    notes: "User requested all interface branches merged and app opened. Preserve separate supervisor, responder and caller modules; resolve task-ID collisions without discarding entries."
+    definition_of_done: "No merge conflicts; combined app initializes; staff role and caller-link integration checks, caller verify, QC/supervisor/feed/ETA tests and smoke checks pass; open combined app."
+    result: "Merged both interface branches; preserved responder, namespaced caller resources, and guarded supervisor initialization. Combined role/link checks, 118 QC/supervisor assertions, feed/ETA tests, nine caller checks and SMOKE PASS succeeded; browser handoff pending."
