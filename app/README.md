@@ -248,3 +248,18 @@ Checks: `Rscript tests/verify-supervisor-daily-demo.R` verifies progression,
 chart rendering and isolation. `testthat::test_file('tests/test-supervisor-daily-demo.R')`
 verifies repeatability, planted values, mean calculations, constant/empty cases
 and unchanged limits.
+
+## Publish to course Posit Connect
+
+Run `Rscript app/manifestme.R` from the repository root with rsconnect installed.
+It copies the three required synthetic fixture CSVs into `app/data/` and writes
+`app/manifest.json` using only runtime source files, assets and these data files.
+`Rscript tests/verify-deploy-bundle.R` checks startup without the parent repository.
+Commit the generated files before publishing. In Connect, choose Publish → Import
+from Git, use this repository's `main` branch and select the `app` manifest.
+
+This demo shares incidents and disposable staff accounts in a single R process.
+Set Connect's maximum processes to **1**, with at least one process kept running,
+so separate role sessions share the same trip. In-memory demo records reset when
+the process restarts. Hospital directories and route snapshots remain bundled;
+map tiles require the browser to reach OpenStreetMap.
