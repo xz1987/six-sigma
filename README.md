@@ -11,8 +11,9 @@ measure real Queens EMS performance or establish clinical response targets.
 
 ## Open or run the app
 
-**Hosted app:** deployment is being finalized by the team. Add the verified public
-Posit Connect link here before submission. A local preview is not a hosted link.
+**Hosted app:** [DIIS Emergency Response Monitor](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/)
+on Posit Connect. Open **About this app** from the role-selection screen for a
+plain-language overview and current development limits.
 
 From a fresh clone, with R installed:
 

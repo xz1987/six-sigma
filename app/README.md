@@ -4,6 +4,10 @@ Start with the [project README](../README.md) for setup, role walkthrough and
 scope. This is an R/Shiny application, not a public REST API or an installed R
 package. Source functions from their files for scripted analysis.
 
+For the short user-facing overview, see [About the app](../docs/about.md).
+The current [hosted demo](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/)
+opens on the same role-selection screen.
+
 ## Runtime and architecture
 
 Run `Rscript app/testme.R` from the repository root. `PORT` defaults to 3838 and
@@ -155,8 +159,8 @@ The manifest script bundles the required synthetic CSVs under `app/data/` and
 writes `app/manifest.json`. Refresh it after runtime source/assets change. The
 bundle check verifies startup without the parent repository. Publish the `app/`
 directory to the course Posit Connect server using the team's deployment setup.
-Keep publishing credentials in environment/repository secrets. Deployment details
-and the verified hosted link remain the deployment owner's responsibility.
+Keep publishing credentials in environment/repository secrets. The current
+content is [hosted here](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/).
 Configure one R process so separate role sessions share state. Records disappear
 on restart; durable storage, operational authentication and multiworker shared
 storage are future work.
@@ -206,15 +210,15 @@ Known remaining items:
 - The Supervisor day-demo module check emits 12 R warnings that `tzone`
   attributes are inconsistent. Its chronology, fixed-limit and isolation checks
   pass; the run is not warning-free.
-- A hosted URL is not recorded in the current README. Public-host accessibility,
-  deployed cross-session behavior and device installation still need verification.
+- The hosted link was added in the subsequent teammate update. This local audit
+  does not verify that hosted release, deployed cross-session behavior or device installation.
 - SPEC records the team's challenge summary. `docs/prompts.md` links to Devpost
   for the exact prompt and describes a web frontend plus a package/library or
   API; SPEC and CLAUDE permit the Shiny dashboard with sourced R functions.
   Reconcile the required delivery format with the organizer's current wording
   before claiming complete submission compliance. No packaged R library or
   public statistical API is implemented by this app.
-- Add the verified live URL, complete the independent fresh-clone walkthrough,
+- Verify the documented live URL, complete the independent fresh-clone walkthrough,
   reconcile stale ledger entries and submit the repository/demo on Devpost.
 
 The implemented incident-level QC and synthetic scenarios address the recorded
