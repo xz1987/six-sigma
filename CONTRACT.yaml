@@ -445,3 +445,13 @@ tasks:
     notes: "Remove legacy span styling that stretches the number and adds top padding; center a fixed-size circular number and refresh the CSS URL."
     definition_of_done: "Caller verification passes and the numbered stages are reviewed in Safari."
     result: "All nine Caller checks pass. Safari screenshot confirms all four numbers centered inside circular outlines. Existing DIIS colors preserved."
+
+  - id: H-32
+    title: Randomize new demo incidents across all five zones
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/app.R", "app/shared-incidents.R", "app/responder-server.R", "app/www/responder-map.js", "app/www/demo-zone-trips.json", "app/caller/caller.R", "tests/verify-zone-trips.R"]
+    notes: "Choose the zone once at incident creation; share the zone, street route, fictional nearby hospitals and completion records across roles. Retain existing queued incident locations."
+    definition_of_done: "All five zones have nonempty road snapshots with matching scene/transport endpoints; shared-trip, Caller and role-stage checks pass."
+    result: "PASS: all five zone routes, matching hospital endpoints, shared records, and randomized creation. Shared-trip, role-stage, Caller, full testthat and smoke checks pass. Safari confirmed a randomized Far Rockaway incident, matching road route and hospitals, and the Caller hospital emoji/legend after confirmation."

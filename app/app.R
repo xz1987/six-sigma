@@ -24,8 +24,8 @@ source(file.path(repo_root, 'app', 'shared-incidents.R'), local=TRUE)
 source(file.path(repo_root, 'app', 'shared-trip.R'), local=TRUE)
 if (!requireNamespace("jsonlite", quietly = TRUE)) stop("Install jsonlite.")
 demo_hospitals <- jsonlite::fromJSON(file.path(repo_root, "app", "www", "demo-hospitals.json"), simplifyVector = FALSE)$hospitals
-hospital_candidates <- function(requirement) {
-  matches <- Filter(function(h) requirement %in% h$capabilities, demo_hospitals)
+hospital_candidates <- function(requirement, hospitals=demo_hospitals) {
+  matches <- Filter(function(h) requirement %in% h$capabilities, hospitals)
   matches[order(vapply(matches, function(h) h$distance_m, numeric(1)))]
 }
 brief_item <- function(symbol, label, value) div(class = "brief-item", span(class = "brief-symbol", icon(symbol), `aria-hidden` = "true"), div(span(class = "eyebrow", label), div(class = "brief-value", value)))
@@ -48,6 +48,7 @@ hospital_routes <- setNames(lapply(c('a','b','c'),function(id) {
   points <- as.data.frame(feature$geometry$coordinates);names(points) <- c('x','y');points
 }),c('a','b','c'))
 incident_service <- shared_new(eta_bundle, shared_route, publish=production_response_records,hospital_routes=hospital_routes)
+incident_service$zone_trips <- jsonlite::fromJSON(file.path(repo_root,'app/www/demo-zone-trips.json'),simplifyVector=FALSE)
 incident_service$ui_state <- new_shared_responder_state()
 shared_responder_state <- incident_service$ui_state
 
@@ -66,7 +67,7 @@ ui <- fluidPage(
     tags$link(rel = 'stylesheet', href = 'vendor/leaflet.css'),
     tags$link(rel = 'stylesheet', href = 'responder.css'),
     tags$script(src = 'vendor/leaflet.js'),
-    tags$script(src = 'responder-map.js', defer = NA),
+    tags$script(src = 'responder-map.js?v=zone-trips-1', defer = NA),
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'styles.css'),
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'supervisor.css'),
     tags$link(rel = 'stylesheet', href = 'workflow.css')

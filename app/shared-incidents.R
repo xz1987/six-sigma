@@ -1,3 +1,6 @@
+shared_points <- function(feature) {
+  points <- as.data.frame(matrix(as.numeric(unlist(feature$geometry$coordinates)),ncol=2,byrow=TRUE)); names(points)<-c('x','y'); points
+}
 # Process-local synthetic incident service. Tokens never enter supervisor records.
 shared_new <- function(bundle, route, publish = function(records) NULL, hospital_routes = list()) {
   e <- new.env(parent=emptyenv())
@@ -28,10 +31,15 @@ shared_save <- function(store, d) {
   store$publish(shared_records(store))
   invisible(d)
 }
-shared_create <- function(store, scenario='Rain + rush hour', now=Sys.time(), zone='Astoria', weather_inputs=NULL) {
+shared_create <- function(store, scenario='Rain + rush hour', now=Sys.time(), zone=NULL, weather_inputs=NULL) {
+  if(is.null(zone)) zone <- if(length(store$zone_trips)) sample(names(store$zone_trips),1L) else 'Astoria'
+  if(!zone %in% c('Astoria','Flushing','Jamaica','Forest Hills','Far Rockaway')) stop('Unsupported demo zone')
+  fixture <- store$zone_trips[[zone]]
   id <- paste0('DEMO-',paste(format(openssl::rand_bytes(6)),collapse=''))
   d <- caller_demo_incident(id,zone,now)
-  d$route <- store$route; d$ambulance_id <- 'Q-12'; d$call_priority <- 'High'
+  d$route <- if(is.null(fixture)) store$route else shared_points(fixture$scene)
+  d$zone_fixture <- fixture
+  d$ambulance_id <- 'Q-12'; d$call_priority <- 'High'
   d$scenario <- scenario; d$claimed <- FALSE; d$elapsed <- 0
   # Synthetic call receipt and assignment coincide in this demo; distinct fields
   # prevent the assignment-trained ETA being mislabeled as a call-to-scene model.
@@ -82,7 +90,7 @@ shared_transport <- function(store,id,hospital,now=Sys.time()) {
   address <- sprintf('Synthetic location %.6f, %.6f · Queens (fictional facility)',hospital$lat,hospital$lng)
   d <- caller_confirm_destination(d,hospital$name,address,max(now,d$arrived_at))
   d$hospital <- list(id=hospital$id,name=hospital$name,lat=hospital$lat,lng=hospital$lng)
-  d$hospital_route <- store$hospital_routes[[hospital$id]]
+  d$hospital_route <- if(is.null(d$zone_fixture)) store$hospital_routes[[hospital$id]] else shared_points(d$zone_fixture$hospital_routes[[hospital$id]])
   d$transport_elapsed <- 0
   d$transport_departed_at <- max(now,d$arrived_at)
   d$updated_at <- now

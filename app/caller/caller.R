@@ -42,7 +42,7 @@ caller_issue_access <- function(incident_id, now=Sys.time(), ttl=1800) {
 }
 # Called by the dispatcher when an incident is created. Store stays server-side.
 caller_dispatch_store <- function() new.env(parent=emptyenv())
-caller_create_dispatch <- function(store, zone='Astoria', now=Sys.time()) {
+caller_create_dispatch <- function(store, zone=sample(c('Astoria','Flushing','Jamaica','Forest Hills','Far Rockaway'),1L), now=Sys.time()) {
   id<-paste0('DEMO-',paste(format(openssl::rand_bytes(6)),collapse=''))
   d<-caller_demo_incident(id,zone,now)
   grant<-caller_issue_access(id,now)
@@ -96,7 +96,7 @@ caller_map <- function(d) {
   }
   list(incident_id=d$incident_id,ambulance=list(lat=unname(pos[2]),lng=unname(pos[1])),
        destination=list(lat=target$y,lng=target$x),hospital=hospital,hospital_route=route,
-       route_key=if(is.null(hospital))'scene' else hospital$id,
+       route_key=paste(d$incident_id,if(is.null(hospital))'scene' else hospital$id,sep=':'),
        transporting=transporting,
        arrived=if(transporting)!is.null(d$hospital_arrived_at) else identical(d$status,'arrived'),
        stale=as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30)

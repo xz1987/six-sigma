@@ -8,7 +8,13 @@
     if (!response.ok) throw Error(path);
     return response.json();
   }
-  function roadRoute(key) {
+  let zoneTrips;
+  function getZoneTrips() {
+    if(!zoneTrips) zoneTrips=getJSON('demo-zone-trips.json').catch(error=>{zoneTrips=null;throw error;});
+    return zoneTrips;
+  }
+  function roadRoute(key, zone) {
+    if(zone) return getZoneTrips().then(trips=>key==='scene'?trips[zone].scene:trips[zone].hospital_routes[key]);
     if (!routePromises.has(key)) {
       routePromises.set(key, getJSON(key === 'scene' ? 'demo-road-route.json' : `hospital-route-${key}.json`)
         .then(feature => {
@@ -57,7 +63,8 @@
           const status=document.getElementById('map-zones-status');
           if(status) status.textContent='Zone boundaries unavailable.';
         });
-        getJSON('demo-hospitals.json').then(data => {
+        getZoneTrips().then(trips => {
+          const data={hospitals:trips[latest.zone || 'Astoria'].hospitals};
           if(map!==activeMap) return;
           data.hospitals.forEach(h=>L.marker([h.lat,h.lng],{
             icon:L.divIcon({className:'hospital-map-icon',html:'<span aria-label="Fictional demo hospital">H</span>',iconSize:[26,26],iconAnchor:[13,13]})
@@ -72,9 +79,9 @@
       }
       const activeMap=map;
       const key=data.hospital || 'scene';
-      roadRoute(key).then(feature=>{
+      roadRoute(key,data.zone).then(feature=>{
         if(map!==activeMap || document.getElementById('responder-map')!==target) return;
-        if((latest.hospital || 'scene')!==key) return;
+        if((latest.hospital || 'scene')!==key || latest.zone!==data.zone) return;
         movement.clearLayers();
         const points=feature.geometry.coordinates.map(p=>[p[1],p[0]]);
         const fraction=key==='scene'?latest.elapsed/720:latest.travel/480;

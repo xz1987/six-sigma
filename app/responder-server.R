@@ -5,6 +5,10 @@ responder_server <- function(input, output, session, authenticated_role, active_
     if(missing(value)) ui_state[[name]] else ui_state[[name]] <- value
   }
   shared_id <- state_value('incident_id')
+  active_hospitals <- function() {
+    d <- incident_service$incidents[[shared_id()]]
+    if(is.null(d$zone_fixture)) demo_hospitals else d$zone_fixture$hospitals
+  }
   shared_link <- state_value('incident_link')
   caller_tracking_link <- state_value('caller_tracking_link')
   queued_ids <- reactivePoll(1000,session,
@@ -95,7 +99,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
   observeEvent(input$begin_transport, {
     req(identical(authenticated_role(), "responder"), demo_started(), transport_phase() == "scene")
     if (demo_elapsed() < 720) {showNotification("Reach the scene first, or use Advance to scene in this demo.", type="message"); return()}
-    candidates <- hospital_candidates(input$care_requirement)
+    candidates <- hospital_candidates(input$care_requirement, active_hospitals())
     selected <- Filter(function(h) identical(h$id,input$hospital_choice), candidates)
     if (!length(selected)) {showNotification("No matching demo hospital selected.",type="error");return()}
     if(!is.null(shared_id())) shared_transport(incident_service,shared_id(),selected[[1]])
@@ -148,7 +152,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
         selectInput("demo_conditions", "Choose simulated conditions", c("Rain + rush hour", "Heavy rain + rush hour", "Dry + light traffic", "Snow/ice + road closure")),
         uiOutput("shared_queue"),
         actionButton("simulate_call", "Simulate incoming call", class = "btn-primary"),
-        p(class = "footer", "Replay runs at 30 simulated seconds per real second. Conditions are fixed when the call starts."))),
+        p(class = "footer", "New calls randomly select one of five Queens zones. Replay runs at 30 simulated seconds per real second. Conditions are fixed when the call starts."))),
       tags$details(tags$summary("Trip link & arrival estimate"), uiOutput("shared_tracking"), uiOutput("shared_eta")), uiOutput("active_call")
     )
   })
@@ -157,16 +161,18 @@ responder_server <- function(input, output, session, authenticated_role, active_
     if (!demo_started()) return(empty_state("Ready for a demo call", "Choose conditions above, then simulate an incoming call."))
     # Do not rebuild map or controls on every clock tick.
     d <- responder_demo(0, demo_scenario())
-    if(!is.null(shared_id()))d$incident_id <- shared_id()
+    if(!is.null(shared_id())) {
+      d$incident_id <- shared_id(); d$zone <- incident_service$incidents[[shared_id()]]$zone
+    }
     tagList(
       div(class = "panel-box", div(class = "call-header",
         div(span(class = "eyebrow", d$incident_id), h3(tagList(icon("ambulance"), " New assignment"))),
         span(class = "assignment-priority", icon("exclamation-triangle"), " High · demo"), uiOutput("call_status")),
         div(class = "brief-grid",
           brief_item("phone", "Reason for call", "Reported fall · EMS assessment requested"),
-          brief_item("map-marker-alt", "Scene", "Near Astoria Park · Queens (synthetic)"),
+          brief_item("map-marker-alt", "Scene", paste(d$zone, "· Queens (synthetic scene)")),
           brief_item("ambulance", "Assigned unit", paste(d$unit, "·", d$zone)),
-          brief_item("door-open", "Access", "East-side park entrance · confirm with dispatch")),
+          brief_item("door-open", "Access", "Demo scene access point · confirm with dispatch")),
         tags$details(tags$summary("Demo replay controls"), div(class = "simulation-controls", actionButton("pause_call", "Pause / Resume", icon=icon("pause")),
           actionButton("advance_scene", "Advance to scene", icon=icon("forward")), actionButton("reset_call", "Start another demo call", icon=icon("undo")))),
         uiOutput("call_clock")),
@@ -232,7 +238,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
   })
   output$hospital_candidates_ui <- renderUI({
     req(identical(authenticated_role(), "responder"), demo_started())
-    candidates <- hospital_candidates(input$care_requirement)
+    candidates <- hospital_candidates(input$care_requirement, active_hospitals())
     if (!length(candidates)) return(div(class="notice","No demo facility matches this requirement. Ask dispatch to resolve; no destination is assigned."))
     labels <- vapply(candidates,function(h) sprintf("%s · %.2f miles by road",h$name,h$distance_m/1609.344),character(1))
     ids <- vapply(candidates,function(h) h$id,character(1))
@@ -254,9 +260,11 @@ responder_server <- function(input, output, session, authenticated_role, active_
   observe({
     req(identical(authenticated_role(), "responder"), demo_started())
     elapsed <- demo_elapsed(); phase <- transport_phase(); travel <- transport_elapsed(); hospital <- chosen_hospital()
+    zone <- incident_service$incidents[[shared_id()]]$zone
     session$onFlushed(function() {
       session$sendCustomMessage("responder-map", list(elapsed = elapsed, phase = phase, travel = travel,
-        hospital = if (is.null(hospital)) NULL else hospital$id))
+        hospital = if (is.null(hospital)) NULL else hospital$id,
+        zone = zone))
     }, once = TRUE)
   })
 }
