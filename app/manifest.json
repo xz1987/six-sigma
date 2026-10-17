@@ -1477,10 +1477,10 @@
       "checksum": "aa88cbc4f2ce96c1a82d8a7b61ae8026"
     },
     "supervisor-analytics.R": {
-      "checksum": "d4ab2d322307580fafe0c817bfffad05"
+      "checksum": "358e5499b94be7a323ecbc53e0053b60"
     },
     "supervisor.R": {
-      "checksum": "b59eab6903e0f274f60da73bb9276d93"
+      "checksum": "b3eaa207d140ce2741ca4ec3991da2d1"
     },
     "workflow.R": {
       "checksum": "dec2c6cf6cf3d6463beed818cbe04a45"
@@ -1539,6 +1539,9 @@
     "www/hospital-route-i.json": {
       "checksum": "299a6baf880c4b2faa11daed7ab13063"
     },
+    "www/history-tour.js": {
+      "checksum": "bd0fd6906da774eb6c1c4c51274770ef"
+    },
     "www/icons/diis-apple-touch-icon.png": {
       "checksum": "11df688357f8a616348eae6d09da7cd7"
     },
@@ -1573,7 +1576,7 @@
       "checksum": "6bd8397fb72d8302e7af623c1db8d8a9"
     },
     "www/supervisor.css": {
-      "checksum": "9a0b30ef3257e0770b0966da280afaae"
+      "checksum": "1a39b507ef355a3d0462e618ead07f72"
     },
     "www/sw.js": {
       "checksum": "be8e14a7479c6bd9abb4e28cbb0cbc27"

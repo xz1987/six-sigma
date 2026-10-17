@@ -133,6 +133,8 @@ test_that('history subgroups adapt between daily and weekly completed periods', 
   m <- data.frame(dispatch_time = as.POSIXct(c('2025-01-06 08:00:00',
     '2025-01-06 09:00:00', '2025-01-13 08:00:00'), tz = 'America/New_York'),
     response_minutes = c(8, 10, 14))
+  expect_equal(nrow(supervisor_history_period(m, '7')), 1L)
+  expect_equal(nrow(supervisor_history_period(m, '14')), 3L)
   daily <- supervisor_period_subgroups(m, center = 10, sigma = 2, 'day')
   weekly <- supervisor_period_subgroups(m, center = 10, sigma = 2, 'week')
   expect_equal(daily$n, c(2, 1))
@@ -140,6 +142,11 @@ test_that('history subgroups adapt between daily and weekly completed periods', 
   expect_equal(weekly$n, c(2, 1))
   expect_equal(as.character(weekly$period), c('2025-01-06', '2025-01-13'))
   expect_equal(supervisor_daily_subgroups(m, 10, 2)$mean, daily$mean)
+})
+
+test_that('subgroup count legends use observed integer values only', {
+  expect_equal(supervisor_count_breaks(c(2, 1, 2, 5)), c(1L, 2L, 5L))
+  expect_equal(supervisor_count_breaks(c(1, NA, Inf, 2)), c(1L, 2L))
 })
 
 test_that('service goals use zone overrides and never alter observed performance', {
@@ -160,4 +167,28 @@ test_that('service goals use zone overrides and never alter observed performance
   expect_equal(astoria$p90, 11.6)
   expect_equal(supervisor_clear_service_goal(goals, 'call_to_scene', 'High', 'Astoria')$zone,
     'All zones')
+})
+
+test_that('suggested service goals are reproducible editable baseline defaults', {
+  records <- dashboard_load_fixture(repo_root, 'stable')
+  a <- supervisor_suggested_service_goals(records)
+  b <- supervisor_suggested_service_goals(records)
+  expect_equal(a, b)
+  expect_equal(nrow(a), length(response_metric_catalog()$id) * length(qc_priorities))
+  expect_true(all(a$zone == 'All zones'))
+  expect_true(all(a$source == 'synthetic baseline suggestion'))
+  expect_true(all(is.finite(a$minutes) & a$minutes > 0))
+})
+
+test_that('selected-scope service summary reports one readable comparison', {
+  goals <- supervisor_empty_service_goals()
+  goals <- supervisor_set_service_goal(goals, 'call_to_scene', 'High', 'All zones', 10)
+  m <- data.frame(zone = c('Astoria', 'Astoria', 'Flushing'),
+    call_priority = c('High', 'High', 'High'), response_minutes = c(8, 12, 20))
+  d <- supervisor_service_scope_summary(m, goals, 'call_to_scene', 'Astoria', 'High')
+  expect_equal(d$n, 2L)
+  expect_equal(d$p90, 11.6)
+  expect_equal(d$goal, 10)
+  expect_equal(d$within_goal, .5)
+  expect_equal(d$status, 'Above goal')
 })

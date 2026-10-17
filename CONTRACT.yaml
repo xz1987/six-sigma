@@ -463,6 +463,46 @@ tasks:
     definition_of_done: "The Supervisor action reads Install app whenever the app is not installed, retains installed-state feedback, opens native installation when eligible or manual instructions otherwise, parses cleanly, and is confirmed in the browser."
     result: "Restored the persistent Supervisor action label to Install app in every non-installed state. Eligible browsers receive the native prompt; otherwise the same button opens manual platform instructions, while installed mode still reads App installed. R parsing, JavaScript syntax and git diff checks pass; browser inspection reports Install app."
 
+  - id: H-45
+    title: Improve adaptive subgroup distributions and short history windows
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/supervisor-analytics.R", "tests/test-supervisor-view.R"]
+    notes: "User reported that the histogram was too sparse because the full-year view reused weekly subgroup means, requested histograms for every history period, and asked for 7-day and 14-day selections plus clarification of subgroup n. Keep the control-chart aggregation adaptive, but base distribution histograms on completed daily subgroup means so full-year history retains every available completed day."
+    definition_of_done: "History includes 7, 14, 30, 90 and full-year periods; every period shows a daily-subgroup histogram with an explicit completed-day and incident count; full-year automatic control charts remain weekly while the histogram uses all completed daily means; the point-size legend explains n as completed response records per subgroup; Supervisor tests and browser review pass."
+    result: "Added latest 7, 14, 30 and 90 calendar-day selections plus full-year history. Every period now renders a daily-subgroup histogram with adaptive Freedman-Diaconis binning, daily rug marks, completed-day count and completed-response count; full-year Automatic mode retains a weekly control chart but its histogram uses all 135 completed daily means for the default group. Control-chart point size and caption now define n as completed response records per day or week. Full testthat prints FAIL 0 WARN 1 SKIP 0 PASS 140 (R build-version warning only); smoke prints SMOKE PASS; YAML and git diff checks pass; browser review confirmed every period renders both charts without errors and the full-year view retains its monthly distribution."
+
+  - id: H-46
+    title: Show only integer subgroup counts in the chart legend
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["CONTRACT.yaml", "app/supervisor.R", "app/supervisor-analytics.R", "tests/test-supervisor-view.R"]
+    notes: "The point-size variable n is an integer response-record count, but ggplot's automatic continuous legend interpolated fractional labels. Use only distinct observed integer counts as legend breaks."
+    definition_of_done: "The subgroup control-chart size legend contains only distinct observed integer n values; helper tests, Supervisor tests and browser review pass."
+    result: "The control-chart point-size legend now uses only distinct observed integer response counts. The default full-year weekly view displays 1 through 8 with no fractional labels. Supervisor tests print FAIL 0 WARN 0 SKIP 0 PASS 53; R parsing, YAML and git diff checks pass; browser screenshot confirms the integer-only legend."
+
+  - id: H-47
+    title: Add guided history interpretation and suggested service goals
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/supervisor-analytics.R", "app/www/supervisor.css", "app/www/history-tour.js", "tests/test-supervisor-view.R"]
+    notes: "Make History Analysis easier to review without adding another chart. Add collapsible step-by-step guidance, a selection-aware interpretation summary, synthetic baseline-derived suggested goals, and an explicit legend for the variable 3σ ribbon. Suggested goals are editable demonstration defaults, not official clinical standards."
+    definition_of_done: "History displays collapsible instructions and separate stability/service/caution interpretations; suggested goals are reproducible from the frozen synthetic baseline and visibly labeled; the grey ribbon has a Variable 3σ control limits legend; Supervisor tests and browser review pass."
+    result: "History now has a collapsible four-step review guide and a selection-aware panel separating process stability, service performance and interpretation limits. Reproducible synthetic baseline suggestions initialize both metrics for High, Medium and Low priorities; the default call-to-scene values are 12.0, 15.0 and 19.5 minutes and remain editable. The grey ribbon now has a Control reference legend identifying Variable 3σ control limits. Supervisor tests print FAIL 0 WARN 0 SKIP 0 PASS 58; R parsing, YAML and git diff checks pass; browser review confirmed the guide, default interpretation, suggested-goal labels and grey-band legend render correctly."
+
+  - id: H-48
+    title: Replace inline history guidance with an overlay tutorial and chart-level help
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/supervisor-analytics.R", "app/www/supervisor.css", "app/www/history-tour.js", "tests/test-supervisor-view.R"]
+    notes: "User requested a conventional step-by-step overlay for new History Analysis users, a collapsible How to read this chart panel for every history chart, a simpler selected-scope service-goal view, and removal of Intervention Tracking. Preserve the statistical rules and synthetic-goal disclaimer."
+    definition_of_done: "First History entry opens a navigable four-step overlay that can be skipped and replayed; every history chart has collapsible reading guidance; service-goal performance is summarized for the selected scope with p90, goal, percent within and n; Intervention Tracking is absent; Supervisor tests and browser review pass."
+    result: "History first entry now runs a four-step anchored coachmark tutorial that smooth-scrolls to and spotlights the exact filter bar, subgroup chart, service-goal panel and adjusted comparisons while keeping highlighted controls usable. Back, Next, Skip, Finish and replay were browser-verified, including changing the highlighted period filter and opening a chart guide during the tour. All History charts now use a prominent outlined How to read this chart toggle with a plus/minus state, visual mark legend and chart-specific interpretation. Full testthat prints FAIL 0 WARN 1 SKIP 0 PASS 152 (R build-version warning only); Supervisor tests print PASS 63; smoke prints SMOKE PASS; R/JavaScript parsing, YAML and git diff checks pass; browser console has no errors or warnings."
+
   - id: H-29
     title: Show a concise ETA and arrival time in Caller view
     status: in_progress
@@ -595,7 +635,7 @@ tasks:
     definition_of_done: "All plotted Supervisor outputs have a guide and legend; units, colors, lines and interpretation limits match the renderer; Supervisor and day-demo verification pass."
     result: "All 11 Supervisor graphs now include a keyboard-accessible expandable reading guide and visible symbol/text/color legend, including dynamic History layouts. Reading guides now have bordered button styling, plus/minus expansion indicators, hover feedback and keyboard focus outlines; chart guide checks PASS 67. Units and interpretation match renderers; calculations unchanged. Root tests PASS (chart coverage 67, day demo 18, Supervisor 49, QC 88, shared 1). Connected day-demo verification PASS with 12 existing nonblocking R warnings. Preview port 5802; uncommitted."
 
-  - id: H-47
+  - id: H-49
     title: Explain current Supervisor findings in plain language
     status: done
     owner: "Codex"
@@ -603,4 +643,4 @@ tasks:
     owns: ["app/supervisor.R", "app/manifest.json", "tests/test-supervisor-summary.R", "tests/verify-supervisor-daily-demo.R", "CONTRACT.yaml"]
     notes: "User approved a concise findings summary using existing results; separate historical upper-limit and variation signals, contextual target misses and configured service goals. No delay-cause inference or new statistical method."
     definition_of_done: "Known-count, overlap, empty and disabled-summary tests pass; connected day-demo check renders summary; root suite and deployment bundle checks pass; manifest checksums match changed runtime files."
-    result: "Layout-order verification and R parsing PASS; panel moved below the I/MR charts and above the completed-record table. Added What this view tells you panel using existing historical I/MR flags, contextual targets and configured service-goal performance. Covers overlap, empty views, unavailable review gates and cautious investigation guidance without new fitted statistics. Root tests PASS 237 including 14 summary checks; connected day-demo renders panel and passes with 12 existing timezone warnings; deployment bundle and manifest checksums PASS. Latest main ea26d8d preserved; local preview 5804; uncommitted."
+    result: "Layout-order verification and R parsing PASS; panel moved below the I/MR charts and above the completed-record table. Added What this view tells you panel using existing historical I/MR flags, contextual targets and configured service-goal performance. Covers overlap, empty views, unavailable review gates and cautious investigation guidance without new fitted statistics. Root tests PASS 237 including 14 summary checks; connected day-demo renders panel and passes with 12 existing timezone warnings; deployment bundle and manifest checksums PASS. Merged latest main 2f84ab7 history tutorials and service-goal improvements; merged root suite PASS 251, connected day demo and standalone bundle PASS; summary placement and manifest checksums PASS. Existing timezone warnings remain."
