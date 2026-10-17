@@ -27,6 +27,13 @@ shiny::testServer(supervisor_server,args=list(production_records=production_resp
    grepl('Historical variation:',paste(output$findings_summary,collapse=' ')),
    grepl('Context target:',paste(output$findings_summary,collapse=' ')),
    grepl('Configured service goal:',paste(output$findings_summary,collapse=' ')))
+ session$setInputs(history_phase='baseline',history_period='full',history_aggregation='week')
+ stopifnot(grepl('What this view tells you',paste(output$history_findings_summary,collapse=' ')),
+   grepl('weekly means',paste(output$history_findings_summary,collapse=' ')),
+   grepl('12 current-day responses are excluded',paste(output$history_findings_summary,collapse=' ')))
+ session$setInputs(history_phase='monitoring',history_period='7',history_aggregation='day')
+ stopifnot(grepl('No completed subgroups',paste(output$history_findings_summary,collapse=' ')),
+   grepl('Latest 7 calendar days',paste(output$history_findings_summary,collapse=' ')))
  original <- state$developer_calls
  frozen <- lapply(history_analysis()$groups,function(g)g$limits)
  shared_advance(incident_service,live_id,720)

@@ -22,3 +22,27 @@ test_that('plain summary distinguishes overlapping signals and management goals'
   expect_match(s$target,'0 of 1 records',fixed=TRUE)
   expect_match(s$action,'no signal does not prove acceptable',fixed=TRUE)
 })
+
+test_that('history summary describes subgroup means and individual goals separately', {
+  d <- data.frame(signal=c(FALSE,TRUE,NA))
+  goal <- data.frame(n=12,p90=15,within_goal=.75,goal=12)
+  s <- supervisor_history_summary(d,goal,'week',TRUE,'approved',4)
+  expect_match(s$history,'1 of 2 assessable weekly means',fixed=TRUE)
+  expect_match(s$history,'not counts',fixed=TRUE)
+  expect_match(s$goal,'p90 is 15.0 minutes; 75% of 12',fixed=TRUE)
+  expect_match(s$coverage,'4 current-day responses are excluded',fixed=TRUE)
+  expect_match(s$coverage,'distribution chart summarizes daily means',fixed=TRUE)
+  expect_match(s$action,'not prospective monitoring',fixed=TRUE)
+  s <- supervisor_history_summary(d,goal,'day',FALSE,'baseline requires review',0)
+  expect_match(s$history,'unavailable: baseline requires review',fixed=TRUE)
+  d$signal <- NA
+  s <- supervisor_history_summary(d,goal,'day',TRUE,'degenerate baseline',0)
+  expect_match(s$history,'unavailable: degenerate baseline',fixed=TRUE)
+  goal$n <- 0
+  s <- supervisor_history_summary(data.frame(),goal,'day',TRUE,'approved',0)
+  expect_match(s$history,'No completed subgroups',fixed=TRUE)
+  expect_match(s$goal,'No completed individual responses',fixed=TRUE)
+  goal$n <- 12;goal$goal <- NA_real_
+  s <- supervisor_history_summary(data.frame(signal=FALSE),goal,'day',TRUE,'approved',0)
+  expect_match(s$goal,'no service goal is configured',fixed=TRUE)
+})

@@ -267,6 +267,24 @@ supervisor_plain_summary <- function(m, flags_enabled, status, target_misses, se
     action='Review the signal details and verify timestamps and recorded circumstances. Signals do not establish a cause; no signal does not prove acceptable service. Display filters never change the fixed baseline limits.')
 }
 
+supervisor_history_summary <- function(d, service, aggregation, enabled, status, open_count) {
+  unit <- if (identical(aggregation,'week')) 'weekly' else 'daily'
+  known <- if(nrow(d)) sum(!is.na(d$signal)) else 0L
+  history <- if(!nrow(d)) 'No completed subgroups are available for this selection.' else
+    if(!isTRUE(enabled) || !known) paste('Subgroup limit comparisons unavailable:',status,
+      '— this is not evidence of zero signals.') else sprintf(
+      '%d of %d assessable %s means fall outside the baseline-derived control limits. These are period averages, not counts of unusually slow individual responses.',
+      sum(d$signal %in% TRUE),known,unit)
+  goal <- if(!nrow(service) || service$n[1]==0) 'No completed individual responses are available for service-goal comparison.' else
+    if(!is.finite(service$goal[1])) sprintf('Individual-response p90 is %.1f minutes across %d responses; no service goal is configured.',service$p90[1],service$n[1]) else sprintf(
+      'Individual-response p90 is %.1f minutes; %.0f%% of %d responses met the configured %.1f-minute goal. This goal is separate from control limits.',
+      service$p90[1],100*service$within_goal[1],service$n[1],service$goal[1])
+  list(history=history,goal=goal,coverage=sprintf(
+    '%d completed %s subgroups are displayed. %d current-day responses are excluded from closed-period history. The distribution chart summarizes daily means even when the control chart uses weekly means.',
+    nrow(d),unit,open_count),
+    action='Investigate unusual periods using incident details in Active tracking. Baseline-period comparisons describe the reference data, not prospective monitoring. Adjusted comparisons show associations, not causes; no signal does not prove acceptable service. Historical baseline limits remain fixed.')
+}
+
 supervisor_chart_guides <- function() {
   key <- function(symbol,label,color='#2C3E50') c(symbol=symbol,label=label,color=color)
   box <- list(text='Compare completed durations across categories. The box spans the middle 50%; its line is the median. Whiskers extend to the most extreme values within 1.5 box lengths. Dots are individual records. Counts show sample size; comparisons are descriptive, not adjusted rankings or causes.',
@@ -479,7 +497,8 @@ supervisor_ui <- function(id) {
                 reading_key(
                   key_item('Adjusted mean', 'key-dot'),
                   key_item('95% model interval', 'key-interval')),
-                p('Each point is an adjusted geometric mean. The horizontal line is its 95% model interval. Differences are descriptive associations after adjustment for the available synthetic context—not causal effects.'))))
+                p('Each point is an adjusted geometric mean. The horizontal line is its 95% model interval. Differences are descriptive associations after adjustment for the available synthetic context—not causal effects.')))),
+          uiOutput(ns('history_findings_summary'))
         )
       )
     )
@@ -1517,6 +1536,20 @@ supervisor_server <- function(id, production_records) {
     row <- if (any(exact)) tail(which(exact), 1L) else if (any(fallback)) tail(which(fallback), 1L)
       else integer()
     if (!length(row)) 'not configured' else goals$source[row]
+  })
+
+  output$history_findings_summary <- renderUI({
+    g <- history_group()
+    summary <- supervisor_history_summary(history_subgroups(),service_scope(),history_aggregation(),
+      g$flags_enabled,g$status,subgroup_open_count())
+    panel_card('What this view tells you',
+      paste(response_metric_info(input$history_metric)$short_label,'·',input$history_zone,'/',input$history_priority,
+        '·',switch(input$history_period,'full'='Full baseline year',paste('Latest',input$history_period,'calendar days')),
+        '·',switch(input$history_phase,'baseline'='Baseline only','monitoring'='Closed monitoring only','Baseline + monitoring')),
+      p(strong('Historical variation: '),summary$history),
+      p(strong('Service-goal performance: '),summary$goal),
+      p(strong('Included data: '),summary$coverage),
+      tags$small(summary$action))
   })
 
   output$service_goal_status <- renderUI({

@@ -644,3 +644,13 @@ tasks:
     notes: "User approved a concise findings summary using existing results; separate historical upper-limit and variation signals, contextual target misses and configured service goals. No delay-cause inference or new statistical method."
     definition_of_done: "Known-count, overlap, empty and disabled-summary tests pass; connected day-demo check renders summary; root suite and deployment bundle checks pass; manifest checksums match changed runtime files."
     result: "Layout-order verification and R parsing PASS; panel moved below the I/MR charts and above the completed-record table. Added What this view tells you panel using existing historical I/MR flags, contextual targets and configured service-goal performance. Covers overlap, empty views, unavailable review gates and cautious investigation guidance without new fitted statistics. Root tests PASS 237 including 14 summary checks; connected day-demo renders panel and passes with 12 existing timezone warnings; deployment bundle and manifest checksums PASS. Merged latest main 2f84ab7 history tutorials and service-goal improvements; merged root suite PASS 251, connected day demo and standalone bundle PASS; summary placement and manifest checksums PASS. Existing timezone warnings remain."
+
+  - id: H-50
+    title: Explain selected History results in plain language
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "app/manifest.json", "tests/test-supervisor-summary.R", "tests/verify-supervisor-daily-demo.R", "CONTRACT.yaml"]
+    notes: "User requested What this view tells you in History. Summarize existing independently filtered subgroup and service-goal results after history charts; distinguish subgroup means from individual durations and omit open-day observations."
+    definition_of_done: "Known-count, missing-limit and empty-history summary cases pass; module check confirms history filters and open-day exclusion; root tests and bundle startup pass; manifest checksums match."
+    result: "History now ends with What this view tells you, scoped to independent metric/zone/priority/period/phase filters. Existing subgroup signals and individual-response p90/goal performance are explained separately with current-day exclusion and reference-versus-monitoring caveats. Root tests PASS 262 including 25 combined summary checks; module verifies weekly baseline and empty closed-monitoring filters plus open-day exclusion; bundle, manifest and YAML checks PASS. Module retains 12 existing timezone warnings. Preview 5806; uncommitted."
