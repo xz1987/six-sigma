@@ -117,3 +117,15 @@ H-02 created the following core fixtures; their validation and generation assump
 - Logins, databases, real patient/customer data, operational routing forecasts, causal attribution, and adjusted zone league tables. The explicitly labeled experimental assignment-time ETA is in scope.
 - Traffic modeling, resource routing, or claims about fatalities or clinical outcomes. Weather context and the separately validated experimental ETA are in scope; weather-adjusted QC limits, real dispatch ETA claims and live weather APIs remain outside version one.
 - A second inferential method before the core QC calculation is independently tested.
+
+## Caller PWA extension (H-16, team-authorized)
+- Caller receives an expiring private tracking link generated automatically when dispatch creates the incident; no caller account, password, or manual code entry is required. The caller opens the link directly and sees only that incident and its assigned ambulance. Every caller output is scoped server-side; this is separate from staff demo accounts.
+- Show assigned, approaching and confirmed-arrival status; experimental ETA/range or unavailable; geographic Queens street map with ambulance and house character markers; last received update and stale/offline state.
+- Demonstration uses a real OpenStreetMap basemap, synthetic Queens coordinates and a scripted replay. No GPS, real routing or operational prediction. Exact scene location is not disclosed in public assets.
+- Existing PWA shell supplies installation and offline fallback; caller incident data must never enter service-worker caches. Offline startup requires reconnecting; an open disconnected view labels last-known information and freezes updates.
+- This extension permits incident-scoped bearer access and synthetic map tracking, superseding the earlier no-authentication scope only for caller access. Production identity verification and real GPS remain out of scope.
+
+### Caller destination and next steps (H-16 extension)
+- Team authorized confirmed hospital destination and a What happens next panel. Only trusted crew/dispatch input supplies destination name, address and confirmation timestamp; no inference from proximity or on-scene arrival. Missing/unconfirmed destinations remain unavailable.
+- Hospital selection belongs to the EMS responder interface. Persist its confirmed destination on the shared incident; the authorized caller view refreshes automatically. No destination-confirmation button belongs in the caller preview. Confirmation is separate from arrival and preserves incident isolation. No real hospital recommendation or transport routing.
+- The confirmed destination panel clears when access expires, is revoked or closes. The team removed the separate What happens next card because it duplicated status and connection information.

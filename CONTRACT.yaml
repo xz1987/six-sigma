@@ -238,3 +238,19 @@ tasks:
       original prediction and all core QC baseline limits unchanged. A teammate
       reproduces the example and unavailable-input case with no manual arrival.
     result: ""
+
+  - id: H-16
+    title: Incident-scoped caller PWA tracking module
+    status: in_progress
+    owner: "Codex caller implementer"
+    started_at: "2026-10-16"
+    owns: ["app/caller/", "SPEC.md"]
+    notes: >
+      User authorized caller implementation matching the pushed teal staff interface.
+      Crew-confirmed destination is authorized; What happens next and the simulated confirmation button were removed at the user request. EMS selector integration awaits teammate changes.
+      Isolated module and preview preserve teammate interfaces; merge through module hooks.
+      Dispatch-generated expiring private links scope every caller output to one synthetic incident; no caller password or code entry.
+      Real Queens street basemap with ambulance and house markers; synthetic coordinate movement, not GPS. ETA stays unavailable until H-11 validation.
+      Remote ledger has H-13 login, H-14 PWA and H-15 dispatch; reconcile H-13 before merging.
+    definition_of_done: "Rscript app/caller/verify.R passes incident isolation, expired/invalid access, status and arrival transitions, ETA unavailable, and module server checks; browser preview reviewed."
+    result: "Caller module now uses dispatch-generated private tracking links without passwords; cross-session isolation/expiry/revocation and status/arrival server checks pass. Safari dispatch-generated link click-through now verified; all nine caller verify.R checks pass, including automatic provider destination updates. Shared data merge, validated ETA and hosted installation checks remain pending."
