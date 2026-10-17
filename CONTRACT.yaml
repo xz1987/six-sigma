@@ -413,3 +413,23 @@ tasks:
     definition_of_done: "Supervisor view tests pass (deterministic synthetic simulation, chart-window ordering, consecutive group sequence, unchanged limits); full testthat suite, verify-shared-trip, smoke and caller verify pass; in the browser, repeated Add simulated call clicks form a connected I-MR line, and zone/metric filters change the visible counts."
     result: "Tests pass (supervisor-view 37 expectations, qc, shared incidents, shared trip, SMOKE PASS, 9 caller checks). Browser review confirmed connected I/MR points, zone filtering and both response metrics; ordinary Responder completions also enter the Individuals chart."
 
+
+  - id: H-31
+    title: Guide all roles through a step-by-step interface
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/app.R", "app/responder-server.R", "app/supervisor.R", "app/caller/caller.R", "app/www/workflow.css", "app/caller/www/caller.css", "tests/verify-role-steps.R"]
+    notes: "Keep the current DIIS palette and shared trip behavior. Gate responder hospital selection to scene arrival; show caller hospital progress; separate Supervisor review from investigation."
+    definition_of_done: "R parsing, smoke, shared-trip and caller regression checks pass."
+    result: "Role-stage guard verification, shared-trip regression, all nine caller checks, supervisor-view tests and smoke passed. Local Shiny preview restarted on port 5300. Current palette preserved."
+
+  - id: H-30
+    title: Correct Caller step number alignment
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/caller/www/caller.css", "app/caller/caller.R"]
+    notes: "Remove legacy span styling that stretches the number and adds top padding; center a fixed-size circular number and refresh the CSS URL."
+    definition_of_done: "Caller verification passes and the numbered stages are reviewed in Safari."
+    result: "All nine Caller checks pass. Safari screenshot confirms all four numbers centered inside circular outlines. Existing DIIS colors preserved."

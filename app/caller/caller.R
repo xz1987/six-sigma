@@ -105,7 +105,7 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
   ns<-shiny::NS(id)
   shiny::tagList(
     if (include_leaflet) shiny::tagList(shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'vendor/leaflet/leaflet.css')), shiny::tags$script(src=paste0(asset_prefix,'vendor/leaflet/leaflet.js'))),
-    shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css?v=shared-service-2')),
+    shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css?v=role-steps-3')),
     shiny::tags$script(src=paste0(asset_prefix,'caller.js?v=shared-service-2'),defer=NA),
     shiny::div(class='caller-workspace',
       shiny::div(class='caller-heading',shiny::span(class='caller-eyebrow','HERE FOR YOU'),shiny::h2('Your EMS updates'),shiny::p('Follow your ambulance and see where you’re headed.')),
@@ -149,7 +149,11 @@ caller_server <- function(id, lookup) {
           shiny::div(class=paste('caller-status',if(d$status=='arrived')'caller-arrived'),role='status',
             shiny::strong(if(!is.null(d$transport_departed_at))status else if(d$status=='arrived')'✓ Arrival confirmed' else status),
             if(d$status=='arrived')shiny::p(paste('Ambulance on scene at',format_time(d$arrived_at)))),
-          shiny::div(class='caller-steps',lapply(c('Assigned','Approaching','Arrived'),function(label)shiny::span(class=if(label==switch(d$status,assigned='Assigned',approaching='Approaching',arrived='Arrived',''))'is-current' else '',label))),
+          shiny::tags$ol(class='caller-steps workflow-steps', `aria-label`='Your trip progress', lapply(seq_len(4),function(i) {
+            stage <- if(!is.null(d$hospital_arrived_at))4L else if(!is.null(d$transport_departed_at))3L else if(d$status=='arrived')2L else 1L
+            shiny::tags$li(class=if(i==stage)'is-current' else if(i<stage)'is-complete' else '', `aria-current`=if(i==stage)'step' else NULL,
+              shiny::span(class='step-number',i),c('On the way','At your location','To hospital','Arrived')[i])
+          })),
           if(exists('shared_eta_card',mode='function')) shared_eta_card(d) else
             shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
               shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
@@ -161,7 +165,7 @@ caller_server <- function(id, lookup) {
       shiny::div(class='caller-legend',shiny::span(class='caller-legend-ambulance','🚑 Assigned ambulance'),
         if(is.null(h)) shiny::span(class='caller-legend-scene','🏠 Your incident location') else shiny::span(class='caller-legend-hospital','🏥 Confirmed hospital'))
     })
-    output$destination<-shiny::renderUI({d<-current();if(is.null(d))return(NULL);caller_destination_panel(d)})
+    output$destination<-shiny::renderUI({d<-current();if(is.null(d))return(NULL);if(is.null(d$confirmed_destination)) shiny::tags$details(class='caller-trip-details',shiny::tags$summary('Hospital updates'),caller_destination_panel(d)) else caller_destination_panel(d)})
     output$lastUpdate<-shiny::renderUI({
       d<-current();if(is.null(d))return(NULL)
       stale<-as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30

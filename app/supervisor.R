@@ -208,7 +208,7 @@ supervisor_ui <- function(id) {
         tags$span(id = 'pwa-setup-status', role = 'status'))),
     div(class = 'app-shell',
     tags$aside(class = 'control-rail',
-      div(class = 'rail-heading', div(class = 'kpi-label', 'Supervisor workspace'), h2('View controls')),
+      div(class = 'rail-heading', div(class = 'kpi-label', 'Supervisor workspace'), h2('1 · Set your view')),
       selectInput(ns('time_span'), 'Time span',
         choices = c('Day' = 'day', 'Week' = 'week', 'Month' = 'month'),
         selected = 'day'),
@@ -261,7 +261,7 @@ supervisor_ui <- function(id) {
           textOutput(ns('overview_sim_time'), inline = TRUE)),
         textOutput(ns('latest_arrival'), inline = TRUE)),
       tabsetPanel(id = ns('main_tabs'),
-        tabPanel('Overview',
+        tabPanel('2 · Review', value='review',
           div(class = 'kpi-grid',
             kpi('Completed records', 'kpi_completed', 'for selected metric / group', ns),
             kpi('Median duration', 'kpi_median', 'minutes', ns),
@@ -271,6 +271,9 @@ supervisor_ui <- function(id) {
           panel_card('Latest completed response milestones',
             'Completion records for the selected response metric only: scene arrivals for call to scene, hospital arrivals for transport to hospital.',
             tableOutput(ns('milestone_table'))),
+          actionButton(ns('investigate_next'), 'Next: investigate signals', class='btn-primary'),
+        ),
+        tabPanel('3 · Investigate', value='investigate',
           div(class = 'analysis-layout',
             div(class = 'chart-stack',
               panel_card('Individuals control chart',
@@ -289,7 +292,7 @@ supervisor_ui <- function(id) {
             'The display filters change which completed metric records you see, not the baseline or control limits.',
             tableOutput(ns('completed_table')))
         ),
-        tabPanel('Patterns',
+        tabPanel('4 · Explore patterns', value='patterns',
           panel_card('Neighborhood distribution',
             'Selected time span and priority. Type-7 quartiles and 1.5×IQR whiskers; descriptive only.',
             plotOutput(ns('zone_boxplot'), height = 380)),
@@ -309,6 +312,7 @@ supervisor_ui <- function(id) {
 
 supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
+  observeEvent(input$investigate_next, { updateTabsetPanel(session, 'main_tabs', selected='investigate') })
   state <- reactiveValues(mode = 'ordinary', developer_calls = NULL,
     baseline_records = dashboard_load_fixture(repo_root, 'stable'),
     ui_tick = 0L, completed_tick = 0L, last_step = NULL)

@@ -68,7 +68,8 @@ ui <- fluidPage(
     tags$script(src = 'vendor/leaflet.js'),
     tags$script(src = 'responder-map.js', defer = NA),
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'styles.css'),
-    tags$link(rel = 'stylesheet', type = 'text/css', href = 'supervisor.css')
+    tags$link(rel = 'stylesheet', type = 'text/css', href = 'supervisor.css'),
+    tags$link(rel = 'stylesheet', href = 'workflow.css')
   ),
   div(class = 'topbar',
     div(class = 'brand',

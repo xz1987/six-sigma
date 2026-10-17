@@ -126,16 +126,30 @@ responder_server <- function(input, output, session, authenticated_role, active_
       if (next_time >= 720) demo_running(FALSE)
     }
   })
+  workflow_stage <- reactive({
+    if (!demo_started()) 'assignment' else if (transport_phase() == 'hospital') 'complete' else if (transport_phase() == 'transport') 'transport' else if (demo_elapsed() >= 720) 'hospital' else 'respond'
+  })
+  output$responder_stage <- renderText(workflow_stage())
+  outputOptions(output, 'responder_stage', suspendWhenHidden = FALSE)
+  output$responder_steps <- renderUI({
+    stages <- c('assignment','respond','hospital','transport','complete')
+    labels <- c('Get assignment','Respond to scene','Choose hospital','Hospital trip','Complete')
+    current <- match(workflow_stage(), stages)
+    tags$ol(class='workflow-steps', `aria-label`='Response progress', lapply(seq_along(labels), function(i)
+      tags$li(class=if(i==current)'is-current' else if(i<current)'is-complete' else '',
+        `aria-current`=if(i==current)'step' else NULL, span(class='step-number',i),labels[i])))
+  })
   output$responder_workspace <- renderUI({
     req(identical(authenticated_role(), "responder"), active_role() == "responder")
     div(class = "responder-full",
       div(class = "notice", "SYNTHETIC DEMO · Fictional incident, traffic, weather, and responder positions. No live dispatch, routing, or validated time savings."),
-      div(class = "panel-box", h2("Responder workspace"),
+      uiOutput("responder_steps"),
+      conditionalPanel("output.responder_stage === 'assignment'", div(class = "panel-box", h2("1 · Get an assignment"),
         selectInput("demo_conditions", "Choose simulated conditions", c("Rain + rush hour", "Heavy rain + rush hour", "Dry + light traffic", "Snow/ice + road closure")),
         uiOutput("shared_queue"),
         actionButton("simulate_call", "Simulate incoming call", class = "btn-primary"),
-        p(class = "footer", "Replay runs at 30 simulated seconds per real second. Conditions are fixed when the call starts.")),
-      uiOutput("shared_tracking"), uiOutput("shared_eta"), uiOutput("active_call")
+        p(class = "footer", "Replay runs at 30 simulated seconds per real second. Conditions are fixed when the call starts."))),
+      tags$details(tags$summary("Trip link & arrival estimate"), uiOutput("shared_tracking"), uiOutput("shared_eta")), uiOutput("active_call")
     )
   })
   output$active_call <- renderUI({
@@ -153,10 +167,10 @@ responder_server <- function(input, output, session, authenticated_role, active_
           brief_item("map-marker-alt", "Scene", "Near Astoria Park · Queens (synthetic)"),
           brief_item("ambulance", "Assigned unit", paste(d$unit, "·", d$zone)),
           brief_item("door-open", "Access", "East-side park entrance · confirm with dispatch")),
-        div(class = "simulation-controls", actionButton("pause_call", "Pause / Resume", icon=icon("pause")),
-          actionButton("advance_scene", "Advance to scene", icon=icon("forward")), actionButton("reset_call", "Reset", icon=icon("undo"))),
+        tags$details(tags$summary("Demo replay controls"), div(class = "simulation-controls", actionButton("pause_call", "Pause / Resume", icon=icon("pause")),
+          actionButton("advance_scene", "Advance to scene", icon=icon("forward")), actionButton("reset_call", "Start another demo call", icon=icon("undo")))),
         uiOutput("call_clock")),
-      uiOutput("hospital_panel"),
+      conditionalPanel("output.responder_stage === 'hospital' || output.responder_stage === 'transport' || output.responder_stage === 'complete'", uiOutput("hospital_panel")),
       div(class = "responder-grid",
         div(class = "panel-box", h3("Incident map"),
           div(class="map-controls",tags$button(id="show-all-zones",type="button",class="btn btn-default","All 5 zones"),tags$button(id="focus-route",type="button",class="btn btn-default","Focus route")),
@@ -175,7 +189,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
             p("Solid borders: app zone groupings of NYC statistical areas; not official EMS districts."),
             p("H markers: fictional demo hospitals. Drag to pan · + / − to zoom · Select markers for details."),
             p("Simulated responder position · Road-route snapshot excludes live traffic and weather."))),
-        div(class = "panel-box", h3("Reduce avoidable delays"),
+        tags$details(class = "panel-box", open=NA, tags$summary("Scene coordination checklist"),
           span(class = "eyebrow", "Scenario-based coordination prompts"),
           h3("Traffic"), p(d$traffic), h3("Weather"), div(style = "display:flex;align-items:center;gap:12px;", weather_icon(d$weather_icon), p(d$weather)),
           p(class = "footer", "Check off coordination steps as you review them. Resets with each demo call."),
@@ -235,7 +249,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
     if (transport_phase() == "hospital") return(div(class="notice",icon("check-circle")," Hospital arrival confirmed · ",hospital_arrival()," (local demo time)"))
     tagList(p(sprintf("Transport replay: %02d:%02d / 08:00 simulated",transport_elapsed()%/%60,transport_elapsed()%%60)),
       p(if(transport_elapsed()>=480) "At demo destination — confirm hospital arrival." else "Fictional 8-minute transport replay, not a predicted travel time."),
-      actionButton("arrived_hospital","Arrived at hospital",icon=icon("hospital"),class="btn-primary"))
+      if(transport_elapsed()>=480) actionButton("arrived_hospital","Confirm hospital arrival",icon=icon("hospital"),class="btn-primary"))
   })
   observe({
     req(identical(authenticated_role(), "responder"), demo_started())
