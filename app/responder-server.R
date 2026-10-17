@@ -20,8 +20,15 @@ responder_server <- function(input, output, session, authenticated_role, active_
     req(identical(authenticated_role(), 'responder'))
     if(is.null(incident_service)) return(NULL)
     ids <- queued_ids()
-    selectInput('shared_incident','Incident to receive',choices=c('Create a new synthetic incident'='',setNames(ids,ids)),
-      selected=if(!is.null(shared_id()) && !isTRUE(incident_service$incidents[[shared_id()]]$claimed)) shared_id() else isolate(input$shared_incident))
+    previous <- isolate(input$shared_incident)
+    selected <- if(length(ids)) ids[[1]] else '__new__'
+    if(!is.null(previous) && previous %in% ids) selected <- previous
+    if(!is.null(shared_id()) && shared_id() %in% ids) selected <- shared_id()
+    labels <- vapply(ids,function(id)paste(incident_service$incidents[[id]]$zone,'· waiting caller ·',id),character(1))
+    tagList(selectInput('shared_incident','Caller incident to receive',
+      choices=c(setNames(ids,labels),'Create a separate synthetic incident'='__new__'),selected=selected),
+      p(class='footer',if(length(ids))'A waiting caller is selected. Receive this incident to update that caller’s open window.' else
+        'No waiting caller incidents. Create a new incident, then open its private caller link.'))
   })
   output$shared_tracking <- renderUI({
     req(identical(authenticated_role(), 'responder'))
@@ -55,8 +62,12 @@ responder_server <- function(input, output, session, authenticated_role, active_
     }
     if(!is.null(incident_service)) {
       pending <- if(!is.null(shared_id()) && !isTRUE(incident_service$incidents[[shared_id()]]$claimed)) shared_id() else NULL
-      selected <- if(force_new) "" else if(!is.null(pending)) pending else input$shared_incident
+      selected <- if(force_new) "__new__" else if(!is.null(pending)) pending else input$shared_incident
       if(is.null(selected)||!nzchar(selected)) {
+        waiting <- names(Filter(function(d)!isTRUE(d$claimed),incident_service$incidents))
+        selected <- if(length(waiting)) waiting[[1]] else '__new__'
+      }
+      if(identical(selected,'__new__')) {
         link <- shared_create(incident_service, if(is.null(input$demo_conditions)) 'Rain + rush hour' else input$demo_conditions)
       } else {
         if(is.null(incident_service$incidents[[selected]])||isTRUE(incident_service$incidents[[selected]]$claimed)) {
