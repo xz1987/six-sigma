@@ -144,7 +144,7 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: "Replaced event README and outdated app notes with DIIS overview, setup, connected-role and active-day walkthroughs, measurement/codebook links, QC/adapter/ETA function parameters and outputs, reproducible commands and limitations. Local links and standalone documented QC example pass; dataset demo passes. H-07 remains in progress pending verified hosted URL and independent fresh-clone teammate walkthrough."
+    result: "Replaced event README and outdated app notes with DIIS overview, setup, connected-role and active-day walkthroughs, measurement/codebook links, QC/adapter/ETA function parameters and outputs, reproducible commands and limitations. Local links and standalone documented QC example pass; dataset demo passes. Final local audit of pushed 8390b46 passed 362 assertions and role/trip/route/ETA/bundle checks; credential-free public clone, smoke and dataset checks pass. Browser spot checks confirm role connection, hospital route update, day signals and history. Known timezone warnings and delivery-format conflict documented in app README. H-07 remains in progress pending verified hosted URL and independent fresh-clone teammate walkthrough."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost

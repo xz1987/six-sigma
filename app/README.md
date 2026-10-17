@@ -176,3 +176,48 @@ See the [root README](../README.md#verify-and-extend) for commands and
 expected output is in [demo/README.md](../demo/README.md). A fresh-clone teammate
 walkthrough and public hosted-link verification are still required for H-07;
 local automated checks alone do not establish either.
+
+## Final local audit — 2026-10-17
+
+Audited pushed commit `8390b46`. Both test suites passed all 362 assertions:
+QC 88, shared incidents 1, chart guides 67, daily demo 18, Supervisor 49,
+ETA 100 and feed 39. Separate checks passed for independent Caller/Responder
+sessions, caller-first assignment, role-stage guards, role synchronization,
+phase-aware Caller ETA, shared trips, five-zone routes and the nine-hospital
+directory. Caller verification, smoke, dataset demo, ETA demonstration,
+isolated Supervisor day-demo verification and standalone deployment-bundle
+startup also passed. Manifest file checksums matched the bundle.
+
+A public, credential-free clone of this commit succeeded. Its smoke and dataset
+demonstration passed using the installed R dependencies; this does not test
+package installation on a new machine or replace a teammate's walkthrough.
+
+Safari checks confirmed Caller waiting before assignment, updates after a
+separate Responder tab accepts that incident, scene completion appearing in
+Supervisor, and automatic Caller hospital destination, hospital-marker legend
+and road-route updates after responder confirmation. Supervisor checks confirmed
+expandable chart-guide buttons, a 12-case delayed day with three 30-minute
+signals, the separate live-trip panel, and rendered full-year history charts
+with current-day observations excluded from closed subgroups. Full completion,
+reset and access revocation were verified by the automated session checks.
+
+Known remaining items:
+
+- The Supervisor day-demo module check emits 12 R warnings that `tzone`
+  attributes are inconsistent. Its chronology, fixed-limit and isolation checks
+  pass; the run is not warning-free.
+- A hosted URL is not recorded in the current README. Public-host accessibility,
+  deployed cross-session behavior and device installation still need verification.
+- SPEC records the team's challenge summary. `docs/prompts.md` links to Devpost
+  for the exact prompt and describes a web frontend plus a package/library or
+  API; SPEC and CLAUDE permit the Shiny dashboard with sourced R functions.
+  Reconcile the required delivery format with the organizer's current wording
+  before claiming complete submission compliance. No packaged R library or
+  public statistical API is implemented by this app.
+- Add the verified live URL, complete the independent fresh-clone walkthrough,
+  reconcile stale ledger entries and submit the repository/demo on Devpost.
+
+The implemented incident-level QC and synthetic scenarios address the recorded
+problem of variation and extreme delays hidden by averages. They demonstrate
+software behavior; they do not establish reduced real response times, lives
+saved, causal weather effects or operational deployment readiness.
