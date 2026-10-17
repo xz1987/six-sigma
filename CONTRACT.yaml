@@ -84,11 +84,16 @@ tasks:
       SPEC descriptive charts and weather context, with chart calculations
       validated under H-03; weather does not alter QC limits. Load fastapi-react-scaffold or
       plumber-react-scaffold for an API plus React front end.
+      User-approved interface ownership rule (2026-10-16): dashboard changes
+      from the repository owner's branch apply only after a user continues as
+      Supervisor. During merges, prioritize those Supervisor-workspace edits;
+      preserve collaborator-owned role selection, Primary responder, and Caller
+      interfaces unless the user explicitly expands scope.
     definition_of_done: >
       The testme script in app/ starts the tool with one command, and a call
       on one data/ file (endpoint, function call or app upload) returns the
       same numbers as the H-03 known-answer test.
-    result: "Merged the collaborator role-selection/demo-login scaffold with the functioning Shiny dashboard; app/smoke.R prints the SPEC known answer (mean=4.8, I_UCL=7.459574, MR_UCL=3.267) and SMOKE PASS, while live replay and analysis views render with zero Shiny output errors."
+    result: "Preserved collaborator role-selection, responder, and caller paths while prioritizing the repository owner's functioning Supervisor dashboard; app/smoke.R prints the SPEC known answer (mean=4.8, I_UCL=7.459574, MR_UCL=3.267) and SMOKE PASS, with zero Shiny output errors."
 
   - id: H-05
     title: Demonstration of the tool on every test dataset
