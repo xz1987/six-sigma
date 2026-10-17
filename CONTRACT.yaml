@@ -182,9 +182,9 @@ tasks:
   - id: H-10
     title: Versioned synthetic wind and weather-informed ETA fixtures
     points: "Supports experimental ETA; no additional rubric points"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex ETA fixtures"
+    started_at: "2026-10-17T00:50:19.957036+00:00"
     owns: ["data/eta/"]
     notes: >
       Team approved the experimental ETA extension. Keep H-02 core CSVs unchanged.
@@ -197,7 +197,7 @@ tasks:
       boundaries, positive durations, missing weather retention, known injected
       relationships and chronological/event-block separation checks; codebook
       documents every column, unit, assumption and expected result.
-    result: ""
+    result: "eta-v1 paired weather/no-effect fixtures (7200 incidents each), codebook, full-day assignment coverage and 2880 hourly blocks grouped into variable-length synthetic weather episodes; every split includes all 24 local hours; Rscript data/eta/validate.R prints eight PASS lines; original QC fixture hashes unchanged. Independent statistics review PASS; team approved check-in."
 
   - id: H-11
     title: Tested experimental weather-informed duration prediction
