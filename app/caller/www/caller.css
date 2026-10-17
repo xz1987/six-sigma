@@ -15,6 +15,7 @@
 .caller-status{border-left:4px solid #AFC6D9;font-size:20px;border-radius:12px}
 .caller-status p{font-size:15px;font-weight:400;margin-bottom:0}
 .caller-eta h2{font-size:26px;color:#2C3E50}.caller-eta p{font-size:15px}
+.caller-eta-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.caller-eta-line h2{margin:12px 0}.caller-eta-arrival{font-size:15px;color:var(--caller-muted)}
 .caller-map-output{height:320px;border-radius:16px}.caller-trip-details{font-size:13px;color:#5B6B7A;margin:12px 0}
 .caller-trip-details summary{cursor:pointer;font-weight:600;padding:5px 0}.caller-reference{overflow-wrap:anywhere}
 .caller-destination{border-top:4px solid #AFC6D9}.caller-steps{font-size:13px}

@@ -115,9 +115,12 @@ shared_eta_card <- function(d, caller_view=FALSE) {
   available <- !is.null(p) && identical(p$status,'experimental_synthetic')
   clock <- function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
   if(isTRUE(caller_view)) {
-    value <- if(identical(d$status,'arrived')) 'Arrival confirmed' else
-      if(available) sprintf('%.1f min',p$median_minutes) else 'Not available yet'
-    return(shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ETA'),shiny::h2(value)))
+    value <- if(identical(d$status,'arrived')) 'Arrival confirmed' else if(!available) 'Not available yet' else NULL
+    arrival <- if(available) format(p$arrival_median,'%I:%M %p %Z',tz='America/New_York') else NULL
+    return(shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ETA'),
+      if(available && !identical(d$status,'arrived')) shiny::div(class='caller-eta-line',
+        shiny::h2(sprintf('%.1f min',p$median_minutes)),shiny::span(class='caller-eta-arrival',paste('Arriving around',arrival)))
+      else shiny::h2(value)))
   }
   shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','EXPERIMENTAL ARRIVAL ESTIMATE · SYNTHETIC'),
     shiny::h2(if(available)clock(p$arrival_median) else 'Not available yet'),
