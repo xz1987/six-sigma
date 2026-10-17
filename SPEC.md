@@ -110,7 +110,7 @@ H-02 created the following core fixtures; their validation and generation assump
 - `demo/README.md` walks through every dataset with independently verified expected results.
 - H-03 runs `Rscript -e "testthat::test_dir('tests')"`.
 - Verify startup and tests from a fresh clone, publish the team repository, and submit its link and demo on Devpost.
-- **Team review:** DIIS confirmed agreement with the specification in chat on 2026-10-16. Before closing H-01, each teammate must also be able to explain the method sentence in section 4 without reading it; this human check is not verified by file validation.
+- **Team review:** DIIS confirmed agreement with the specification in chat on 2026-10-16. The team confirmed on 2026-10-16 that each teammate can explain the method sentence in section 4 without reading it, completing the H-01 human review check.
 
 ## 9. Out of scope for version one
 - Real dispatcher-system APIs, real operational dispatch decisions, GPS tracking, GPS-based arrival detection, and parsing private call logs. Simulated active-call updates and synthetic arrival events are in scope.
