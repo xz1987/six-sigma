@@ -80,7 +80,11 @@ ui <- fluidPage(
       tags$img(class = 'brand-logo', src = 'brand/diis-logo.png', alt = 'DIIS'),
       div(class = 'brand-text', 'Response Monitor',
         tags$small('Ambulance response quality · Queens demonstration'))),
-    div(class = 'synthetic-badge', '● Synthetic data — not for operations')
+    div(class = 'header-actions',
+      conditionalPanel("output.active_role === 'choose'",
+        tags$a(class = 'about-link', href = 'about.html', target = '_blank', rel = 'noopener',
+          'About this app', `aria-label` = 'Open information about the DIIS Response Monitor')),
+      div(class = 'synthetic-badge', '● Synthetic data — not for operations'))
   ),
   uiOutput('role_navigation'),
   conditionalPanel("output.active_role === 'choose'",

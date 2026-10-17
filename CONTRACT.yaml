@@ -132,10 +132,10 @@ tasks:
   - id: H-07
     title: README and function documentation
     points: "10 - Tool Documentation: excellent, easy-to-follow documentation"
-    status: todo
-    owner: ""
-    started_at: ""
-    owns: ["README.md", "app/README.md"]
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html"]
     notes: >
       Replace the hackathon README.md with your tool's README; the event
       pages stay in docs/. See demos/making_readmes/.

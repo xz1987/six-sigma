@@ -1399,7 +1399,7 @@
   },
   "files": {
     "app.R": {
-      "checksum": "44738c5bd0309ecd684b4ed0de484b39"
+      "checksum": "de87bfa44c4964d8d89835f0f3d29549"
     },
     "caller/caller.R": {
       "checksum": "f1ab7335d521466e0228065809d03eeb"
@@ -1485,6 +1485,9 @@
     "workflow.R": {
       "checksum": "dec2c6cf6cf3d6463beed818cbe04a45"
     },
+    "www/about.html": {
+      "checksum": "d2faf6904febe19a8704a4be8d5c92e1"
+    },
     "www/brand/diis-logo.png": {
       "checksum": "362224e42abbefdd6017e4ba086b5628"
     },
@@ -1567,7 +1570,7 @@
       "checksum": "bf6767504c3f75a89cc4744df424726f"
     },
     "www/styles.css": {
-      "checksum": "e3eb3b4185e38d356beed242c7d938e6"
+      "checksum": "6bd8397fb72d8302e7af623c1db8d8a9"
     },
     "www/supervisor.css": {
       "checksum": "7577d2c208f7cb4e081c756d79b53367"

@@ -55,6 +55,9 @@ html, body {
   letter-spacing: .08em;
   white-space: nowrap;
 }
+.header-actions { display: flex; align-items: center; gap: 16px; }
+.about-link { color: var(--accent); font-weight: 750; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.about-link:hover, .about-link:focus { color: var(--accent-dark); }
 .form-control, .selectize-input {
   min-height: 38px;
   border: 1px solid var(--line) !important;
@@ -97,6 +100,7 @@ html, body {
 }
 @media (max-width: 540px) {
   .topbar { align-items: flex-start; flex-direction: column; }
+  .header-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 }
 
 /* Palette aliases (legacy names, DIIS brand values) */
