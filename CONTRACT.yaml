@@ -325,10 +325,10 @@ tasks:
 
   - id: H-20
     title: Merge all role interface branches into one app
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/", "CONTRACT.yaml", "SPEC.md"]
     notes: "User requested all interface branches merged and app opened. Preserve separate supervisor, responder and caller modules; resolve task-ID collisions without discarding entries."
     definition_of_done: "No merge conflicts; combined app initializes; staff role and caller-link integration checks, caller verify, QC/supervisor/feed/ETA tests and smoke checks pass; open combined app."
-    result: "Merged both interface branches; preserved responder, namespaced caller resources, and guarded supervisor initialization. Combined role/link checks, 118 QC/supervisor assertions, feed/ETA tests, nine caller checks and SMOKE PASS succeeded; browser handoff pending."
+    result: "Merged both interface branches; preserved responder, namespaced caller resources, and guarded supervisor initialization. Combined role/link checks, 118 QC/supervisor assertions, feed/ETA tests, nine caller checks and SMOKE PASS succeeded; combined app opened in Safari and Caller workspace verified."
