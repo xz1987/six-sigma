@@ -226,6 +226,29 @@ supervisor_simulate_day <- function(historical, zone, priority, metric_id,
 }
 
 # Presentation metadata only: no measurements or statistical formulas change.
+# Interpret existing results; do not fit limits or infer a cause.
+supervisor_plain_summary <- function(m, flags_enabled, status, target_misses, service) {
+  n <- nrow(m)
+  if (!n) return(list(history='No completed records in this view yet. Pending trips are not zero-minute responses.',
+    target='Target performance is not available until records complete.',
+    goal='Configured service-goal performance is not available yet.',
+    action='Wait for completed records or choose another display period.'))
+  history <- if (!isTRUE(flags_enabled)) paste('Historical signals unavailable:',status,
+    '— do not interpret this as zero signals.') else sprintf(
+      '%d of %d completed records exceed the historical upper duration limit; %d show an unusually large change from the preceding record.',
+      sum(m$individual_signal %in% TRUE),n,sum(m$variation_signal %in% TRUE))
+  known <- sum(!is.na(target_misses))
+  target <- if (!known) 'Context target unavailable for these records.' else sprintf(
+    '%d of %d records with an available context target missed it. A target miss can overlap a historical signal.',
+    sum(target_misses %in% TRUE),known)
+  goal <- if (!nrow(service) || !is.finite(service$goal[1]))
+    'No service goal is configured for this metric / zone / priority.' else sprintf(
+      '%.0f%% of %d completed records met the configured %.1f-minute service goal.',
+      100*service$within_goal[1],service$n[1],service$goal[1])
+  list(history=history,target=target,goal=goal,
+    action='Review the signal details and verify timestamps and recorded circumstances. Signals do not establish a cause; no signal does not prove acceptable service. Display filters never change the fixed baseline limits.')
+}
+
 supervisor_chart_guides <- function() {
   key <- function(symbol,label,color='#2C3E50') c(symbol=symbol,label=label,color=color)
   box <- list(text='Compare completed durations across categories. The box spans the middle 50%; its line is the median. Whiskers extend to the most extreme values within 1.5 box lengths. Dots are individual records. Counts show sample size; comparisons are descriptive, not adjusted rankings or causes.',
@@ -359,6 +382,7 @@ supervisor_ui <- function(id) {
               tags$p(class = 'subhead', 'Select a signal to locate it on the charts and review the evidence.'),
               uiOutput(ns('flag_cards')),
               uiOutput(ns('investigation_drawer')))),
+          uiOutput(ns('findings_summary')),
           panel_card('Completed metric records in this view',
             'The display filters change which completed metric records you see, not the baseline or control limits.',
             tableOutput(ns('completed_table')))
@@ -859,6 +883,20 @@ supervisor_server <- function(id, production_records) {
   })
   output$kpi_flags <- renderText({ nrow(visible_flags()) })
   output$flag_count <- renderText({ nrow(signal_groups()) })
+
+  output$findings_summary <- renderUI({
+    m <- visible_monitoring(); g <- selected_group(); targets <- visible_targets()
+    misses <- ifelse(is.finite(targets),m$response_minutes > targets,NA)
+    service <- supervisor_service_performance(m,state$service_goals,input$metric)
+    service <- service[service$zone == input$zone & service$priority == input$priority,,drop=FALSE]
+    summary <- supervisor_plain_summary(m,g$flags_enabled,g$status,misses,service)
+    panel_card('What this view tells you',
+      paste(metric_info()$short_label,'·',input$zone,'/',input$priority,'· selected display period'),
+      p(strong('Historical variation: '),summary$history),
+      p(strong('Context target: '),summary$target),
+      p(strong('Configured service goal: '),summary$goal),
+      tags$small(summary$action))
+  })
 
   output$target_notice <- renderUI({
     if (identical(state$mode, 'developer'))

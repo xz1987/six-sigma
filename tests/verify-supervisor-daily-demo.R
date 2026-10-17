@@ -23,6 +23,10 @@ shiny::testServer(supervisor_server,args=list(production_records=production_resp
    !is.null(output$i_chart),!is.null(output$mr_chart))
  expected_mean <- mean(qc_validate(response_metric_to_qc(state$developer_calls,'call_to_scene',allow_mock=FALSE))$completed$response_minutes)
  stopifnot(grepl(sprintf('Demo-day average: %.1f min',expected_mean),paste(output$developer_bar_text,collapse=' '),fixed=TRUE))
+ stopifnot(grepl('What this view tells you',paste(output$findings_summary,collapse=' ')),
+   grepl('Historical variation:',paste(output$findings_summary,collapse=' ')),
+   grepl('Context target:',paste(output$findings_summary,collapse=' ')),
+   grepl('Configured service goal:',paste(output$findings_summary,collapse=' ')))
  original <- state$developer_calls
  frozen <- lapply(history_analysis()$groups,function(g)g$limits)
  shared_advance(incident_service,live_id,720)

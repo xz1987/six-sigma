@@ -1480,7 +1480,7 @@
       "checksum": "d4ab2d322307580fafe0c817bfffad05"
     },
     "supervisor.R": {
-      "checksum": "87d40c3c48bff22c7639d3d0dbf03180"
+      "checksum": "b59eab6903e0f274f60da73bb9276d93"
     },
     "workflow.R": {
       "checksum": "dec2c6cf6cf3d6463beed818cbe04a45"
@@ -1579,10 +1579,10 @@
       "checksum": "be8e14a7479c6bd9abb4e28cbb0cbc27"
     },
     "www/vendor/leaflet-LICENSE.txt": {
-      "checksum": "609e72f97803246ff294511b99c8c89a"
+      "checksum": "24dae3136001ef7bbc671453a33458a2"
     },
     "www/vendor/leaflet.css": {
-      "checksum": "c02c12fe5e21d2493070649584ca38b7"
+      "checksum": "049a8e8f1dbe4187144fa2343a2754c5"
     },
     "www/vendor/leaflet.js": {
       "checksum": "35b48eb991f383702f153452506e07b2"

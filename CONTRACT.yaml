@@ -594,3 +594,13 @@ tasks:
     notes: "User requested per-chart explanations and legends without clutter. Provide collapsible guides with visible text/symbol/color legends for every Active tracking, Patterns and History graph. Do not change any calculations."
     definition_of_done: "All plotted Supervisor outputs have a guide and legend; units, colors, lines and interpretation limits match the renderer; Supervisor and day-demo verification pass."
     result: "All 11 Supervisor graphs now include a keyboard-accessible expandable reading guide and visible symbol/text/color legend, including dynamic History layouts. Reading guides now have bordered button styling, plus/minus expansion indicators, hover feedback and keyboard focus outlines; chart guide checks PASS 67. Units and interpretation match renderers; calculations unchanged. Root tests PASS (chart coverage 67, day demo 18, Supervisor 49, QC 88, shared 1). Connected day-demo verification PASS with 12 existing nonblocking R warnings. Preview port 5802; uncommitted."
+
+  - id: H-47
+    title: Explain current Supervisor findings in plain language
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "app/manifest.json", "tests/test-supervisor-summary.R", "tests/verify-supervisor-daily-demo.R", "CONTRACT.yaml"]
+    notes: "User approved a concise findings summary using existing results; separate historical upper-limit and variation signals, contextual target misses and configured service goals. No delay-cause inference or new statistical method."
+    definition_of_done: "Known-count, overlap, empty and disabled-summary tests pass; connected day-demo check renders summary; root suite and deployment bundle checks pass; manifest checksums match changed runtime files."
+    result: "Layout-order verification and R parsing PASS; panel moved below the I/MR charts and above the completed-record table. Added What this view tells you panel using existing historical I/MR flags, contextual targets and configured service-goal performance. Covers overlap, empty views, unavailable review gates and cautious investigation guidance without new fitted statistics. Root tests PASS 237 including 14 summary checks; connected day-demo renders panel and passes with 12 existing timezone warnings; deployment bundle and manifest checksums PASS. Latest main ea26d8d preserved; local preview 5804; uncommitted."
