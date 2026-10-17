@@ -413,3 +413,13 @@ tasks:
     definition_of_done: "Supervisor view tests pass (deterministic synthetic simulation, chart-window ordering, consecutive group sequence, unchanged limits); full testthat suite, verify-shared-trip, smoke and caller verify pass; in the browser, repeated Add simulated call clicks form a connected I-MR line, and zone/metric filters change the visible counts."
     result: "Tests pass (supervisor-view 37 expectations, qc, shared incidents, shared trip, SMOKE PASS, 9 caller checks). Browser review confirmed connected I/MR points, zone filtering and both response metrics; ordinary Responder completions also enter the Individuals chart."
 
+  - id: H-29
+    title: Simplify the Caller ETA to a duration only
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/caller/caller.R", "app/shared-incidents.R", "CONTRACT.yaml"]
+    notes: "User requested removal of the Caller ETA 95% prediction range and calendar date, retaining only a concise ETA. Keep the responder ETA display unchanged."
+    definition_of_done: "Caller ETA shows only the predicted duration in minutes (or an unavailable/arrival status); no calendar date, 95% range or extra estimate details appear, while the responder ETA remains unchanged."
+    result: "Implementation underway; not yet verified."
+

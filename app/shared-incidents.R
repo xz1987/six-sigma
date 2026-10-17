@@ -110,10 +110,15 @@ shared_revoke <- function(store,id) {
   store$revision(shiny::isolate(store$revision()) + 1L)
 }
 # Display uses only the frozen prediction, never refits after arrival.
-shared_eta_card <- function(d) {
+shared_eta_card <- function(d, caller_view=FALSE) {
   p <- if(is.null(d$eta)) NULL else d$eta$prediction
   available <- !is.null(p) && identical(p$status,'experimental_synthetic')
   clock <- function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
+  if(isTRUE(caller_view)) {
+    value <- if(identical(d$status,'arrived')) 'Arrival confirmed' else
+      if(available) sprintf('%.1f min',p$median_minutes) else 'Not available yet'
+    return(shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ETA'),shiny::h2(value)))
+  }
   shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','EXPERIMENTAL ARRIVAL ESTIMATE · SYNTHETIC'),
     shiny::h2(if(available)clock(p$arrival_median) else 'Not available yet'),
     if(available)shiny::p(paste('95% prediction range:',clock(p$arrival_lower),'to',clock(p$arrival_upper)))
