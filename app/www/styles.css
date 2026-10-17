@@ -12,6 +12,8 @@
   --red: #d34747;
 }
 
+[hidden] { display: none !important; }
+
 html, body {
   background: var(--canvas);
   color: var(--ink);
@@ -74,6 +76,12 @@ html, body {
 .button-row .btn { width: 100%; }
 .rail-note { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .workspace { padding: 24px 28px 40px; min-width: 0; background: #f5f5f3; }
+.supervisor-pwa { background: #f5f5f3; padding: 14px 28px 0 286px; }
+.supervisor-pwa .alert-note { margin: 0 0 10px; }
+.pwa-tools { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11px; }
+.pwa-tools details { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; }
+.pwa-tools summary { color: var(--ink); cursor: pointer; font-weight: 750; }
+.pwa-tools p { max-width: 620px; margin: 8px 0 0; }
 .status-strip { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; margin-bottom: 18px; }
 .status-pill { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; font-size: 11px; color: var(--muted); }
 .status-pill strong { color: var(--ink); }
@@ -120,6 +128,7 @@ input[type="checkbox"] { accent-color: var(--lime); }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 1fr; }
+  .supervisor-pwa { padding: 14px 20px 0; }
   .control-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .kpi-grid { grid-template-columns: repeat(2,1fr); }
   .two-col { grid-template-columns: 1fr; }

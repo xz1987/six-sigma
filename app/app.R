@@ -44,7 +44,15 @@ panel_card <- function(title, subtitle, ...) {
 
 ui <- fluidPage(
   tags$head(
-    tags$title('DIIS Response Monitor'),
+    tags$title('DIIS Emergency Response Monitor'),
+    tags$meta(name = 'viewport', content = 'width=device-width, initial-scale=1'),
+    tags$meta(name = 'theme-color', content = '#68b900'),
+    tags$meta(name = 'apple-mobile-web-app-capable', content = 'yes'),
+    tags$meta(name = 'apple-mobile-web-app-title', content = 'DIIS EMS'),
+    tags$link(rel = 'manifest', href = 'manifest.webmanifest'),
+    tags$link(rel = 'icon', type = 'image/png', href = 'icons/icon-192.png'),
+    tags$link(rel = 'apple-touch-icon', href = 'icons/apple-touch-icon.png'),
+    tags$script(src = 'pwa.js', defer = NA),
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'styles.css')
   ),
   div(class = 'topbar',
@@ -85,6 +93,16 @@ ui <- fluidPage(
       div(class = 'empty-state', h3('No request has been sent'),
         p('This screen does not collect patient information or track an ambulance.')))),
   conditionalPanel("output.active_role === 'supervisor'",
+    div(class = 'supervisor-pwa',
+      div(id = 'connection-status', class = 'alert-note danger', role = 'status', hidden = NA,
+        "You're offline. Reconnect to use login, incident records, and response updates."),
+      div(class = 'pwa-tools',
+        tags$button(id = 'install-app', type = 'button', class = 'btn btn-primary',
+          hidden = NA, 'Install app'),
+        tags$details(tags$summary('Add this supervisor dashboard to your device'),
+          p("iPhone/iPad: use the browser Share menu → Add to Home Screen. Safari on Mac: File → Add to Dock. Chrome/Edge: use the install option in the address bar or browser menu."),
+          p('Live features require a connection. This remains a synthetic hackathon demonstration.')),
+        tags$span(id = 'pwa-setup-status', role = 'status'))),
     div(class = 'app-shell',
     tags$aside(class = 'control-rail',
       h2('Replay controls'),

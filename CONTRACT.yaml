@@ -254,3 +254,23 @@ tasks:
     notes: "User explicitly requested pre-created demo accounts for Supervisor and Primary responder; Caller stays open."
     definition_of_done: "Verify staff role login, wrong password rejection, role separation, caller access, protected data, and logout in server checks and the running UI."
     result: "Merged UI checks pass: supervisor login opens the live dashboard, responder login opens only its prototype, wrong credentials are rejected without crashing, caller access requires no login, protected dashboard controls stay hidden by role, and logout/change-role reloads the session."
+
+  - id: H-14
+    title: Installable PWA shell for the existing Shiny website
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/www/", "app/app.R", "app/README.md"]
+    notes: "User requested PWA delivery. Existing Shiny server and demo role logins remain the runtime. Per the H-04 ownership rule, visible PWA controls are limited to the authenticated Supervisor workspace; role selection, Primary responder, and Caller interfaces remain unchanged."
+    definition_of_done: "Validate manifest/icon assets, service-worker offline fallback and cache exclusions, R initialization, and browser delivery; document HTTPS and connected-runtime requirements."
+    result: "R initialization, JavaScript parsing, subpath manifest, offline fallback and private-traffic exclusions passed; Safari preview checked. Hosted deployment and device installation remain unverified."
+
+  - id: H-15
+    title: Simulated dispatcher address-to-responder assignment workflow
+    status: todo
+    owner: ""
+    started_at: ""
+    owns: ["app/dispatch.R", "app/dispatch-view.R", "tests/test-dispatch.R"]
+    notes: "User approved address to zone, available responder selection by estimated travel time and location, dispatcher confirmation, and responder incident display. Use explicitly synthetic inputs; no live operational dispatch. App wiring requires coordination with H-04."
+    definition_of_done: "Known synthetic scenarios verify availability filtering, location-based ranking, explicit dispatcher confirmation, no-responder handling, and delivery to the assigned responder's demo view."
+    result: "Planned only; no assignment or notification implementation exists yet."

@@ -26,3 +26,34 @@ dialog for hackathon reviewers. Password verification uses salted bcrypt-PBKDF.
 These shared demo accounts are for synthetic data only; they are not production
 authentication. Five failed attempts trigger a 30-second per-session delay.
 Logging out reloads the page, ending staff access and clearing uploaded data.
+
+
+## Installable web app (PWA)
+
+The existing Shiny website now includes a web manifest, 192/512px app icons,
+Apple touch icon, service worker, and a public offline fallback page.
+Open the app once while online. Chrome/Edge offer installation when supported;
+Safari uses Share > Add to Home Screen on iPhone/iPad or File > Add to Dock on Mac.
+The interface also includes installation instructions and a conditional install button.
+
+Deploy behind HTTPS (localhost is allowed for development). Relative manifest,
+worker, and icon paths support deployment below a Posit Connect app URL.
+The worker caches only its explicitly listed public assets. It does not cache
+login responses, uploaded incidents, downloads, or Shiny session traffic.
+Offline startup shows a connection-unavailable page; interactive features still
+require the R/Shiny server and its WebSocket connection. This does not provide
+background dispatch, offline incident entry, push notifications, or production auth.
+The public demo credentials and account behavior are unchanged.
+
+Reference: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable
+
+
+## Agreed dispatch workflow (planned)
+
+Dispatcher enters the caller's address → app identifies the incident zone →
+filters available responders → ranks candidates by estimated travel time from
+current responder locations → dispatcher confirms the assignment → assigned
+responder receives the incident. Explicitly show when no responder is available.
+The hackathon version will simulate addresses, responder locations, availability,
+and travel estimates. This workflow is agreed but not implemented yet; it does
+not currently select responders or send incident notifications.
