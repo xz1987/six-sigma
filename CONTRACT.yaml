@@ -269,3 +269,23 @@ tasks:
     notes: "User approved address to zone, available responder selection by estimated travel time and location, dispatcher confirmation, and responder incident display. Use explicitly synthetic inputs; no live operational dispatch. App wiring requires coordination with H-04."
     definition_of_done: "Known synthetic scenarios verify availability filtering, location-based ranking, explicit dispatcher confirmation, no-responder handling, and delivery to the assigned responder's demo view."
     result: "Planned only; no assignment or notification implementation exists yet."
+
+  - id: H-16
+    title: Responder incoming-call replay with map and traffic/weather context
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/responder-demo.R", "app/www/responder-map.js", "app/www/vendor/", "app/app.R", "app/README.md"]
+    notes: "User requested a simulated responder call, delay-reduction panel, and map. Show synthetic context and coordination prompts; no live routing or unvalidated weather ETA."
+    definition_of_done: "Verify staff gating, deterministic dispatch-to-arrival transitions, start/pause/reset, scenario prompts, interactive map, and automatic stopped arrival clock in server checks and browser."
+    result: "Responder replay and scenario controls pass server checks; road-following map snapshot and weather icons added; final browser checks pending."
+
+  - id: H-17
+    title: Compact assignment, Queens zone outlines and simulated hospital destination
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/app.R", "app/testme.R", "app/www/responder-map.js", "app/www/demo-zones.geojson", "app/www/demo-hospitals.json", "app/www/hospital-route-a.json", "app/www/hospital-route-b.json", "app/www/hospital-route-c.json", "app/README.md"]
+    notes: "User requested icon-based briefing, five solid zone outlines, matching nearby hospital options, transport route and responder hospital-arrival confirmation. Facilities/capabilities are fictional; no medical triage or operational destination selection."
+    definition_of_done: "Check five zone groups, matching/no-match options, no transport before scene arrival, explicit destination confirmation, route switching, and hospital arrival after simulated transport; verify UI."
+    result: "Implementation in progress."

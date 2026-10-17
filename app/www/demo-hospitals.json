@@ -1,0 +1,39 @@
+{
+  "note": "Fictional facilities and invented capabilities for synthetic demo only; not a real hospital directory.",
+  "hospitals": [
+    {
+      "id": "a",
+      "name": "Demo Hospital A",
+      "capabilities": [
+        "Emergency assessment",
+        "Trauma assessment"
+      ],
+      "distance_m": 1896.8,
+      "lat": 40.767172,
+      "lng": -73.923373
+    },
+    {
+      "id": "b",
+      "name": "Demo Hospital B",
+      "capabilities": [
+        "Emergency assessment",
+        "Cardiac care"
+      ],
+      "distance_m": 2801.3,
+      "lat": 40.758047,
+      "lng": -73.934087
+    },
+    {
+      "id": "c",
+      "name": "Demo Hospital C",
+      "capabilities": [
+        "Emergency assessment",
+        "Trauma assessment",
+        "Pediatric assessment"
+      ],
+      "distance_m": 2100.1,
+      "lat": 40.768116,
+      "lng": -73.908248
+    }
+  ]
+}

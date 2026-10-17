@@ -1,5 +1,7 @@
 # Adapted from demos/shinyapp/app.R. Statistics will be supplied by H-03.
 library(shiny)
+# source() supports both repo-root checks and Shiny's app-directory execution.
+source(if (file.exists("responder-demo.R")) "responder-demo.R" else "app/responder-demo.R", local = TRUE)
 if (!requireNamespace("openssl", quietly = TRUE)) stop("Install the openssl package.")
 # Public, disposable demo accounts. Never use these for operational data.
 demo_accounts <- lapply(c("supervisor", "responder"), function(role) {
@@ -9,6 +11,13 @@ demo_accounts <- lapply(c("supervisor", "responder"), function(role) {
        hash = openssl::bcrypt_pbkdf(password, salt, rounds = 16L))
 })
 names(demo_accounts) <- c("supervisor", "responder")
+if (!requireNamespace("jsonlite", quietly = TRUE)) stop("Install jsonlite.")
+demo_hospitals <- jsonlite::fromJSON(if (file.exists("www/demo-hospitals.json")) "www/demo-hospitals.json" else "app/www/demo-hospitals.json", simplifyVector = FALSE)$hospitals
+hospital_candidates <- function(requirement) {
+  matches <- Filter(function(h) requirement %in% h$capabilities, demo_hospitals)
+  matches[order(vapply(matches, function(h) h$distance_m, numeric(1)))]
+}
+brief_item <- function(symbol, label, value) div(class = "brief-item", span(class = "brief-symbol", icon(symbol), `aria-hidden` = "true"), div(span(class = "eyebrow", label), div(class = "brief-value", value)))
 
 required_columns <- c("incident_id", "zone", "call_priority", "dispatch_time", "on_scene_time")
 empty_state <- function(title, detail) div(class = "empty", h3(title), p(detail))
@@ -24,7 +33,16 @@ ui <- fluidPage(
     tags$link(rel = "icon", type = "image/png", href = "icons/icon-192.png"),
     tags$link(rel = "apple-touch-icon", href = "icons/apple-touch-icon.png"),
     tags$script(src = "pwa.js", defer = NA),
+    tags$link(rel = "stylesheet", href = "vendor/leaflet.css"),
+    tags$script(src = "vendor/leaflet.js"),
+    tags$script(src = "responder-map.js", defer = NA),
     tags$style(HTML("
+      .hospital-map-icon span{display:grid;place-items:center;background:white;color:#6941a5;border:2px solid #6941a5;border-radius:5px;width:26px;height:26px;font-weight:800;font-size:17px;box-shadow:0 1px 4px #0003}
+      #care_requirement .radio-inline{display:inline-flex;gap:8px;align-items:center;border:1px solid #d4dfe8;border-radius:9px;padding:12px 14px 12px 34px;margin:6px 8px 6px 0;background:#f8fafc}#care_requirement .radio-inline:has(input:checked){background:#e5f1ef;border-color:#135b63;color:#135b63}#care_requirement .radio-inline input{accent-color:#135b63}#care_requirement .radio-inline svg{margin-right:5px}
+      .brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.brief-item{display:flex;gap:12px;align-items:flex-start;padding:12px;background:#f5f8fb;border-radius:10px}.brief-symbol{font-size:22px;color:#135b63;padding-top:5px}.brief-value{font-size:16px;font-weight:600;margin-top:4px}.assignment-priority{color:#a13c2f;background:#fff0e9;padding:7px 12px;border-radius:20px;font-weight:700}.hospital-card{padding:12px;border:1px solid #dfe6ef;border-radius:10px;margin:10px 0}.hospital-card:first-child{border-left:4px solid #135b63}.zone-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin:5px 12px 0 0}.zone-swatch{width:14px;height:14px;border:3px solid;display:inline-block;background:white}.zone-label{background:white;border:1px solid #64748b;border-radius:4px;font-weight:700;color:#17293e}.map-controls{display:flex;gap:10px;margin-bottom:10px}@media(max-width:700px){.brief-grid{grid-template-columns:1fr}}
+      .suggestion-card{border:1px solid #cedbe4;border-left:4px solid #3b7c85;border-radius:10px;padding:14px 16px;margin:12px 0;background:#f8fbfc}.suggestion-card .form-group{margin:0}.suggestion-card .checkbox{margin:0}.suggestion-card label{line-height:1.55;color:#243c50}.suggestion-card input{accent-color:#135b63;width:17px;height:17px;margin-top:4px}.suggestion-card label span{display:inline-block;padding-left:7px}.suggestion-card:has(input:checked){background:#eaf4ef;border-color:#9bc6b0;border-left-color:#307a57}.suggestion-card:has(input:checked) label{color:#416454}
+      .map-legend{background:#f3f6fa;border:1px solid #dfe6ef;border-radius:10px;padding:16px;margin-top:14px}.map-legend-items{display:flex;gap:22px;flex-wrap:wrap;margin:10px 0}.map-legend-item{display:flex;gap:9px;align-items:center;font-size:14px;font-weight:600}.legend-dot{display:inline-block;flex-shrink:0;width:15px;height:15px;border:2px solid white;border-radius:50%;box-shadow:0 0 0 1px #b8c6d4}.legend-responder{background:#135b63}.legend-incident{background:#b54736}.legend-route{display:inline-block;flex-shrink:0;width:30px;height:5px;border-radius:3px;background:#2468c4}.map-legend p{font-size:12px;margin:6px 0 0}.map-legend-title{font-size:11px;font-weight:700;letter-spacing:1.2px;color:#53677d;text-transform:uppercase}
+      .responder-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px}.call-header{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.call-status{border-radius:18px;background:#e4f0ec;padding:8px 14px;color:#135b63;font-weight:700}.simulation-controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.map-key{font-size:13px;margin-top:12px}.demo-clock{font-size:32px;font-weight:700}.responder-grid li{margin:12px 0}.incident-label{color:#a13c2f;font-weight:700}.leaflet-container{font-family:inherit;border-radius:12px}.responder-full{max-width:1250px;margin:25px auto}@media(max-width:900px){.responder-grid{grid-template-columns:1fr}}
       [hidden]{display:none!important}
       body{background:#f3f6fa;color:#17293e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
       .container-fluid{max-width:1460px;padding:28px 32px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:26px}
@@ -185,10 +203,176 @@ server <- function(input, output, session) {
     req(identical(authenticated_role(), "supervisor"), active_role() == "supervisor")
     supervisor_ui()
   })
+  transport_phase <- reactiveVal("scene")
+  transport_elapsed <- reactiveVal(0)
+  chosen_hospital <- reactiveVal(NULL)
+  hospital_arrival <- reactiveVal(NULL)
+  clear_transport <- function() {
+    transport_phase("scene"); transport_elapsed(0); chosen_hospital(NULL); hospital_arrival(NULL)
+  }
+  demo_started <- reactiveVal(FALSE)
+  demo_running <- reactiveVal(FALSE)
+  demo_elapsed <- reactiveVal(0)
+  demo_scenario <- reactiveVal("Rain + rush hour")
+  observeEvent(input$simulate_call, {
+    req(identical(authenticated_role(), "responder"))
+    demo_scenario(if (is.null(input$demo_conditions)) "Rain + rush hour" else input$demo_conditions)
+    for (i in 1:3) updateCheckboxInput(session, paste0("delay_tip_", i), value = FALSE)
+    clear_transport()
+    demo_elapsed(0); demo_started(TRUE); demo_running(TRUE)
+  })
+  observeEvent(input$pause_call, {
+    req(identical(authenticated_role(), "responder"), demo_started(), demo_elapsed() < 720)
+    demo_running(!demo_running())
+  })
+  observeEvent(input$reset_call, {
+    req(identical(authenticated_role(), "responder"))
+    clear_transport()
+    demo_running(FALSE); demo_started(FALSE); demo_elapsed(0)
+  })
+  observeEvent(input$advance_scene, {
+    req(identical(authenticated_role(), "responder"), demo_started())
+    demo_elapsed(720); demo_running(FALSE)
+  })
+  observeEvent(input$begin_transport, {
+    req(identical(authenticated_role(), "responder"), demo_started(), transport_phase() == "scene")
+    if (demo_elapsed() < 720) {showNotification("Reach the scene first, or use Advance to scene in this demo.", type="message"); return()}
+    candidates <- hospital_candidates(input$care_requirement)
+    selected <- Filter(function(h) identical(h$id,input$hospital_choice), candidates)
+    if (!length(selected)) {showNotification("No matching demo hospital selected.",type="error");return()}
+    chosen_hospital(selected[[1]]);transport_elapsed(0);transport_phase("transport")
+  })
+  observeEvent(input$arrived_hospital, {
+    req(identical(authenticated_role(), "responder"), transport_phase() == "transport")
+    if (transport_elapsed() < 480) {showNotification("The simulated transport has not reached the hospital yet.",type="message");return()}
+    transport_phase("hospital"); hospital_arrival(format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
+  })
+  observe({
+    invalidateLater(1000, session)
+    if (identical(isolate(authenticated_role()), "responder") && isolate(transport_phase()) == "transport" && isolate(transport_elapsed()) < 480) {
+      transport_elapsed(min(480,isolate(transport_elapsed())+30))
+    }
+    if (isTRUE(isolate(demo_running())) && identical(isolate(authenticated_role()), "responder")) {
+      next_time <- min(720, isolate(demo_elapsed()) + 30)
+      demo_elapsed(next_time)
+      if (next_time >= 720) demo_running(FALSE)
+    }
+  })
   output$responder_workspace <- renderUI({
     req(identical(authenticated_role(), "responder"), active_role() == "responder")
-    div(class = "role-workspace panel-box", span(class = "eyebrow", "Primary responder / Demo account"),
-      h2("Your incident workspace"), empty_state("No incident assigned", "Incident briefings and response status controls are planned. This prototype has no live dispatch connection."))
+    div(class = "responder-full",
+      div(class = "notice", "SYNTHETIC DEMO · Fictional incident, traffic, weather, and responder positions. No live dispatch, routing, or validated time savings."),
+      div(class = "panel-box", h2("Responder workspace"),
+        selectInput("demo_conditions", "Choose simulated conditions", c("Rain + rush hour", "Heavy rain + rush hour", "Dry + light traffic", "Snow/ice + road closure")),
+        actionButton("simulate_call", "Simulate incoming call", class = "btn-primary"),
+        p(class = "footer", "Replay runs at 30 simulated seconds per real second. Conditions are fixed when the call starts.")),
+      uiOutput("active_call")
+    )
+  })
+  output$active_call <- renderUI({
+    req(identical(authenticated_role(), "responder"))
+    if (!demo_started()) return(empty_state("Ready for a demo call", "Choose conditions above, then simulate an incoming call."))
+    # Do not rebuild map or controls on every clock tick.
+    d <- responder_demo(0, demo_scenario())
+    tagList(
+      div(class = "panel-box", div(class = "call-header",
+        div(span(class = "eyebrow", d$incident_id), h3(tagList(icon("ambulance"), " New assignment"))),
+        span(class = "assignment-priority", icon("exclamation-triangle"), " High · demo"), uiOutput("call_status")),
+        div(class = "brief-grid",
+          brief_item("phone", "Reason for call", "Reported fall · EMS assessment requested"),
+          brief_item("map-marker-alt", "Scene", "Near Astoria Park · Queens (synthetic)"),
+          brief_item("ambulance", "Assigned unit", paste(d$unit, "·", d$zone)),
+          brief_item("door-open", "Access", "East-side park entrance · confirm with dispatch")),
+        div(class = "simulation-controls", actionButton("pause_call", "Pause / Resume", icon=icon("pause")),
+          actionButton("advance_scene", "Advance to scene", icon=icon("forward")), actionButton("reset_call", "Reset", icon=icon("undo"))),
+        uiOutput("call_clock")),
+      uiOutput("hospital_panel"),
+      div(class = "responder-grid",
+        div(class = "panel-box", h3("Incident map"),
+          div(class="map-controls",tags$button(id="show-all-zones",type="button",class="btn btn-default","All 5 zones"),tags$button(id="focus-route",type="button",class="btn btn-default","Focus route")),
+          div(id = "responder-map", role = "region", `aria-label` = "Interactive map of synthetic responder and incident locations", style = "height:380px;width:100%;"),
+          p(id = "map-status", role = "status"), p(id = "map-zones-status", role = "status"),
+          div(class = "map-legend", role = "group", `aria-label` = "Map legend",
+            div(class = "map-legend-title", "Map legend"),
+            div(class = "map-legend-items",
+              div(class = "map-legend-item", span(class = "legend-dot legend-responder", `aria-hidden` = "true"), "Responder · Q-12"),
+              div(class = "map-legend-item", span(class = "legend-dot legend-incident", `aria-hidden` = "true"), "Incident destination"),
+              div(class = "map-legend-item", span(class = "legend-route", `aria-hidden` = "true"), "Driving route")),
+            div(lapply(seq_along(c("Astoria","Flushing","Jamaica","Forest Hills","Far Rockaway")),function(i) {
+              colors <- c("#7c3aed","#b45309","#be185d","#15803d","#334155")
+              div(class="zone-chip",span(class="zone-swatch",style=paste0("border-color:",colors[i]),`aria-hidden`="true"),c("Astoria","Flushing","Jamaica","Forest Hills","Far Rockaway")[i])
+            })),
+            p("Solid borders: app zone groupings of NYC statistical areas; not official EMS districts."),
+            p("H markers: fictional demo hospitals. Drag to pan · + / − to zoom · Select markers for details."),
+            p("Simulated responder position · Road-route snapshot excludes live traffic and weather."))),
+        div(class = "panel-box", h3("Reduce avoidable delays"),
+          span(class = "eyebrow", "Scenario-based coordination prompts"),
+          h3("Traffic"), p(d$traffic), h3("Weather"), div(style = "display:flex;align-items:center;gap:12px;", weather_icon(d$weather_icon), p(d$weather)),
+          p(class = "footer", "Check off coordination steps as you review them. Resets with each demo call."),
+          div(class = "suggestion-list", lapply(seq_along(d$tips), function(i) {
+            div(class = "suggestion-card", checkboxInput(paste0("delay_tip_", i), d$tips[[i]], value = FALSE))
+          })),
+          p(class = "footer", "These prompts come from the selected demo scenario. No live conditions, route optimization, or estimated minutes saved are calculated.")))
+    )
+  })
+  output$call_status <- renderUI({
+    req(identical(authenticated_role(), "responder"), demo_started())
+    d <- responder_demo(demo_elapsed(), demo_scenario())
+    label <- if (transport_phase() == "hospital") "At hospital" else if (transport_phase() == "transport") "Transporting to hospital" else paste(d$status, if (!demo_running() && d$elapsed < 720) "· Paused" else "")
+    span(class = "call-status", label)
+  })
+  output$call_clock <- renderUI({
+    req(identical(authenticated_role(), "responder"), demo_started())
+    d <- responder_demo(demo_elapsed(), demo_scenario())
+    tagList(span(class = "eyebrow", "Scene response · simulated"),
+      div(class = "demo-clock", sprintf("%02d:%02d", d$elapsed %/% 60, d$elapsed %% 60)),
+      p(if (d$status == "On scene") "Scene arrival recorded · clock stopped" else "30× demo replay"))
+  })
+  output$hospital_panel <- renderUI({
+    req(identical(authenticated_role(), "responder"), demo_started())
+    div(class="panel-box",h3(tagList(icon("hospital")," Hospital destination")),
+      p("Fictional facilities near the synthetic scene. Capabilities are invented; crew/dispatch must confirm the destination. No clinical triage is performed."),
+      if (transport_phase() == "scene") tagList(
+        tags$label(`for`="care_requirement", class="control-label", tagList(icon("briefcase-medical"), " Care requirement · demo")),
+        radioButtons("care_requirement",label=NULL,choiceNames=list(
+          tagList(icon("bandage"), " Trauma assessment"),
+          tagList(icon("briefcase-medical"), " Emergency assessment"),
+          tagList(icon("heart-pulse"), " Cardiac care"),
+          tagList(icon("child"), " Pediatric assessment"),
+          tagList(icon("brain"), " Stroke care")),
+          choiceValues=c("Trauma assessment","Emergency assessment","Cardiac care","Pediatric assessment","Stroke care"),selected="Trauma assessment",inline=TRUE),
+        uiOutput("hospital_candidates_ui")) else tagList(
+          h3(chosen_hospital()$name),p(paste("Demo capabilities:",paste(chosen_hospital()$capabilities,collapse=", "))),
+          uiOutput("transport_progress")))
+  })
+  output$hospital_candidates_ui <- renderUI({
+    req(identical(authenticated_role(), "responder"), demo_started())
+    candidates <- hospital_candidates(input$care_requirement)
+    if (!length(candidates)) return(div(class="notice","No demo facility matches this requirement. Ask dispatch to resolve; no destination is assigned."))
+    labels <- vapply(candidates,function(h) sprintf("%s · %.2f miles by road",h$name,h$distance_m/1609.344),character(1))
+    ids <- vapply(candidates,function(h) h$id,character(1))
+    tagList(div(lapply(seq_along(candidates),function(i) {
+      h<-candidates[[i]]
+      div(class="hospital-card",strong(paste0(if(i==1) "Closest matching demo option: " else "Also matches: ",h$name)),
+          p(sprintf("%.2f miles from scene by road · %s",h$distance_m/1609.344,paste(h$capabilities,collapse=" · "))))
+    })),selectInput("hospital_choice","Confirm destination",choices=setNames(ids,labels)),
+    actionButton("begin_transport","Confirm & begin trip",icon=icon("route"),class="btn-primary"),
+    p(class="footer","Available after scene arrival. Distance uses the road snapshot; real capacity, diversion, travel conditions, and clinical suitability are unknown."))
+  })
+  output$transport_progress <- renderUI({
+    req(identical(authenticated_role(), "responder"), !is.null(chosen_hospital()))
+    if (transport_phase() == "hospital") return(div(class="notice",icon("check-circle")," Hospital arrival confirmed · ",hospital_arrival()," (local demo time)"))
+    tagList(p(sprintf("Transport replay: %02d:%02d / 08:00 simulated",transport_elapsed()%/%60,transport_elapsed()%%60)),
+      p(if(transport_elapsed()>=480) "At demo destination — confirm hospital arrival." else "Fictional 8-minute transport replay, not a predicted travel time."),
+      actionButton("arrived_hospital","Arrived at hospital",icon=icon("hospital"),class="btn-primary"))
+  })
+  observe({
+    req(identical(authenticated_role(), "responder"), demo_started())
+    elapsed <- demo_elapsed(); phase <- transport_phase(); travel <- transport_elapsed(); hospital <- chosen_hospital()
+    session$onFlushed(function() {
+      session$sendCustomMessage("responder-map", list(elapsed = elapsed, phase = phase, travel = travel,
+        hospital = if (is.null(hospital)) NULL else hospital$id))
+    }, once = TRUE)
   })
   upload <- reactive({
     req(identical(authenticated_role(), "supervisor"))
