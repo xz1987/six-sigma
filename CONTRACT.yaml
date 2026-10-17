@@ -382,3 +382,13 @@ tasks:
     notes: "User explicitly authorized shared incident and ETA integration. User additionally authorized confirmed hospital route on the caller map, with a hospital emoji replacing the house during hospital transport. Preserve role authorization, caller link expiry/isolation, fixed assignment predictions, synthetic labels and unchanged QC formulas. Isolated branch based on merged main."
     definition_of_done: "Rscript tests/test-shared-incidents.R prints SHARED INCIDENTS PASS; Rscript app/caller/verify.R passes; Rscript app/smoke.R prints SMOKE PASS; existing QC/supervisor/feed/ETA tests pass."
     result: "Shared incidents, frozen ETA, immediate caller destination updates and hospital route with hospital emoji integrated while preserving main 2450129 reference palette, friendly Caller layout and role navigation. SHARED INCIDENTS PASS; nine caller checks PASS; SMOKE PASS; regression suites PASS 119 and PASS 139 with zero failures, warnings or skips. User authorized commit and push."
+
+  - id: H-26
+    title: Make private caller links open reliably across browsers
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/caller/www/caller.js"]
+    notes: "User reports the responder's Open this incident's caller tracking link does not work on their system, although it opens on collaborators' systems. Preserve the private URL-fragment token flow and role authorization."
+    definition_of_done: "Caller link token is delivered to the namespaced Shiny module when the page initializes whether caller.js loads before or after DOMContentLoaded/Shiny connection; existing caller verification passes and browser click-through opens the incident."
+    result: "Caller initialization now reads the fragment immediately when the script executes, including after DOMContentLoaded, while retaining the Shiny-connected and hashchange handlers. JavaScript syntax check passes. R caller verification, browser click-through, and Posit Cloud sync remain pending because GitHub DNS/push and embedded RStudio UI actions were unavailable from this session."
