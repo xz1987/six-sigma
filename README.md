@@ -66,6 +66,21 @@ closed historical subgroups. Every Supervisor graph has a **How to read this
 chart** button and a visible legend. Patterns and History analysis provide
 separate descriptive and completed-period views.
 
+Each of **Active tracking**, **Patterns** and **History analysis** ends its charts
+with **What this view tells you**. Active tracking separates historical signals
+from context-target misses and configured goals. Patterns explains medians,
+sample counts and time-cell coverage; History distinguishes period averages
+from individual-response p90 and service-goal performance. These summaries follow
+their own view filters and do not infer causes.
+
+History offers latest **7, 14, 30 or 90 calendar days** and **Full baseline year**,
+with independent metric, zone, priority, records and subgroup-interval filters.
+Automatic mode uses daily control-chart subgroups for short windows and weekly
+ones for the full year. Its histogram always summarizes completed daily means.
+A first-entry tutorial can be skipped or replayed with **Show page tutorial**.
+Service goals start with explicitly synthetic suggestions and can be edited;
+no intervention-tracking workflow is included.
+
 ## What the data contributes
 
 The three [QC test datasets and codebook](data/README.md) provide a stable
@@ -133,7 +148,7 @@ dispatch service, live GPS feed, clinical decision system, or validated routing
 product. Automatic responder selection (H-15) is deferred. Offline installation
 provides a fallback page; live interactions require a server connection.
 
-Before submission, add and verify the hosted URL, ask a teammate to follow these
+Before submission, verify the documented hosted URL, ask a teammate to follow these
 instructions from a fresh clone, and submit the public repository and demo on
 Devpost. Deployment and submission remain separate verification tasks.
 

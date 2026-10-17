@@ -135,7 +135,7 @@ tasks:
     status: in_progress
     owner: "Codex"
     started_at: "2026-10-17"
-    owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html"]
+    owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html", "app/manifest.json", "SPEC.md", "demo/README.md", "demo/shared-incidents.md", "tests/README.md"]
     notes: >
       Replace the hackathon README.md with your tool's README; the event
       pages stay in docs/. See demos/making_readmes/.
@@ -144,7 +144,7 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: "Project and function documentation now includes setup, connected-role and day-demo walkthroughs, codebook links, statistical interpretation, About page and hosted link. Audit of 8390b46 passed 362 assertions plus role, route, ETA and standalone bundle checks; credential-free clone, smoke and dataset checks pass. Known timezone warnings and delivery-format discrepancy are documented. H-07 remains in progress pending independent fresh-clone teammate walkthrough; deployed cross-session behavior needs separate verification."
+    result: "Documentation synchronized to dc8f16f: all three findings summaries, History 7/14/30/90/full-year filters and tutorial, daily-versus-weekly distributions, synthetic suggested goals, removed intervention workflow, real sourced hospital directory and current assignment/arrival actions. Updated root/app READMEs, SPEC, demo walkthroughs, test guide and repository/in-app About pages; preserved commit-specific audit evidence and remaining hosted/device/fresh-clone/submission checks. Local links, HTML structure, YAML, manifest and diff checks pass; documented example/dataset and bundle verification recorded after execution. H-07 remains in progress pending independent teammate walkthrough and hosted verification."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost

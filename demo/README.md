@@ -122,18 +122,21 @@ shape and no unresolved seasonal structure; see [SPEC](../SPEC.md).
 
 With the app dependencies installed, run `Rscript app/testme.R` and open
 `http://127.0.0.1:3838`. Log in as Supervisor using the disposable credentials
-shown by the app. Open Developer settings and explicitly enter Developer mode;
-choose Stable process or Planted delay. Use its replay controls and reset before
-switching scenarios. The synthetic baseline-review fixture is a demonstration
-setting, not real approval.
+shown by the app. In Active tracking select the metric, zone and priority, then
+**Try demo mode**. Choose **Normal day** or **Day with delays**, select
+**Start demo day**, then **Next completed case** or **Complete demo day**.
+The day contains 12 generated cases; the delayed scenario plants three final
+30-minute selected-metric durations. Exit demo mode discards generated cases.
+The connected Caller/Responder trip remains alongside them with separate records.
+Advanced settings expose a demo-only baseline-review fixture, not real approval.
 
-The dashboard replays source January observations on its synthetic replay
-calendar; filters and incomplete replay can yield subsets of the full-file
-counts above. The console commands are the exact full-dataset reference. The
-current UI offers only stable/planted presets; run edge cases through the
-console command rather than claiming an unavailable upload or preset. Shared
-caller/responder incidents are a separate demonstration:
-[shared workflow](shared-incidents.md).
+This one-day UI simulation is not a replay of every row of the three CSV files,
+so its counts are not the full-dataset counts above. The console command remains
+the exact reference for those fixtures and edge cases; there is no CSV upload.
+Each Supervisor section ends with **What this view tells you**. History has
+independent completed-period filters; the current open day is excluded from its
+closed subgroups. The app also provides per-chart reading guides and legends.
+See the [shared workflow](shared-incidents.md) for the connected role demo.
 
 ## Independent reproduction completed
 

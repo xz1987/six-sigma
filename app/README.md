@@ -137,6 +137,36 @@ today's open New York day is excluded from closed subgroup history. Configured
 priority service goals and optional zone overrides do not modify control limits.
 Charts have visible legends and expandable **How to read this chart** buttons.
 
+History offers latest 7, 14, 30 and 90 calendar days and Full baseline year.
+Automatic control-chart aggregation is daily for short windows and weekly for
+full-year history; manual Daily/Weekly remains available. Histograms always use
+completed daily means, and full-year history includes monthly distributions of
+daily means. The size legend uses integer completed-response counts. The
+first-entry four-step tutorial can be skipped and replayed with Show page tutorial.
+Suggested service goals are derived from the synthetic baseline and labeled as
+suggestions; user-edited priority defaults and zone overrides remain distinct
+from fixed control limits. Intervention Tracking has been removed.
+
+All three sections place **What this view tells you** after their charts:
+
+| View | Summary inputs and interpretation |
+| --- | --- |
+| Active tracking | Existing individual upper-limit and moving-range flags, context-target misses and configured service-goal results. Counts can overlap; disabled comparisons are unavailable, not zero. |
+| Patterns | Existing neighborhood/weather box medians and n, plus populated hour/weekday cell counts and median range. Neighborhood uses all zones at the selected priority; weather/time use the selected zone. Sparse and Unknown categories remain visible when present. |
+| History analysis | Existing daily/weekly subgroup flags, individual-response p90 and percentage within the configured goal. Follows independent history filters, reports current-day exclusions and distinguishes reference-period comparisons from monitoring. |
+
+`supervisor_plain_summary(m, flags_enabled, status, target_misses, service)`
+formats existing monitoring flags, target availability and service-performance
+results into history/target/goal/action text.
+`supervisor_history_summary(d, service, aggregation, enabled, status, open_count)`
+formats existing subgroup rows, scoped service result, day/week aggregation,
+review availability and excluded-current-day count.
+`supervisor_patterns_summary(records, zone, priority)` accepts validated
+completed descriptive records, delegates to `qc_boxes` and `qc_heatmap`, and
+returns scope, zone, weather, time and interpretation text. These helpers return
+named text lists; they do not fit models, refit limits, identify causes or add
+new signal rules.
+
 **Try demo mode** isolates generated observations. Choose Normal day or Day with
 delays, then Start demo day. Next completed case reveals one of 12 hourly cases
 (08:00–19:00 on the current New York date); Complete demo day reveals all 12.
@@ -181,7 +211,7 @@ expected output is in [demo/README.md](../demo/README.md). A fresh-clone teammat
 walkthrough and public hosted-link verification are still required for H-07;
 local automated checks alone do not establish either.
 
-## Final local audit — 2026-10-17
+## Earlier local audit — 2026-10-17 (commit 8390b46)
 
 Audited pushed commit `8390b46`. Both test suites passed all 362 assertions:
 QC 88, shared incidents 1, chart guides 67, daily demo 18, Supervisor 49,
@@ -225,3 +255,17 @@ The implemented incident-level QC and synthetic scenarios address the recorded
 problem of variation and extreme delays hidden by averages. They demonstrate
 software behavior; they do not establish reduced real response times, lives
 saved, causal weather effects or operational deployment readiness.
+
+
+## Verification of the latest findings summaries — 2026-10-17
+
+The summaries were added in `d7897de` (Active tracking), `284d983` (History) and
+`dc8f16f` (Patterns), with teammate History changes merged in `363eba9`.
+At `dc8f16f`, the root suite passed 274 assertions, including 37 summary checks.
+The connected-day module verified all three rendered summaries, independent
+History filters, current-day exclusion and separate live-trip records. Standalone
+bundle startup, runtime manifest checksums and summary placement checks passed.
+The module still emitted 12 timezone-attribute warnings. These checks are local;
+they do not confirm the deployed release or phone installation. The earlier
+audit above retains its own commit and counts rather than claiming a new full
+ETA/feed run for every text-only change.

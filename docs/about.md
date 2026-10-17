@@ -21,9 +21,11 @@ Start at the role picker:
   through scene arrival, review the hospital options for the scenario, and
   confirm the hospital trip and arrival.
 - **Supervisor:** Sign in with the disposable account shown in the login dialog.
-  Review the shared incident stream and the scene-arrival or hospital-arrival
-  response-time charts. The developer replay can show bundled synthetic
-  examples, including a planted long-delay scenario.
+  Review the shared stream in Active tracking, descriptive Patterns, or History
+  analysis. Every section includes a **What this view tells you** summary after
+  its charts, with reading guides and legends. **Try demo mode** reveals a normal
+  or delayed 12-case day while keeping the live trip separate. History has
+  independent filters and a skippable, replayable page tutorial.
 
 The staff accounts are generated when the app process starts. The caller,
 responder, and supervisor views share one in-memory synthetic incident while
