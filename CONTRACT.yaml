@@ -112,7 +112,7 @@ tasks:
   - id: H-06
     title: Deploy to the course Posit Connect server
     points: "protects the 25 working-tool points - judges must be able to open it"
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-17"
     owns: ["app/", "tests/verify-deploy-bundle.R"]
@@ -125,9 +125,11 @@ tasks:
       event, never in a file). Write manifest.json on your own machine with
       the demo's manifestme script and commit it. Needs your own repo (H-08).
     definition_of_done: >
-      The workflow run is green, and the public URL answers HTTP 200 from a
-      logged-out browser and returns the H-03 numbers for one test dataset.
-    result: ""
+      Publish to course Posit Connect by either supported route (local publishing
+      or GitHub Actions), verify public page delivery and the hosted workflow,
+      and retain the passing known-answer QC and dataset checks. Record whether
+      verification was performed by the team or automated checks.
+    result: "Team confirmed on 2026-10-17 that deployment to Posit Connect and the hosted-app walkthrough succeeded. The documented public URL previously returned HTTP 200 with the DIIS title; local known-answer, dataset, standalone bundle and 460 assertions passed. Deployment accepted through the supported publishing route; no GitHub Actions green run or exact deployed commit identity is claimed. H-06 complete on team-reported hosted verification."
 
   - id: H-07
     title: README and function documentation
@@ -149,9 +151,9 @@ tasks:
   - id: H-08
     title: Reproducible public repo, submitted on Devpost
     points: "5 - Tool Documentation: fully reproducible code, posted publicly to GitHub"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "DIIS team (submission), Codex (verification record)"
+    started_at: "2026-10-17"
     owns: [".gitignore"]
     notes: >
       Make this clone your own public repo early (a new GitHub repo, then
@@ -161,7 +163,7 @@ tasks:
       git clone of the public repo into an empty folder, then the app/
       testme script and the H-03 tests both pass with no extra steps; git
       grep -i "api_key" finds no real key; the Devpost entry links the repo.
-    result: ""
+    result: "Team confirmed on 2026-10-17 that the live demo and public repository were submitted. Earlier credential-free public clone, clean-checkout QC tests, smoke and dataset checks passed; teammate local walkthrough, hosted app, installation and Posit Connect deployment were confirmed by the team. Submission completion is user-reported; no submission receipt or entry URL was supplied."
 
   - id: H-09
     title: Simulated dispatch feed and active-call updates
@@ -257,13 +259,13 @@ tasks:
 
   - id: H-14
     title: Installable PWA shell for the existing Shiny website
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/www/", "app/app.R", "app/README.md"]
     notes: "User requested PWA delivery. Existing Shiny server and demo role logins remain the runtime. Per the H-04 ownership rule, visible PWA controls are limited to the authenticated Supervisor workspace; role selection, Primary responder, and Caller interfaces remain unchanged."
     definition_of_done: "Validate manifest/icon assets, service-worker offline fallback and cache exclusions, R initialization, and browser delivery; document HTTPS and connected-runtime requirements."
-    result: "R initialization, JavaScript parsing, subpath manifest, offline fallback and private-traffic exclusions passed; Safari preview checked. Hosted deployment and device installation remain unverified."
+    result: "R initialization, JavaScript parsing, subpath manifest, offline fallback and private-traffic exclusions passed; Safari preview checked. Team confirmed on 2026-10-17 that the hosted app works and installation was verified after deployment to Posit Connect. H-14 complete; no particular device/browser or new offline test outcome was supplied."
 
   - id: H-15
     title: Simulated dispatcher address-to-responder assignment workflow

@@ -312,3 +312,14 @@ for the requested independent documentation walkthrough and authorized marking
 H-07 complete. This confirmation supersedes the earlier pending walkthrough
 notes. No teammate name, operating system or additional test results were
 provided. Hosted cross-role/device checks and Devpost submission remain separate.
+
+
+## Team deployment and installation confirmation — 2026-10-17
+
+The team subsequently confirmed that the app was deployed to Posit Connect,
+the hosted app was checked and worked, and installation was verified. H-06
+(deployment) and H-14 (PWA delivery) are now recorded complete, alongside H-07's
+confirmed local teammate walkthrough. These team confirmations supersede the
+earlier pending hosted/installation notes; they do not supply a device/browser
+name, CI workflow result, deployed commit identifier or additional offline-test
+output. Public-repository/Devpost submission (H-08) remains separate.
