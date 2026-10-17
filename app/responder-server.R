@@ -1,29 +1,77 @@
-responder_server <- function(input, output, session, authenticated_role, active_role, on_destination_confirmed = NULL) {
-  # All role sessions observe the same process-level demo state.
+responder_server <- function(input, output, session, authenticated_role, active_role, incident_service = NULL) {
+  if(is.null(incident_service$ui_state)) incident_service$ui_state <- new_shared_responder_state()
+  ui_state <- incident_service$ui_state
   state_value <- function(name) function(value) {
-    if(missing(value)) shared_responder_state[[name]] else shared_responder_state[[name]] <- value
+    if(missing(value)) ui_state[[name]] else ui_state[[name]] <- value
   }
+  shared_id <- state_value('incident_id')
+  shared_link <- state_value('incident_link')
+  caller_tracking_link <- state_value('caller_tracking_link')
+  queued_ids <- reactivePoll(1000,session,
+    checkFunc=function() {
+      if(is.null(incident_service)) return('')
+      paste(names(Filter(function(d)!isTRUE(d$claimed),incident_service$incidents)),collapse='|')
+    },
+    valueFunc=function() {
+      if(is.null(incident_service)) return(character())
+      names(Filter(function(d)!isTRUE(d$claimed),incident_service$incidents))
+    })
+  output$shared_queue <- renderUI({
+    req(identical(authenticated_role(), 'responder'))
+    if(is.null(incident_service)) return(NULL)
+    ids <- queued_ids()
+    selectInput('shared_incident','Incident to receive',choices=c('Create a new synthetic incident'='',setNames(ids,ids)),
+      selected=isolate(input$shared_incident))
+  })
+  output$shared_tracking <- renderUI({
+    req(identical(authenticated_role(), 'responder'))
+    link <- shared_link()
+    if(is.null(link)) return(NULL)
+    tagList(p('Private caller link · expires 30 minutes after assignment'),
+      tags$a(href=link$fragment,target='_blank',rel='noopener',class='btn btn-primary','Open this incident’s caller tracking'))
+  })
+  output$shared_eta <- renderUI({
+    req(identical(authenticated_role(), 'responder'),!is.null(shared_id()))
+    demo_elapsed()
+    shared_eta_card(incident_service$incidents[[shared_id()]])
+  })
   transport_phase <- state_value('transport_phase')
   transport_elapsed <- state_value('transport_elapsed')
   chosen_hospital <- state_value('chosen_hospital')
-  caller_tracking_link <- state_value('caller_tracking_link')
   hospital_arrival <- state_value('hospital_arrival')
+  clear_transport <- function() {
+    transport_phase("scene"); transport_elapsed(0); chosen_hospital(NULL); hospital_arrival(NULL); caller_tracking_link(NULL)
+  }
   demo_started <- state_value('demo_started')
   demo_running <- state_value('demo_running')
   demo_elapsed <- state_value('demo_elapsed')
   demo_scenario <- state_value('demo_scenario')
-  clear_transport <- function() {
-    transport_phase('scene'); transport_elapsed(0); chosen_hospital(NULL)
-    hospital_arrival(NULL); caller_tracking_link(NULL)
-  }
   observeEvent(input$simulate_call, {
     req(identical(authenticated_role(), "responder"))
+    if(!is.null(shared_id()) && !is.null(incident_service$incidents[[shared_id()]]) &&
+       is.null(incident_service$incidents[[shared_id()]]$hospital_arrived_at)) {
+      showNotification('Finish or reset the current incident before receiving another.',type='message'); return()
+    }
+    if(!is.null(incident_service)) {
+      selected <- input$shared_incident
+      if(is.null(selected)||!nzchar(selected)) {
+        link <- shared_create(incident_service, if(is.null(input$demo_conditions)) 'Rain + rush hour' else input$demo_conditions)
+      } else {
+        if(is.null(incident_service$incidents[[selected]])||isTRUE(incident_service$incidents[[selected]]$claimed)) {
+          showNotification('Incident was already assigned. Select another.',type='message'); return()
+        }
+        grant <- Filter(function(g)identical(g$incident_id,selected),incident_service$grants)
+        link <- list(incident_id=selected,fragment=if(length(grant))paste0('#incident=',grant[[1]]$token) else '')
+      }
+      d <- shared_claim(incident_service,link$incident_id)
+      shared_id(d$incident_id);shared_link(link)
+      ui_state$started_at <- d$dispatched_at
+      ui_state$last_tick <- Sys.time()
+    }
     demo_scenario(if (is.null(input$demo_conditions)) "Rain + rush hour" else input$demo_conditions)
+    if(!is.null(incident_service)) demo_scenario(d$scenario)
     for (i in 1:3) updateCheckboxInput(session, paste0("delay_tip_", i), value = FALSE)
     clear_transport()
-    shared_responder_state$incident_id <- paste0('DEMO-QNS-', paste(format(openssl::rand_bytes(5)),collapse=''))
-    shared_responder_state$started_at <- Sys.time()
-    shared_responder_state$last_tick <- Sys.time()
     demo_elapsed(0); demo_started(TRUE); demo_running(TRUE)
   })
   observeEvent(input$pause_call, {
@@ -32,12 +80,17 @@ responder_server <- function(input, output, session, authenticated_role, active_
   })
   observeEvent(input$reset_call, {
     req(identical(authenticated_role(), "responder"))
+    if(!is.null(incident_service)&&!is.null(shared_id())) {
+      shared_revoke(incident_service,shared_id())
+    }
+    shared_id(NULL);shared_link(NULL)
     clear_transport()
     demo_running(FALSE); demo_started(FALSE); demo_elapsed(0)
   })
   observeEvent(input$advance_scene, {
     req(identical(authenticated_role(), "responder"), demo_started())
     demo_elapsed(720); demo_running(FALSE)
+    if(!is.null(shared_id())) shared_advance(incident_service,shared_id(),720)
   })
   observeEvent(input$begin_transport, {
     req(identical(authenticated_role(), "responder"), demo_started(), transport_phase() == "scene")
@@ -45,27 +98,31 @@ responder_server <- function(input, output, session, authenticated_role, active_
     candidates <- hospital_candidates(input$care_requirement)
     selected <- Filter(function(h) identical(h$id,input$hospital_choice), candidates)
     if (!length(selected)) {showNotification("No matching demo hospital selected.",type="error");return()}
+    if(!is.null(shared_id())) shared_transport(incident_service,shared_id(),selected[[1]])
     chosen_hospital(selected[[1]]);transport_elapsed(0);transport_phase("transport")
-    if (is.function(on_destination_confirmed)) caller_tracking_link(on_destination_confirmed())
+    caller_tracking_link(shared_link()$fragment)
+    showNotification("Destination confirmed and sent to this incident’s caller.",type="message")
   })
   observeEvent(input$arrived_hospital, {
     req(identical(authenticated_role(), "responder"), transport_phase() == "transport")
     if (transport_elapsed() < 480) {showNotification("The simulated transport has not reached the hospital yet.",type="message");return()}
+    if(!is.null(shared_id())) shared_hospital_arrival(incident_service,shared_id())
     transport_phase("hospital"); hospital_arrival(format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
   })
   observe({
     invalidateLater(1000, session)
-    # Multiple open roles must not speed up the same simulation.
-    last <- isolate(shared_responder_state$last_tick)
+    last <- isolate(ui_state$last_tick)
     if(!isTRUE(isolate(demo_started())) || (!is.null(last) && as.numeric(difftime(Sys.time(),last,units='secs')) < .95)) return()
     if(isolate(transport_phase()) == 'hospital' || (isolate(transport_phase()) == 'scene' && !isTRUE(isolate(demo_running())))) return()
-    shared_responder_state$last_tick <- Sys.time()
+    ui_state$last_tick <- Sys.time()
     if ( isolate(transport_phase()) == "transport" && isolate(transport_elapsed()) < 480) {
       transport_elapsed(min(480,isolate(transport_elapsed())+30))
+      if(!is.null(isolate(shared_id()))) shared_transport_advance(incident_service,isolate(shared_id()),isolate(transport_elapsed()))
     }
     if (isTRUE(isolate(demo_running()))) {
       next_time <- min(720, isolate(demo_elapsed()) + 30)
       demo_elapsed(next_time)
+      if(!is.null(shared_id())) shared_advance(incident_service,shared_id(),next_time)
       if (next_time >= 720) demo_running(FALSE)
     }
   })
@@ -75,9 +132,10 @@ responder_server <- function(input, output, session, authenticated_role, active_
       div(class = "notice", "SYNTHETIC DEMO · Fictional incident, traffic, weather, and responder positions. No live dispatch, routing, or validated time savings."),
       div(class = "panel-box", h2("Responder workspace"),
         selectInput("demo_conditions", "Choose simulated conditions", c("Rain + rush hour", "Heavy rain + rush hour", "Dry + light traffic", "Snow/ice + road closure")),
+        uiOutput("shared_queue"),
         actionButton("simulate_call", "Simulate incoming call", class = "btn-primary"),
         p(class = "footer", "Replay runs at 30 simulated seconds per real second. Conditions are fixed when the call starts.")),
-      uiOutput("active_call")
+      uiOutput("shared_tracking"), uiOutput("shared_eta"), uiOutput("active_call")
     )
   })
   output$active_call <- renderUI({
@@ -85,7 +143,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
     if (!demo_started()) return(empty_state("Ready for a demo call", "Choose conditions above, then simulate an incoming call."))
     # Do not rebuild map or controls on every clock tick.
     d <- responder_demo(0, demo_scenario())
-    d$incident_id <- shared_responder_state$incident_id
+    if(!is.null(shared_id()))d$incident_id <- shared_id()
     tagList(
       div(class = "panel-box", div(class = "call-header",
         div(span(class = "eyebrow", d$incident_id), h3(tagList(icon("ambulance"), " New assignment"))),
@@ -155,9 +213,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
           choiceValues=c("Trauma assessment","Emergency assessment","Cardiac care","Pediatric assessment","Stroke care"),selected="Trauma assessment",inline=TRUE),
         uiOutput("hospital_candidates_ui")) else tagList(
           h3(chosen_hospital()$name),p(paste("Demo capabilities:",paste(chosen_hospital()$capabilities,collapse=", "))),
-          if (!is.null(caller_tracking_link())) tagList(
-            tags$a(href=caller_tracking_link(),class="btn btn-default",icon("eye")," View caller tracking"),
-            p(class="footer","Opens this same trip in the caller view. Switching roles ends your staff login.")),
+          if(!is.null(caller_tracking_link())) tags$a(href=caller_tracking_link(),class="btn btn-default",icon("eye")," View caller tracking"),
           uiOutput("transport_progress")))
   })
   output$hospital_candidates_ui <- renderUI({
@@ -170,7 +226,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
       h<-candidates[[i]]
       div(class="hospital-card",strong(paste0(if(i==1) "Closest matching demo option: " else "Also matches: ",h$name)),
           p(sprintf("%.2f miles from scene by road · %s",h$distance_m/1609.344,paste(h$capabilities,collapse=" · "))))
-    })),selectInput("hospital_choice","Confirm destination",choices=setNames(ids,labels)),
+    })),selectInput("hospital_choice","Hospital to confirm",choices=setNames(ids,labels)),
     actionButton("begin_transport","Confirm & begin trip",icon=icon("route"),class="btn-primary"),
     p(class="footer","Available after scene arrival. Distance uses the road snapshot; real capacity, diversion, travel conditions, and clinical suitability are unknown."))
   })

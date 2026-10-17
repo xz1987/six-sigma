@@ -134,3 +134,26 @@ H-02 created the following core fixtures; their validation and generation assump
 - Team authorized confirmed hospital destination and a What happens next panel. Only trusted crew/dispatch input supplies destination name, address and confirmation timestamp; no inference from proximity or on-scene arrival. Missing/unconfirmed destinations remain unavailable.
 - Hospital selection belongs to the EMS responder interface. Persist its confirmed destination on the shared incident; the authorized caller view refreshes automatically. No destination-confirmation button belongs in the caller preview. Confirmation is separate from arrival and preserves incident isolation. No real hospital recommendation or transport routing.
 - The confirmed destination panel clears when access expires, is revoked or closes. The team removed the separate What happens next card because it duplicated status and connection information.
+
+## Shared incident integration (H-23, authorized 2026-10-16)
+- The combined app uses one process-local synthetic incident service across roles.
+  Caller-created demo incidents can be received explicitly by a responder; responder
+  demo creation also issues a private caller link. Each responder session owns its
+  claimed incident. Arrival and crew-confirmed destination update that same record.
+- Frozen assignment-time H-11 predictions use synthetic scenario weather inputs;
+  missing/unsupported inputs or an unavailable model show unavailable. Traffic is
+  not an ETA input. The same stored prediction is displayed to responder and caller.
+- Scene and hospital completions upsert the shared canonical supervisor stream,
+  without changing QC calculations or baseline review gates. Simulated call receipt
+  equals assignment in this demo. The scene replay is 12 simulated minutes and
+  transport is 8 simulated minutes; these durations are not model predictions.
+- Reset revokes that incident's private link, preserves completed observations and
+  starts no replacement incident until explicitly requested. Server restart clears
+  all process-local records and grants. Durable/multi-process storage is not included.
+- Caller hospital route extension: Confirm & begin trip supplies the confirmed
+  hospital and its stored synthetic OSRM road snapshot to that incident's caller.
+  Show a hospital marker, blue route and the same shared transport progress while
+  switching the visible destination marker from a house during scene response to a hospital emoji during transport. Unconfirmed candidates are
+  not displayed. Missing route means unavailable, never an invented straight-line
+  route. No live navigation or hospital ETA is claimed. Caller access loss clears
+  all map data. The original assignment-to-scene prediction stays unchanged.

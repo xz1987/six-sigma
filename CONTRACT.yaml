@@ -98,16 +98,16 @@ tasks:
   - id: H-05
     title: Demonstration of the tool on every test dataset
     points: "10 - Tool Design: a clear demonstration of the tool, using test datasets"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex H-05 demonstration"
+    started_at: "2026-10-16"
     owns: ["demo/", "app/frontend/"]
     definition_of_done: >
       demo/README.md walks through each data/ CSV with the exact command or
       URL to run, the numbers or chart the tool shows, and a one-line "how to
       read this"; a teammate who did not write it follows it and gets the same
       numbers.
-    result: ""
+    result: "All three CSVs documented in demo/README.md with exact commands and interpretation; existing QC demo prints H-05 DATASET DEMO PASS, independent data audit PASS and QC tests PASS 88. Isabel Wilmot independently ran all three scenarios at 200d1f6 and supplied matching complete output; reproduction recorded in demo/README.md."
 
   - id: H-06
     title: Deploy to the course Posit Connect server
@@ -228,9 +228,9 @@ tasks:
   - id: H-12
     title: Integrate experimental ETA into the simulated Shiny view
     points: "Supports demonstration; no additional rubric points"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex ETA demonstration"
+    started_at: "2026-10-16"
     owns: ["app/eta-view.R", "demo/eta.md"]
     notes: >
       Depends on H-04, H-09 and H-11. H-04 owns wiring eta-view.R into the app,
@@ -242,7 +242,7 @@ tasks:
       assignment-time predictions/intervals; completing an incident leaves its
       original prediction and all core QC baseline limits unchanged. A teammate
       reproduces the example and unavailable-input case with no manual arrival.
-    result: ""
+    result: "H-23 already wires the frozen shared ETA card into both roles. app/eta-view.R and demo/eta.md now reproduce a fixed assignment prediction and independently reconstructed individual interval, automatic scene completion with unchanged prediction/all 15 core QC limits, and missing-wind unavailable display. H-12 ETA VIEW PASS; existing ETA tests PASS 100 and SHARED INCIDENTS PASS. Isabel Wilmot independently reproduced the available/unavailable examples and supplied matching H-12 ETA VIEW PASS output; reproduction recorded in demo/eta.md."
 
 
   - id: H-13
@@ -372,3 +372,13 @@ tasks:
     notes: "User requested Caller hospital marker/legend, continued ambulance movement and the same trip in Responder, Caller and Supervisor. Use a process-local shared trip and expiring incident-scoped caller grants; keep developer replay isolated."
     definition_of_done: "Rscript tests/verify-shared-trip.R and caller verification pass; validate map script, canonical upserts and no premature hospital completion; inspect preview."
     result: "Shared-trip regression and all nine Caller checks pass. Map rendering test verifies hospital icon, bounds and moving ambulance; confirmed hospital marker/legend verified in Safari. Changes remain local."
+
+  - id: H-25
+    title: Connect shared incidents and frozen experimental ETA across roles
+    status: done
+    owner: "Codex shared integration"
+    started_at: "2026-10-16"
+    owns: ["app/shared-incidents.R", "app/app.R", "app/responder-server.R", "app/caller/caller.R", "app/caller/www/caller.js", "app/caller/www/caller.css", "tests/test-shared-incidents.R", "demo/shared-incidents.md", "SPEC.md"]
+    notes: "User explicitly authorized shared incident and ETA integration. User additionally authorized confirmed hospital route on the caller map, with a hospital emoji replacing the house during hospital transport. Preserve role authorization, caller link expiry/isolation, fixed assignment predictions, synthetic labels and unchanged QC formulas. Isolated branch based on merged main."
+    definition_of_done: "Rscript tests/test-shared-incidents.R prints SHARED INCIDENTS PASS; Rscript app/caller/verify.R passes; Rscript app/smoke.R prints SMOKE PASS; existing QC/supervisor/feed/ETA tests pass."
+    result: "Shared incidents, frozen ETA, immediate caller destination updates and hospital route with hospital emoji integrated while preserving main 2450129 reference palette, friendly Caller layout and role navigation. SHARED INCIDENTS PASS; nine caller checks PASS; SMOKE PASS; regression suites PASS 119 and PASS 139 with zero failures, warnings or skips. User authorized commit and push."

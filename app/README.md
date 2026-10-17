@@ -170,3 +170,12 @@ Synthetic event timestamps use the demo clock; hospital confirmation also displa
 local wall-clock time separately. Multiple open roles do not multiply replay speed.
 Process restart clears this in-memory state; this is not a multi-worker backend.
 Regression command: `Rscript tests/verify-shared-trip.R`.
+
+
+The shared-incident merge consolidates canonical records and Caller lookup in
+`app/shared-incidents.R`, preserving the collaborator's frozen assignment-time
+ETA and full hospital route. `app/shared-trip.R` now holds shared responder UI
+state only. The legacy responder-bridge helper is no longer wired into app.R.
+Replay ticks continue in Caller mode, are deduplicated across sessions, and staff
+role changes reuse the same claimed incident. Hospital arrival remains an explicit
+crew confirmation. Both integration regression scripts cover the merged behavior.

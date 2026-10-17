@@ -1,0 +1,47 @@
+SYNTHETIC DATA ONLY; historical assignment-to-scene measurements in minutes.
+No operational baseline approval is created. Exceedances below are arithmetic checks.
+
+stable.csv: input=3465 accepted=3465 rejected=0 weather_normalized=0
+baseline=3060 monitoring=405
+
+baseline requires review 
+                      15 
+Astoria/High: center=8.159166667 I_UCL=11.456815513 MR_UCL=4.050805462
+Arithmetic exceedances (not approved alerts): Individuals=1 Moving_range=5
+Individuals IDs: M-G05-0008 
+
+planted_delay.csv: input=3465 accepted=3465 rejected=0 weather_normalized=0
+baseline=3060 monitoring=405
+
+baseline requires review 
+                      15 
+Astoria/High: center=8.159166667 I_UCL=11.456815513 MR_UCL=4.050805462
+Arithmetic exceedances (not approved alerts): Individuals=4 Moving_range=6
+Individuals IDs: M-G01-0011, M-G01-0007, M-G01-0013, M-G05-0008 
+
+edge_cases.csv: input=270 accepted=261 rejected=9 weather_normalized=2
+baseline=253 monitoring=8
+
+  baseline requires review        degenerate baseline 
+                         1                          1 
+insufficient baseline data 
+                        13 
+Astoria/High: center=8.159166667 I_UCL=11.456815513 MR_UCL=4.050805462
+Astoria/High monitoring: n=5 median=9.0 p90=9.6
+Astoria/High assignment order: E-M-01, E-M-02, E-M-03, E-M-04, E-M-05 
+Unknown weather monitoring records: 3 
+     incident_id                           reason excluded
+                              missing incident_id     TRUE
+      E-BAD-ZONE                     invalid zone     TRUE
+  E-BAD-PRIORITY            invalid call_priority     TRUE
+       E-BAD-DUP            duplicate incident_id     TRUE
+       E-BAD-DUP            duplicate incident_id     TRUE
+  E-BAD-DISPATCH missing or invalid dispatch_time     TRUE
+ E-BAD-TIMESTAMP missing or invalid dispatch_time     TRUE
+   E-BAD-ARRIVAL missing or invalid on_scene_time     TRUE
+  E-BAD-NEGATIVE       negative response duration     TRUE
+          E-M-02    weather normalized to Unknown    FALSE
+          E-M-03    weather normalized to Unknown    FALSE
+
+PASS: stable and planted baseline limits are identical.
+H-05 DATASET DEMO PASS

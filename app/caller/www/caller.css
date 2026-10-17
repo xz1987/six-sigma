@@ -21,4 +21,7 @@
 .caller-demo-bar{max-width:760px;margin:20px auto;background:#F4E9E8;border-color:#C79A99;color:#3B0A0A}
 @media(max-width:540px){.caller-card{padding:20px}.caller-heading h2{font-size:28px}.caller-map-output{height:280px}}
 
+/* Shared trip additions inherit the reference palette and friendly caller layout. */
+.caller-legend{flex-wrap:wrap;gap:10px 18px}.caller-route-status{font-size:13px;color:var(--caller-muted)}
+
 .caller-hospital{border-color:#6941a5;background:#f4effa}.caller-legend{flex-wrap:wrap;gap:10px 20px}.caller-legend span.caller-legend-hospital{color:#6941a5}.caller-legend span.caller-legend-scene{color:#a45e24}.caller-legend span.caller-legend-ambulance{color:#3B0A0A}

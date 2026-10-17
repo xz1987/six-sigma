@@ -18,9 +18,10 @@ source(supervisor_path, local = TRUE)
 source(file.path(repo_root, 'app', 'responder-demo.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'responder-server.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'caller', 'caller.R'), local = TRUE)
-source(file.path(repo_root, 'app', 'caller', 'responder-bridge.R'), local = TRUE)
 shiny::addResourcePath('caller-assets', normalizePath(file.path(repo_root, 'app', 'caller', 'www')))
-dispatch_store <- caller_dispatch_store()
+source(file.path(repo_root, 'app', 'eta.R'), local=TRUE)
+source(file.path(repo_root, 'app', 'shared-incidents.R'), local=TRUE)
+source(file.path(repo_root, 'app', 'shared-trip.R'), local=TRUE)
 if (!requireNamespace("jsonlite", quietly = TRUE)) stop("Install jsonlite.")
 demo_hospitals <- jsonlite::fromJSON(file.path(repo_root, "app", "www", "demo-hospitals.json"), simplifyVector = FALSE)$hospitals
 hospital_candidates <- function(requirement) {
@@ -37,8 +38,18 @@ empty_state <- function(title, detail) div(class = "empty", h3(title), p(detail)
 # Process-level stream shared by Caller, Responder, and Supervisor sessions.
 # It is intentionally in-memory until the production response backend is connected.
 production_response_records <- reactiveVal(response_metric_empty_records())
-source(file.path(repo_root, 'app', 'shared-trip.R'), local = TRUE)
-shared_responder_state <- new_shared_responder_state()
+eta_bundle <- tryCatch(eta_validate(read.csv(file.path(repo_root,'data/eta/v1/weather_effect.csv'),stringsAsFactors=FALSE)),
+  error=function(e)eta_unavailable('Validated synthetic ETA fixture unavailable'))
+route_json <- jsonlite::fromJSON(file.path(repo_root,'app/www/demo-road-route.json'))
+shared_route <- as.data.frame(route_json$geometry$coordinates)
+names(shared_route) <- c('x','y')
+hospital_routes <- setNames(lapply(c('a','b','c'),function(id) {
+  feature <- jsonlite::fromJSON(file.path(repo_root,'app/www',paste0('hospital-route-',id,'.json')))
+  points <- as.data.frame(feature$geometry$coordinates);names(points) <- c('x','y');points
+}),c('a','b','c'))
+incident_service <- shared_new(eta_bundle, shared_route, publish=production_response_records,hospital_routes=hospital_routes)
+incident_service$ui_state <- new_shared_responder_state()
+shared_responder_state <- incident_service$ui_state
 
 ui <- fluidPage(
   tags$head(
@@ -81,7 +92,7 @@ ui <- fluidPage(
         actionButton('choose_responder', 'Continue as primary responder', class = 'btn-primary')),
       div(class = 'role-card', div(class = 'role-number', '03 / REQUEST HELP'),
         h3('Caller'),
-        p('Read emergency-request guidance. This demonstration never contacts EMS.'),
+        p('Track a synthetic assigned incident using its private link. This demonstration never contacts EMS.'),
         actionButton('choose_caller', 'Continue as caller', class = 'btn-primary'))),
     p(class = 'role-note', 'Hackathon demonstration · Staff roles use disposable credentials shown at login.')),
   uiOutput('responder_workspace'),
@@ -177,12 +188,11 @@ server <- function(input, output, session) {
     session$sendCustomMessage('diis-return-home', list())
   })
 
-  responder_server(input, output, session, authenticated_role, active_role,
-    on_destination_confirmed = function() caller_link_responder_hospital(dispatch_store, responder_trip_snapshot))
+  responder_server(input, output, session, authenticated_role, active_role, incident_service)
   created_dispatch <- reactiveVal(NULL)
   observeEvent(input$createDispatch, {
     req(active_role() == 'caller')
-    created_dispatch(caller_create_dispatch(dispatch_store))
+    created_dispatch(shared_create(incident_service))
   })
   observeEvent(input$trackingLinkOpened, {
     if (isTRUE(input$trackingLinkOpened)) {
@@ -198,8 +208,7 @@ server <- function(input, output, session) {
       if(!is.null(created)) tagList(tags$br(),tags$a(class='btn btn-primary',href=created$fragment,'Open caller tracking'),
         p('Private demo link expires in 30 minutes. No message or EMS request is sent.')))
   })
-  caller_server('caller', lookup=function(token)caller_dispatch_lookup(dispatch_store,token))
-  observe({ publish_trip_to_supervisor(responder_trip_snapshot()) })
+  caller_server('caller', lookup=function(token)shared_lookup(incident_service,token))
   supervisor_server('supervisor', production_records = production_response_records)
 }
 
