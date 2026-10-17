@@ -18,6 +18,7 @@ source(supervisor_path, local = TRUE)
 source(file.path(repo_root, 'app', 'responder-demo.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'responder-server.R'), local = TRUE)
 source(file.path(repo_root, 'app', 'caller', 'caller.R'), local = TRUE)
+source(file.path(repo_root, 'app', 'caller', 'responder-bridge.R'), local = TRUE)
 shiny::addResourcePath('caller-assets', normalizePath(file.path(repo_root, 'app', 'caller', 'www')))
 dispatch_store <- caller_dispatch_store()
 if (!requireNamespace("jsonlite", quietly = TRUE)) stop("Install jsonlite.")
@@ -36,6 +37,8 @@ empty_state <- function(title, detail) div(class = "empty", h3(title), p(detail)
 # Process-level stream shared by Caller, Responder, and Supervisor sessions.
 # It is intentionally in-memory until the production response backend is connected.
 production_response_records <- reactiveVal(response_metric_empty_records())
+source(file.path(repo_root, 'app', 'shared-trip.R'), local = TRUE)
+shared_responder_state <- new_shared_responder_state()
 
 ui <- fluidPage(
   tags$head(
@@ -174,7 +177,8 @@ server <- function(input, output, session) {
     session$sendCustomMessage('diis-return-home', list())
   })
 
-  responder_server(input, output, session, authenticated_role, active_role)
+  responder_server(input, output, session, authenticated_role, active_role,
+    on_destination_confirmed = function() caller_link_responder_hospital(dispatch_store, responder_trip_snapshot))
   created_dispatch <- reactiveVal(NULL)
   observeEvent(input$createDispatch, {
     req(active_role() == 'caller')
@@ -195,6 +199,7 @@ server <- function(input, output, session) {
         p('Private demo link expires in 30 minutes. No message or EMS request is sent.')))
   })
   caller_server('caller', lookup=function(token)caller_dispatch_lookup(dispatch_store,token))
+  observe({ publish_trip_to_supervisor(responder_trip_snapshot()) })
   supervisor_server('supervisor', production_records = production_response_records)
 }
 

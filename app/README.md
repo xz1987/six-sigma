@@ -10,8 +10,8 @@ Dependencies: shiny, openssl, jsonlite, ggplot2. Tests additionally need testtha
 - Caller: password-free expiring incident links and tracking, in `caller/caller.R`.
 
 Caller assets are namespaced under caller-assets; only one Leaflet copy loads.
-Synthetic sessions are still independent: merging the interfaces does not wire
-responder events into the supervisor canonical stream or caller tracking store.
+Responder and Caller now share one process-local trip state. Supervisor shows
+that same active trip and receives canonical scene/hospital completion updates.
 The ETA branch is preserved, but validated ETA is not yet displayed in the UI.
 No real EMS request is sent. Local data and account state reset with the process.
 
@@ -147,3 +147,26 @@ access, expiry, incident isolation and crew-confirmed hospital rules are unchang
 Change role clears the incident fragment before reloading, preventing a private
 Caller link from reopening after logout. Deployment paths and query parameters
 are retained; the new session starts at the role picker without prior access.
+
+
+After confirming a hospital in the Responder demo, View caller tracking opens an
+expiring incident-scoped link with that exact hospital name and fictional map
+location. The Caller map uses the responder's scene route and shows scene arrival,
+without restarting the standalone caller replay. Switching to Caller ends staff
+access. The link does not send a message or EMS request; it is a demo handoff.
+
+
+## Shared trip synchronization
+
+One active synthetic Q-12 trip persists across role changes and browser sessions
+in this R process. Each new call gets a unique incident ID. Caller links refer to
+that trip, never create a second replay, and stop authorizing it after reset or
+replacement. A confirmed hospital supplies a hospital map marker and legend item.
+The ambulance follows the same road geometry and transport progress as Responder.
+Supervisor ordinary mode shows the active trip and upserts one canonical record
+at scene arrival, updating it on transport departure and manual hospital arrival.
+No hospital completion is inferred merely from the marker reaching its destination.
+Synthetic event timestamps use the demo clock; hospital confirmation also displays
+local wall-clock time separately. Multiple open roles do not multiply replay speed.
+Process restart clears this in-memory state; this is not a multi-worker backend.
+Regression command: `Rscript tests/verify-shared-trip.R`.

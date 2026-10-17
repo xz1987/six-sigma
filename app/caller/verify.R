@@ -91,7 +91,7 @@ shiny::testServer(caller_server,args=list(lookup=function(token)if(identical(tok
  stopifnot(grepl('Waiting for a location update',paste(as.character(output$lastUpdate),collapse=' ')),jsonlite::fromJSON(output$map)$stale)
 })
 markup<-paste(as.character(caller_ui('caller')),collapse=' ')
-stopifnot(grepl('Recenter',markup),grepl('Your incident location',markup))
+stopifnot(grepl('Recenter',markup),grepl('incident destination',markup))
 cat('PASS: delayed-location warning and stale marker state; Recenter and incident-location labels\n')
 
 # Destination is explicit crew data, independent of arrival and scoped like tracking.

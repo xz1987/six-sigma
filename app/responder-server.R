@@ -1,20 +1,29 @@
-responder_server <- function(input, output, session, authenticated_role, active_role) {
-  transport_phase <- reactiveVal("scene")
-  transport_elapsed <- reactiveVal(0)
-  chosen_hospital <- reactiveVal(NULL)
-  hospital_arrival <- reactiveVal(NULL)
-  clear_transport <- function() {
-    transport_phase("scene"); transport_elapsed(0); chosen_hospital(NULL); hospital_arrival(NULL)
+responder_server <- function(input, output, session, authenticated_role, active_role, on_destination_confirmed = NULL) {
+  # All role sessions observe the same process-level demo state.
+  state_value <- function(name) function(value) {
+    if(missing(value)) shared_responder_state[[name]] else shared_responder_state[[name]] <- value
   }
-  demo_started <- reactiveVal(FALSE)
-  demo_running <- reactiveVal(FALSE)
-  demo_elapsed <- reactiveVal(0)
-  demo_scenario <- reactiveVal("Rain + rush hour")
+  transport_phase <- state_value('transport_phase')
+  transport_elapsed <- state_value('transport_elapsed')
+  chosen_hospital <- state_value('chosen_hospital')
+  caller_tracking_link <- state_value('caller_tracking_link')
+  hospital_arrival <- state_value('hospital_arrival')
+  demo_started <- state_value('demo_started')
+  demo_running <- state_value('demo_running')
+  demo_elapsed <- state_value('demo_elapsed')
+  demo_scenario <- state_value('demo_scenario')
+  clear_transport <- function() {
+    transport_phase('scene'); transport_elapsed(0); chosen_hospital(NULL)
+    hospital_arrival(NULL); caller_tracking_link(NULL)
+  }
   observeEvent(input$simulate_call, {
     req(identical(authenticated_role(), "responder"))
     demo_scenario(if (is.null(input$demo_conditions)) "Rain + rush hour" else input$demo_conditions)
     for (i in 1:3) updateCheckboxInput(session, paste0("delay_tip_", i), value = FALSE)
     clear_transport()
+    shared_responder_state$incident_id <- paste0('DEMO-QNS-', paste(format(openssl::rand_bytes(5)),collapse=''))
+    shared_responder_state$started_at <- Sys.time()
+    shared_responder_state$last_tick <- Sys.time()
     demo_elapsed(0); demo_started(TRUE); demo_running(TRUE)
   })
   observeEvent(input$pause_call, {
@@ -37,6 +46,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
     selected <- Filter(function(h) identical(h$id,input$hospital_choice), candidates)
     if (!length(selected)) {showNotification("No matching demo hospital selected.",type="error");return()}
     chosen_hospital(selected[[1]]);transport_elapsed(0);transport_phase("transport")
+    if (is.function(on_destination_confirmed)) caller_tracking_link(on_destination_confirmed())
   })
   observeEvent(input$arrived_hospital, {
     req(identical(authenticated_role(), "responder"), transport_phase() == "transport")
@@ -45,10 +55,15 @@ responder_server <- function(input, output, session, authenticated_role, active_
   })
   observe({
     invalidateLater(1000, session)
-    if (identical(isolate(authenticated_role()), "responder") && isolate(transport_phase()) == "transport" && isolate(transport_elapsed()) < 480) {
+    # Multiple open roles must not speed up the same simulation.
+    last <- isolate(shared_responder_state$last_tick)
+    if(!isTRUE(isolate(demo_started())) || (!is.null(last) && as.numeric(difftime(Sys.time(),last,units='secs')) < .95)) return()
+    if(isolate(transport_phase()) == 'hospital' || (isolate(transport_phase()) == 'scene' && !isTRUE(isolate(demo_running())))) return()
+    shared_responder_state$last_tick <- Sys.time()
+    if ( isolate(transport_phase()) == "transport" && isolate(transport_elapsed()) < 480) {
       transport_elapsed(min(480,isolate(transport_elapsed())+30))
     }
-    if (isTRUE(isolate(demo_running())) && identical(isolate(authenticated_role()), "responder")) {
+    if (isTRUE(isolate(demo_running()))) {
       next_time <- min(720, isolate(demo_elapsed()) + 30)
       demo_elapsed(next_time)
       if (next_time >= 720) demo_running(FALSE)
@@ -70,6 +85,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
     if (!demo_started()) return(empty_state("Ready for a demo call", "Choose conditions above, then simulate an incoming call."))
     # Do not rebuild map or controls on every clock tick.
     d <- responder_demo(0, demo_scenario())
+    d$incident_id <- shared_responder_state$incident_id
     tagList(
       div(class = "panel-box", div(class = "call-header",
         div(span(class = "eyebrow", d$incident_id), h3(tagList(icon("ambulance"), " New assignment"))),
@@ -139,6 +155,9 @@ responder_server <- function(input, output, session, authenticated_role, active_
           choiceValues=c("Trauma assessment","Emergency assessment","Cardiac care","Pediatric assessment","Stroke care"),selected="Trauma assessment",inline=TRUE),
         uiOutput("hospital_candidates_ui")) else tagList(
           h3(chosen_hospital()$name),p(paste("Demo capabilities:",paste(chosen_hospital()$capabilities,collapse=", "))),
+          if (!is.null(caller_tracking_link())) tagList(
+            tags$a(href=caller_tracking_link(),class="btn btn-default",icon("eye")," View caller tracking"),
+            p(class="footer","Opens this same trip in the caller view. Switching roles ends your staff login.")),
           uiOutput("transport_progress")))
   })
   output$hospital_candidates_ui <- renderUI({

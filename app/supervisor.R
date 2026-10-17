@@ -195,6 +195,7 @@ supervisor_ui <- function(id) {
         textOutput(ns('scope_label'), inline = TRUE),
         div(class = 'status-pill', strong('QC status: '), textOutput(ns('qc_status'), inline = TRUE))),
       uiOutput(ns('source_notice')),
+      uiOutput(ns('shared_trip')),
       div(class = 'replay-timeline',
         div(class = 'timeline-clock', span(class = 'timeline-pulse'),
           strong(textOutput(ns('time_context_label'), inline = TRUE)),
@@ -520,6 +521,17 @@ supervisor_server <- function(id, production_records) {
     div(class = 'alert-note',
       sprintf('%s scenario · seed %d · %d completed of 405 synthetic response-system records. Both metric timestamps are released together in this demo.',
         scenario, state$seed, nrow(snapshot()$completed)))
+  })
+  output$shared_trip <- renderUI({
+    if(!identical(state$mode,'ordinary') || !exists('responder_trip_snapshot',mode='function')) return(NULL)
+    trip <- responder_trip_snapshot()
+    if(is.null(trip)) return(NULL)
+    label <- if(trip$phase=='hospital') 'At hospital' else if(trip$phase=='transport') 'Transporting to hospital' else responder_demo(trip$scene_elapsed,trip$scenario)$status
+    div(class='panel-card',div(class='kpi-label','Shared live demo trip'),
+      h3(paste(trip$incident_id,'·',trip$unit)),
+      p(paste(trip$zone,'·',trip$priority,'·',label)),
+      if(!is.null(trip$hospital)) p(strong('Confirmed hospital: '),trip$hospital$name),
+      p(class='filter-note','Same trip as Responder and private Caller tracking. Synthetic event times; developer replay remains separate.'))
   })
   output$connection_contract <- renderUI({
     info <- metric_info()

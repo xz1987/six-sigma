@@ -28,12 +28,17 @@
     html: `<span aria-hidden="true">${character}</span>`,
     iconSize: [48, 48], iconAnchor: [24, 24]
   });
+  const viewBounds = data => {
+    const points = [[data.ambulance.lat, data.ambulance.lng], [data.destination.lat, data.destination.lng]];
+    if (data.hospital) points.push([data.hospital.lat, data.hospital.lng]);
+    return points;
+  };
   binding.renderValue = (el, value) => {
     const data = JSON.parse(value);
     if (!data) {
       if (el.callerResize) el.callerResize.disconnect();
       if (el.callerMap) el.callerMap.remove();
-      el.callerMap = null; el.callerIncident = null;
+      el.callerMap = null; el.callerIncident = null; el.callerHospital = null; el.callerHospitalKey = null;
       el.replaceChildren();
       return;
     }
@@ -42,6 +47,7 @@
       if (el.callerMap) el.callerMap.remove();
       const map = L.map(el, {scrollWheelZoom: false});
       el.callerMap = map;
+      el.callerHospital = null; el.callerHospitalKey = null;
       el.callerIncident = data.incident_id;
       const status = el.parentElement.querySelector('.caller-tile-status');
       const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -56,7 +62,7 @@
       el.callerAmbulance = L.marker([data.ambulance.lat, data.ambulance.lng], {
         icon: icon('🚑', 'caller-ambulance'), title: 'Your assigned ambulance (simulated)', alt: 'Ambulance: your assigned unit', zIndexOffset: 200
       }).addTo(map).bindTooltip('Your assigned ambulance · simulated GPS');
-      map.fitBounds([[data.ambulance.lat, data.ambulance.lng], [data.destination.lat, data.destination.lng]], {padding: [48, 48], maxZoom: 15});
+      map.fitBounds(viewBounds(data), {padding: [48, 48], maxZoom: 15});
       // Conditional-panel visibility and resizing must not leave a blank map.
       el.callerResize = new ResizeObserver(() => map.invalidateSize());
       el.callerResize.observe(el);
@@ -65,6 +71,21 @@
     el.classList.toggle('caller-location-stale', data.stale);
     el.callerAmbulance.setLatLng([data.ambulance.lat, data.ambulance.lng]);
     el.callerHouse.setLatLng([data.destination.lat, data.destination.lng]);
+    const hospitalKey = data.hospital ? `${data.hospital.lat},${data.hospital.lng},${data.hospital.name}` : null;
+    if (hospitalKey !== el.callerHospitalKey) {
+      if (el.callerHospital) el.callerHospital.remove();
+      el.callerHospital = null;
+      el.callerHospitalKey = hospitalKey;
+      if (data.hospital) {
+        const label = document.createElement('span');
+        label.textContent = `${data.hospital.name} · confirmed destination (demo)`;
+        el.callerHospital = L.marker([data.hospital.lat, data.hospital.lng], {
+          icon: icon('🏥', 'caller-hospital'), title: 'Confirmed hospital destination',
+          alt: 'Hospital symbol: crew-confirmed destination', zIndexOffset: 150
+        }).addTo(el.callerMap).bindTooltip(label);
+        el.callerMap.fitBounds(viewBounds(data), {padding:[48,48],maxZoom:15});
+      }
+    }
     // Keep both characters visible when the ambulance reaches the same location.
     el.callerAmbulance.setIcon(icon('🚑', data.arrived ? 'caller-ambulance at-destination' : 'caller-ambulance'));
   };
@@ -74,7 +95,7 @@
     const el = document.getElementById(button.dataset.map);
     if (!el || !el.callerMap || !el.callerLocations) return;
     const d = el.callerLocations;
-    el.callerMap.fitBounds([[d.ambulance.lat, d.ambulance.lng], [d.destination.lat, d.destination.lng]], {padding: [48, 48], maxZoom: 16});
+    el.callerMap.fitBounds(viewBounds(d), {padding: [48, 48], maxZoom: 16});
   });
   Shiny.outputBindings.register(binding, 'diis.callerMap');
 })();

@@ -352,3 +352,23 @@ tasks:
     notes: "Change role must remove the incident fragment before session reload; the browser handler also works without a Shiny connection."
     definition_of_done: "Server and JavaScript checks confirm cleared staff access, fragment removal, preserved deployment path/query and one reload; browser returns to a clean role-picker URL."
     result: "Server and connection-independent JavaScript checks pass; final browser clean-URL confirmation remains pending."
+
+  - id: H-23
+    title: Responder-confirmed hospital handoff to Caller tracking
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/app.R", "app/responder-server.R", "app/caller/caller.R", "app/caller/responder-bridge.R", "app/README.md"]
+    notes: "User requested a Caller tracking button after destination confirmation. Preserve private-link isolation and show only the crew-confirmed fictional hospital."
+    definition_of_done: "Confirm hospital, open generated Caller link, verify matching hospital and scene marker, reject invalid/expired links, and verify the button is absent before confirmation."
+    result: "Implementation in progress."
+
+  - id: H-24
+    title: Synchronize one demo trip across all roles with hospital map destination
+    status: in_progress
+    owner: "Codex"
+    started_at: "2026-10-16"
+    owns: ["app/", "tests/verify-shared-trip.R"]
+    notes: "User requested Caller hospital marker/legend, continued ambulance movement and the same trip in Responder, Caller and Supervisor. Use a process-local shared trip and expiring incident-scoped caller grants; keep developer replay isolated."
+    definition_of_done: "Rscript tests/verify-shared-trip.R and caller verification pass; validate map script, canonical upserts and no premature hospital completion; inspect preview."
+    result: "Shared-trip regression and all nine Caller checks pass. Map rendering test verifies hospital icon, bounds and moving ambulance; confirmed hospital marker/legend verified in Safari. Changes remain local."

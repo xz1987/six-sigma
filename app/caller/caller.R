@@ -11,12 +11,15 @@ caller_demo_incident <- function(id='DEMO-CALL-001', zone='Astoria', now=Sys.tim
        progress=0, eta=NULL, confirmed_destination=NULL)
 }
 # Only a trusted crew/dispatch provider calls this hook; callers cannot confirm destinations.
-caller_confirm_destination <- function(d, name, address, confirmed_at=Sys.time()) {
+caller_confirm_destination <- function(d, name, address, confirmed_at=Sys.time(), lat=NULL, lng=NULL) {
   valid_text<-function(x)is.character(x)&&length(x)==1&&!is.na(x)&&nzchar(trimws(x))
   if(!valid_text(name)||!valid_text(address)||!inherits(confirmed_at,'POSIXt')||
      length(confirmed_at)!=1||is.na(confirmed_at)||confirmed_at<d$dispatched_at)
     stop('Destination requires a name, address and valid confirmation timestamp')
-  d$confirmed_destination<-list(name=trimws(name),address=trimws(address),confirmed_at=confirmed_at)
+  if(!is.null(lat)||!is.null(lng)) {
+    if(!is.numeric(lat)||length(lat)!=1||!is.finite(lat)||abs(lat)>90||!is.numeric(lng)||length(lng)!=1||!is.finite(lng)||abs(lng)>180) stop('Invalid hospital coordinates')
+  }
+  d$confirmed_destination<-list(name=trimws(name),address=trimws(address),confirmed_at=confirmed_at,lat=lat,lng=lng)
   d
 }
 caller_destination_panel <- function(d) {
@@ -56,8 +59,10 @@ caller_dispatch_lookup <- function(store, token, now=Sys.time()) {
   if(!isTRUE(now<entry$grant$expires_at)) {
     rm(list=token,envir=store);return(NULL)
   }
+  if(is.function(entry$trip_provider)) return(entry$trip_provider())
   d<-entry$incident
-  d<-caller_replay(d,as.numeric(difftime(now,d$dispatched_at,units='secs')),now)
+  if (isTRUE(entry$linked_responder)) d$updated_at <- now
+  else d<-caller_replay(d,as.numeric(difftime(now,d$dispatched_at,units='secs')),now)
   caller_lookup(token,list(entry$grant),setNames(list(d),d$incident_id),now)
 }
 caller_lookup <- function(token, grants, incidents, now=Sys.time()) {
@@ -84,8 +89,10 @@ caller_position <- function(route, progress) {
 caller_map <- function(d) {
   if(is.null(d))return(NULL)
   pos<-caller_position(d$route,d$progress);target<-tail(d$route,1)
+  if(!is.null(d$scene)) target<-data.frame(x=d$scene$lng,y=d$scene$lat)
+  hospital<-caller_hospital_location(d)
   list(incident_id=d$incident_id,ambulance=list(lat=unname(pos[2]),lng=unname(pos[1])),
-       destination=list(lat=target$y,lng=target$x),
+       destination=list(lat=target$y,lng=target$x), hospital=hospital,
        arrived=identical(d$status,'arrived'),
        stale=as.numeric(difftime(Sys.time(),d$updated_at,units='secs'))>30)
 }
@@ -93,8 +100,8 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
   ns<-shiny::NS(id)
   shiny::tagList(
     if (include_leaflet) shiny::tagList(shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'vendor/leaflet/leaflet.css')), shiny::tags$script(src=paste0(asset_prefix,'vendor/leaflet/leaflet.js'))),
-    shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css')),
-    shiny::tags$script(src=paste0(asset_prefix,'caller.js'),defer=NA),
+    shiny::tags$link(rel='stylesheet',href=paste0(asset_prefix,'caller.css?v=trip-sync-1')),
+    shiny::tags$script(src=paste0(asset_prefix,'caller.js?v=trip-sync-1'),defer=NA),
     shiny::div(class='caller-workspace',
       shiny::div(class='caller-heading',shiny::span(class='caller-eyebrow','HERE FOR YOU'),shiny::h2('Your EMS updates'),shiny::p('Follow your ambulance and see where you’re headed.')),
       shiny::div(class='caller-connection',role='status','Connection lost. These are your last updates. Reconnect for the latest.'),
@@ -106,7 +113,7 @@ caller_ui <- function(id, asset_prefix = '', include_leaflet = TRUE) {
         shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::h3('Your ambulance'),shiny::tags$button(type='button',class='btn caller-recenter',`data-map`=ns('map'),'⌖ Recenter')),
           shiny::div(id=ns('map'),class='caller-map-output',role='region',`aria-label`='Queens street map with your assigned ambulance and incident destination'),
           shiny::p(class='caller-tile-status',role='status'),
-          shiny::div(class='caller-legend',shiny::span('🚑 Assigned ambulance'),shiny::span('🏠 Your incident location')),
+          shiny::uiOutput(ns('legend')),
           shiny::tags$details(class='caller-trip-details',shiny::tags$summary('About this demo map'),shiny::p(class='caller-map-note','Queens street map with simulated ambulance movement, not live GPS. No emergency request is sent.')),
           shiny::uiOutput(ns('lastUpdate')))),
       shiny::uiOutput(ns('destination'))))
@@ -125,7 +132,8 @@ caller_server <- function(id, lookup) {
     shiny::outputOptions(output,'map',suspendWhenHidden=FALSE)
     output$tracking<-shiny::renderUI({
       d<-current();if(is.null(d))return(NULL)
-      status<-switch(d$status,assigned='Ambulance assigned',approaching='Approaching the scene',arrived='Ambulance has arrived','Status unavailable')
+      status<-switch(d$status,assigned='Ambulance assigned',approaching='Approaching the scene',arrived='Ambulance has arrived',transporting='On the way to your hospital',hospital_arrived='Arrived at your hospital','Status unavailable')
+      hospital_trip <- d$status %in% c('transporting','hospital_arrived')
       format_time<-function(t)format(t,'%b %d, %I:%M:%S %p %Z',tz='America/New_York')
       shiny::tagList(
         shiny::div(class='caller-card',shiny::div(class='caller-card-top',shiny::span(class='caller-eyebrow','YOUR INCIDENT'),shiny::span(class='caller-demo','SYNTHETIC DEMO')),
@@ -133,9 +141,14 @@ caller_server <- function(id, lookup) {
           shiny::div(class=paste('caller-status',if(d$status=='arrived')'caller-arrived'),role='status',
             shiny::strong(if(d$status=='arrived')'✓ Arrival confirmed' else status),
             if(d$status=='arrived')shiny::p(paste('Ambulance on scene at',format_time(d$arrived_at)))),
-          shiny::div(class='caller-steps',lapply(c('Assigned','Approaching','Arrived'),function(label)shiny::span(class=if(label==switch(d$status,assigned='Assigned',approaching='Approaching',arrived='Arrived',''))'is-current' else '',label))),
-          shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
-            shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
+          shiny::div(class='caller-steps',lapply(if(hospital_trip)c('On scene','To hospital','At hospital') else c('Assigned','Approaching','Arrived'),function(label)shiny::span(class=if(label==switch(d$status,assigned='Assigned',approaching='Approaching',arrived='Arrived',transporting='To hospital',hospital_arrived='At hospital',''))'is-current' else '',label))),
+          shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow',if(hospital_trip)'HOSPITAL TRIP' else 'ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='hospital_arrived')'Hospital arrival confirmed' else if(hospital_trip)'On the way' else if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
+            shiny::p(if(hospital_trip) 'Updates come from your assigned crew’s demo trip.' else if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
+    })
+    output$legend<-shiny::renderUI({
+      d<-current();if(is.null(d))return(NULL)
+      shiny::div(class='caller-legend',shiny::span(class='caller-legend-ambulance','🚑 Assigned ambulance'),shiny::span(class='caller-legend-scene','🏠 Incident location'),
+        if(!is.null(caller_hospital_location(d))) shiny::span(class='caller-legend-hospital','🏥 Confirmed hospital'))
     })
     output$destination<-shiny::renderUI({d<-current();if(is.null(d))return(NULL);caller_destination_panel(d)})
     output$lastUpdate<-shiny::renderUI({
@@ -149,4 +162,11 @@ caller_server <- function(id, lookup) {
     })
     list(current=current,access=access)
   })
+}
+
+
+caller_hospital_location <- function(d) {
+  h<-d$confirmed_destination
+  if(is.null(h)||is.null(h$lat)||is.null(h$lng)||!is.numeric(h$lat)||!is.numeric(h$lng)||length(h$lat)!=1||length(h$lng)!=1||!is.finite(h$lat)||!is.finite(h$lng)||abs(h$lat)>90||abs(h$lng)>180) return(NULL)
+  list(name=h$name,lat=h$lat,lng=h$lng)
 }
