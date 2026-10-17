@@ -224,7 +224,9 @@ supervisor_simulate_day <- function(historical, zone, priority, metric_id,
     transport=supervisor_baseline_moments(historical,'transport_to_hospital',zone,priority))
   rows <- lapply(seq_along(days),function(k) do.call(rbind,lapply(seq_len(12),function(j) {
     start <- as.POSIXct(paste(days[k],'08:00:00'),tz='America/New_York')+(j-1)*60*60
-    call <- supervisor_simulate_call(historical,zone,priority,(k-1L)*12L+j,start,responder='EMS-101',baseline_moments=moments)
+    day_offset <- as.integer(days[k] - as.Date('2026-01-01'))
+    call <- supervisor_simulate_call(historical,zone,priority,(k-1L)*12L+j,start,
+      responder='EMS-101',seed=20261016L + day_offset * 100L,baseline_moments=moments)
     call$incident_id <- sprintf('DAY-%s-%02d',format(days[k],'%Y%m%d'),j)
     call$response_system_source <- 'Synthetic active-day demonstration'
     if(isTRUE(abnormal) && j>=10L) {
@@ -241,6 +243,26 @@ supervisor_simulate_day <- function(historical, zone, priority, metric_id,
     call
   })))
   do.call(rbind,rows)
+}
+
+# Complete calendar days used only by the Developer History replay. The caller
+# advances simulated time to the following day before these rows enter History.
+supervisor_history_replay_days <- function(historical, zone, priority, metric_id,
+                                            days, scenario = c('stable', 'abnormal')) {
+  scenario <- match.arg(scenario)
+  days <- as.Date(days)
+  if (!length(days) || anyNA(days) || any(days < as.Date('2026-01-01')) ||
+      any(days > as.Date('2026-12-31')))
+    stop('History replay days must be valid dates in 2026.')
+  rows <- supervisor_simulate_day(historical, zone, priority, metric_id,
+    abnormal = identical(scenario, 'abnormal'),
+    as_of = as.POSIXct(paste(days, '12:00:00'), tz = 'America/New_York'))
+  rows$incident_id <- sub('^DAY-', 'HIST-', rows$incident_id)
+  rows$response_system_source <- if (identical(scenario, 'abnormal'))
+    ifelse(grepl('planted', rows$response_system_source),
+      'Synthetic 2026 history replay: planted 30-minute delay',
+      'Synthetic 2026 history replay') else 'Synthetic 2026 history replay'
+  rows
 }
 
 # Presentation metadata only: no measurements or statistical formulas change.
@@ -468,6 +490,10 @@ supervisor_server <- function(id, production_records) {
   baseline_records <- dashboard_load_fixture(repo_root, 'stable')
   state <- reactiveValues(mode = 'ordinary', developer_calls = NULL,
     daily_demo_as_of = NULL, demo_day_cases = NULL,
+    history_replay_calls = NULL, history_replay_as_of = NULL,
+    history_replay_through = as.Date(NA), history_replay_days = 0L,
+    history_replay_zone = NULL, history_replay_priority = NULL,
+    history_replay_metric = NULL, history_replay_scenario = NULL,
     baseline_records = baseline_records,
     ui_tick = 0L, completed_tick = 0L, last_step = NULL,
     service_goals = supervisor_suggested_service_goals(baseline_records),
@@ -504,6 +530,14 @@ supervisor_server <- function(id, production_records) {
   enter_developer_mode <- function() {
     state$daily_demo_as_of <- NULL
     state$demo_day_cases <- NULL
+    state$history_replay_calls <- response_metric_empty_records()
+    state$history_replay_as_of <- NULL
+    state$history_replay_through <- as.Date(NA)
+    state$history_replay_days <- 0L
+    state$history_replay_zone <- NULL
+    state$history_replay_priority <- NULL
+    state$history_replay_metric <- NULL
+    state$history_replay_scenario <- NULL
     state$mode <- 'developer'
     state$developer_calls <- response_metric_empty_records()
     state$last_step <- NULL
@@ -516,6 +550,14 @@ supervisor_server <- function(id, production_records) {
   leave_developer_mode <- function() {
     state$daily_demo_as_of <- NULL
     state$demo_day_cases <- NULL
+    state$history_replay_calls <- NULL
+    state$history_replay_as_of <- NULL
+    state$history_replay_through <- as.Date(NA)
+    state$history_replay_days <- 0L
+    state$history_replay_zone <- NULL
+    state$history_replay_priority <- NULL
+    state$history_replay_metric <- NULL
+    state$history_replay_scenario <- NULL
     state$mode <- 'ordinary'
     state$developer_calls <- NULL
     state$last_step <- NULL
@@ -664,6 +706,61 @@ supervisor_server <- function(id, production_records) {
   observeEvent(input$next_demo_case,reveal_day_cases())
   observeEvent(input$finish_demo_day,reveal_day_cases(TRUE))
 
+  reset_history_replay <- function() {
+    state$history_replay_calls <- response_metric_empty_records()
+    state$history_replay_as_of <- as.POSIXct('2026-01-01 00:01:00', tz = 'America/New_York')
+    state$history_replay_through <- as.Date(NA)
+    state$history_replay_days <- 0L
+    state$history_replay_zone <- NULL
+    state$history_replay_priority <- NULL
+    state$history_replay_metric <- NULL
+    state$history_replay_scenario <- NULL
+    state$completed_tick <- isolate(state$completed_tick) + 1L
+    state$ui_tick <- isolate(state$ui_tick) + 1L
+  }
+
+  append_history_replay <- function(count = 1L, restart = FALSE) {
+    req(identical(state$mode, 'developer'), input$zone, input$priority, input$metric)
+    if (isTRUE(restart)) reset_history_replay()
+    if (!state$history_replay_days) {
+      state$history_replay_zone <- input$zone
+      state$history_replay_priority <- input$priority
+      state$history_replay_metric <- input$metric
+      state$history_replay_scenario <- input$history_replay_scenario %||% 'stable'
+    }
+    start <- if (!state$history_replay_days) as.Date('2026-01-01')
+      else state$history_replay_through + 1L
+    if (start > as.Date('2026-12-31')) {
+      showNotification('The 2026 History replay is already complete.', type = 'message')
+      return(invisible(NULL))
+    }
+    end <- min(as.Date('2026-12-31'), start + as.integer(count) - 1L)
+    days <- seq(start, end, by = 'day')
+    rows <- supervisor_history_replay_days(state$baseline_records,
+      state$history_replay_zone, state$history_replay_priority,
+      state$history_replay_metric, days, state$history_replay_scenario)
+    state$history_replay_calls <- rbind(state$history_replay_calls,
+      rows[, names(state$history_replay_calls), drop = FALSE])
+    state$history_replay_through <- end
+    state$history_replay_days <- state$history_replay_days + length(days)
+    state$history_replay_as_of <- as.POSIXct(paste(end + 1L, '00:01:00'),
+      tz = 'America/New_York')
+    state$completed_tick <- isolate(state$completed_tick) + 1L
+    state$ui_tick <- isolate(state$ui_tick) + 1L
+    updateSelectInput(session, 'history_metric', selected = state$history_replay_metric)
+    updateSelectInput(session, 'history_zone', selected = state$history_replay_zone)
+    updateSelectInput(session, 'history_priority', selected = state$history_replay_priority)
+    updateSelectInput(session, 'history_period', selected = 'full')
+    updateSelectInput(session, 'history_phase', selected = 'both')
+    updateTabsetPanel(session, 'main_tabs', selected = 'History analysis')
+  }
+
+  observeEvent(input$start_history_replay, append_history_replay(1L, TRUE))
+  observeEvent(input$next_history_day, append_history_replay(1L))
+  observeEvent(input$next_history_week, append_history_replay(7L))
+  observeEvent(input$finish_history_year, append_history_replay(366L))
+  observeEvent(input$reset_history_replay, reset_history_replay())
+
   snapshot <- reactive({
     state$ui_tick
     records <- if (identical(state$mode, 'developer')) state$developer_calls
@@ -677,6 +774,11 @@ supervisor_server <- function(id, production_records) {
   active_completed <- reactive({
     state$completed_tick
     if (identical(state$mode, 'developer')) state$developer_calls
+    else production_records()
+  })
+  history_completed <- reactive({
+    state$completed_tick
+    if (identical(state$mode, 'developer')) state$history_replay_calls
     else production_records()
   })
   active_source_records <- reactive(active_completed())
@@ -740,13 +842,33 @@ supervisor_server <- function(id, production_records) {
       tags$p('Select Exit demo mode above the graphs to return to the shared live records.'))
   })
 
-  # The bar itself renders only when the mode changes, so the button keeps focus
-  # across clicks; the status text updates separately.
+  # Each workspace exposes only its own replay controls. Daily and yearly
+  # records are stored separately and remain isolated when the user navigates.
   output$developer_bar <- renderUI({
+    workspace <- input$main_tabs %||% 'Active tracking'
+    if (identical(workspace, 'Patterns')) return(NULL)
+    history_workspace <- identical(workspace, 'History analysis')
     if (!identical(state$mode, 'developer')) return(
       div(class='developer-bar',role='region',`aria-label`='Demo controls',
-        div(strong('Explore a demo'),p('Generate normal and delayed daily cases. Your connected live trip stays separate.')),
-        actionButton(session$ns('enter_developer'),'Try demo mode',class='btn-primary')))
+        div(strong(if(history_workspace)'Explore 2026 History replay' else 'Explore a demo day'),
+          p(if(history_workspace)
+            'Append closed synthetic days and watch the historical analysis change.'
+          else 'Generate normal and delayed daily cases. Your connected live trip stays separate.')),
+        actionButton(session$ns('enter_developer'),
+          if(history_workspace)'Try yearly simulation' else 'Try daily simulation',class='btn-primary')))
+    if (history_workspace) return(
+      div(class='developer-bar history-developer-bar',role='region',`aria-label`='Yearly History simulation',
+        uiOutput(session$ns('developer_bar_text'),class='developer-bar-text'),
+        div(class='developer-actions',
+          selectInput(session$ns('history_replay_scenario'),'History scenario',
+            choices=c('Stable days'='stable','Days with planted delays'='abnormal')),
+          actionButton(session$ns('start_history_replay'),'Start at Jan 1',class='btn-primary'),
+          actionButton(session$ns('next_history_day'),'Add next day',class='btn-default'),
+          actionButton(session$ns('next_history_week'),'Add next 7 days',class='btn-default'),
+          actionButton(session$ns('finish_history_year'),'Complete 2026',class='btn-default'),
+          actionButton(session$ns('reset_history_replay'),'Reset replay',class='btn-default'),
+          actionButton(session$ns('end_developer'),'Exit demo mode',class='btn-default')),
+        p('Yearly simulation only: each step appends complete synthetic days and advances past midnight. The selected scope locks when the replay starts; reset it to choose another.')))
     div(class='developer-bar',role='region',`aria-label`='Developer simulation',
       uiOutput(session$ns('developer_bar_text'),class='developer-bar-text'),
       div(class='developer-actions',
@@ -767,6 +889,26 @@ supervisor_server <- function(id, production_records) {
   })
   output$developer_bar_text <- renderUI({
     req(identical(state$mode, 'developer'))
+    if (identical(input$main_tabs, 'History analysis')) {
+      if (!state$history_replay_days) return(tagList(
+        div(class = 'kpi-label', 'Developer mode · yearly History simulation'),
+        tags$strong('No 2026 monitoring days added yet'),
+        tags$span(class = 'developer-bar-detail', role = 'status',
+          'Choose the History scope, then start at January 1.')))
+      complete <- identical(state$history_replay_through, as.Date('2026-12-31'))
+      return(tagList(
+        div(class = 'kpi-label', 'Developer mode · synthetic History replay'),
+        tags$strong(sprintf('%d closed 2026 day%s · %d completed calls%s',
+          state$history_replay_days, if (state$history_replay_days == 1L) '' else 's',
+          nrow(state$history_replay_calls), if (complete) ' · year complete' else '')),
+        tags$span(class = 'developer-bar-detail', role = 'status',
+          sprintf('Closed through %s · simulated clock %s · %s / %s priority · %s · %s scenario',
+            format(state$history_replay_through, '%b %d, %Y'),
+            format(state$history_replay_as_of, '%b %d, %Y %H:%M ET'),
+            state$history_replay_zone, state$history_replay_priority,
+            response_metric_info(state$history_replay_metric)$short_label,
+            if (identical(state$history_replay_scenario, 'abnormal')) 'planted-delay' else 'stable'))))
+    }
     target <- sprintf('%s · %s priority', input$zone, input$priority)
     last <- state$last_step
     n <- nrow(state$developer_calls)
@@ -1211,13 +1353,15 @@ supervisor_server <- function(id, production_records) {
 
   subgroup_open_day <- reactive({
     invalidateLater(60000, session)
-    as.Date(snapshot()$simulated_time, tz = 'America/New_York')
+    if (identical(state$mode, 'developer') && !is.null(state$history_replay_as_of))
+      as.Date(state$history_replay_as_of, tz = 'America/New_York')
+    else supervisor_today()
   })
   history_analysis <- reactive({
     req(input$history_metric)
     historical <- response_metric_to_qc(state$baseline_records, input$history_metric,
       allow_mock = TRUE)
-    completed <- response_metric_to_qc(active_completed(), input$history_metric,
+    completed <- response_metric_to_qc(history_completed(), input$history_metric,
       allow_mock = FALSE)
     supervisor_analyze(historical, completed, TRUE, supervisor_live_period())
   })
@@ -1240,7 +1384,7 @@ supervisor_server <- function(id, production_records) {
     baseline <- baseline[baseline_stamp >= as.numeric(period$baseline_start) &
       baseline_stamp < as.numeric(period$baseline_end) & is.finite(baseline$response_minutes) &
       baseline$response_minutes >= 0, , drop = FALSE]
-    closed <- make_frame(active_completed(), FALSE, 'Closed monitoring day')
+    closed <- make_frame(history_completed(), FALSE, 'Closed monitoring day')
     closed_day <- as.Date(closed$dispatch_time, tz = 'America/New_York')
     closed <- closed[is.finite(closed$response_minutes) & closed$response_minutes >= 0 &
       !is.na(closed_day) & closed_day < subgroup_open_day(), , drop = FALSE]
@@ -1258,7 +1402,7 @@ supervisor_server <- function(id, production_records) {
       c('dispatch_time', 'response_minutes', 'phase'), drop = FALSE]
   })
   subgroup_open_count <- reactive({
-    raw <- response_metric_to_qc(active_completed(), input$history_metric, allow_mock = FALSE)
+    raw <- response_metric_to_qc(history_completed(), input$history_metric, allow_mock = FALSE)
     start <- qc_parse_time(raw$dispatch_time)
     finish <- qc_parse_time(raw$on_scene_time)
     minutes <- as.numeric(difftime(finish, start, units = 'mins'))

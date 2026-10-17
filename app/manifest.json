@@ -1480,7 +1480,7 @@
       "checksum": "358e5499b94be7a323ecbc53e0053b60"
     },
     "supervisor.R": {
-      "checksum": "8be6a6c0e78de9f63849fa96e12f23e2"
+      "checksum": "7e476517640257162aa89f7ac016344f"
     },
     "workflow.R": {
       "checksum": "dec2c6cf6cf3d6463beed818cbe04a45"
@@ -1576,7 +1576,7 @@
       "checksum": "6bd8397fb72d8302e7af623c1db8d8a9"
     },
     "www/supervisor.css": {
-      "checksum": "1a39b507ef355a3d0462e618ead07f72"
+      "checksum": "d07bbe57bc7ba092ba4f017bdec0f4ab"
     },
     "www/sw.js": {
       "checksum": "be8e14a7479c6bd9abb4e28cbb0cbc27"

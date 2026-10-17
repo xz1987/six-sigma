@@ -503,6 +503,26 @@ tasks:
     definition_of_done: "First History entry opens a navigable four-step overlay that can be skipped and replayed; every history chart has collapsible reading guidance; service-goal performance is summarized for the selected scope with p90, goal, percent within and n; Intervention Tracking is absent; Supervisor tests and browser review pass."
     result: "History first entry now runs a four-step anchored coachmark tutorial that smooth-scrolls to and spotlights the exact filter bar, subgroup chart, service-goal panel and adjusted comparisons while keeping highlighted controls usable. Back, Next, Skip, Finish and replay were browser-verified, including changing the highlighted period filter and opening a chart guide during the tour. All History charts now use a prominent outlined How to read this chart toggle with a plus/minus state, visual mark legend and chart-specific interpretation. Full testthat prints FAIL 0 WARN 1 SKIP 0 PASS 152 (R build-version warning only); Supervisor tests print PASS 63; smoke prints SMOKE PASS; R/JavaScript parsing, YAML and git diff checks pass; browser console has no errors or warnings."
 
+  - id: H-52
+    title: Replay closed 2026 days into History analysis
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/www/supervisor.css", "app/manifest.json", "tests/test-supervisor-history-replay.R"]
+    notes: "Developer-only deterministic replay adds complete 2026 days to History one day at a time, while preserving the frozen 2025 baseline and keeping ordinary Caller/Responder records isolated."
+    definition_of_done: "Developer History replay starts on January 1, 2026; next-day and next-seven-day actions append deterministic completed calls and advance simulated time past midnight so each day becomes a closed monitoring subgroup; reset removes only replay records; History counts, control chart, histogram and service summary update without changing baseline limits; focused tests and browser review pass."
+    result: "Developer mode now has a separate deterministic 2026 History replay with Start at Jan 1, Add next day, Add next 7 days, Complete 2026 and Reset controls. Each step appends 12 completed canonical calls per day and advances the simulated clock past midnight, so History charts, subgroup counts and service summaries update only for closed days while the fixed 2025 limits and ordinary Caller/Responder stream remain unchanged. Focused replay tests print FAIL 0 WARN 0 SKIP 0 PASS 33; the full suite prints FAIL 0 WARN 1 SKIP 0 PASS 270 (existing Shiny build-version warning only); smoke prints SMOKE PASS; deploy bundle prints DEPLOY BUNDLE PASS; R parsing, YAML and git diff checks pass. Browser review verified Jan 1, next-day progression and the completed 365-day / 4,380-call state."
+
+  - id: H-53
+    title: Separate daily and yearly Developer simulations by workspace
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/manifest.json", "tests/test-supervisor-history-replay.R"]
+    notes: "Active tracking must expose only the daily replay, while History analysis exposes only the 2026 yearly replay. Keep their generated records and simulated clocks independent when navigating between workspaces."
+    definition_of_done: "Active tracking shows only daily demo controls and uses only daily replay records; History analysis shows only yearly replay controls and uses only closed 2026 History records; Patterns shows no replay controls; switching workspaces preserves but never mixes the two simulations; focused tests and browser review pass."
+    result: "Developer simulation is now workspace-specific and state-isolated: Active tracking shows only daily replay controls and reads only daily calls; History analysis shows only 2026 yearly controls and reads only closed History replay calls; Patterns shows no replay controls. Navigating preserves both replay states without mixing records or clocks. Focused replay tests print FAIL 0 WARN 0 SKIP 0 PASS 47; the full suite prints FAIL 0 WARN 1 SKIP 0 PASS 284 (existing Shiny build-version warning only); smoke and deploy bundle pass; YAML, manifest checksum and git diff checks pass. Browser review verified the daily-only Active panel, yearly-only History panel and absent Patterns panel."
+
   - id: H-29
     title: Show a concise ETA and arrival time in Caller view
     status: in_progress

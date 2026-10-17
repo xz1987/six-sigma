@@ -199,6 +199,10 @@
 .developer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .developer-actions .form-group{margin:0;min-width:210px}
 .developer-actions .selectize-control{margin-bottom:0}
+.history-replay-controls{flex:1 0 100%;padding:10px 12px;background:rgba(255,255,255,.7);border:1px solid #D9C98E;border-radius:8px}
+.history-replay-controls summary{cursor:pointer;font-weight:700;color:#2C3E50}
+.history-replay-controls>p{margin:8px 0;color:#5B6B7A}
+.history-replay-controls>small{display:block;margin-top:8px;color:#5B6B7A}
 
 /* Compact explanations: detailed guidance opens only when requested. */
 .supervisor-chart-guide{margin:8px 0;font-size:14px;color:#475569}
