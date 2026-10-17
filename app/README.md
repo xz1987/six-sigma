@@ -224,3 +224,18 @@ Remaining environment checks: Posit Connect deployment, shared state across its
 worker/session configuration, actual phone/PWA installation, and real offline
 browser behavior. Current shared records are process-local and disappear on
 server restart. H-15 automatic dispatch selection remains deferred.
+
+## Publish to course Posit Connect
+
+Run `Rscript app/manifestme.R` from the repository root with rsconnect installed.
+It copies the three required synthetic fixture CSVs into `app/data/` and writes
+`app/manifest.json` using only runtime source files, assets and these data files.
+`Rscript tests/verify-deploy-bundle.R` checks startup without the parent repository.
+Commit the generated files before publishing. In Connect, choose Publish → Import
+from Git, use this repository's `main` branch and select the `app` manifest.
+
+This demo shares incidents and disposable staff accounts in a single R process.
+Set Connect's maximum processes to **1**, with at least one process kept running,
+so separate role sessions share the same trip. In-memory demo records reset when
+the process restarts. Hospital directories and route snapshots remain bundled;
+map tiles require the browser to reach OpenStreetMap.

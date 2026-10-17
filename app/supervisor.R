@@ -5,15 +5,18 @@ find_repo_root <- function() {
     mustWork = FALSE))
   hit <- candidates[file.exists(file.path(candidates, 'app', 'qc.R')) &
     dir.exists(file.path(candidates, 'data'))]
-  if (!length(hit)) stop('Run this application from the repository root or app directory.')
-  hit[[1]]
+  if(length(hit)) return(hit[[1]])
+  standalone <- candidates[file.exists(file.path(candidates,'qc.R')) & dir.exists(file.path(candidates,'data'))]
+  if(length(standalone)) return(standalone[[1]])
+  stop('App source and bundled data were not found.')
 }
 
 repo_root <- find_repo_root()
-source(file.path(repo_root, 'app', 'qc.R'), local = TRUE)
-source(file.path(repo_root, 'app', 'response-metrics.R'), local = TRUE)
-source(file.path(repo_root, 'app', 'feed.R'), local = TRUE)
-source(file.path(repo_root, 'app', 'workflow.R'), local = TRUE)
+app_source_dir <- if(file.exists(file.path(repo_root,'app','qc.R'))) file.path(repo_root,'app') else repo_root
+source(file.path(app_source_dir, 'qc.R'), local = TRUE)
+source(file.path(app_source_dir, 'response-metrics.R'), local = TRUE)
+source(file.path(app_source_dir, 'feed.R'), local = TRUE)
+source(file.path(app_source_dir, 'workflow.R'), local = TRUE)
 
 fmt_num <- function(x, digits = 1) {
   if (!length(x) || is.na(x)) '—' else formatC(x, digits = digits, format = 'f')
