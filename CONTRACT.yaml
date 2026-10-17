@@ -28,7 +28,7 @@ tasks:
   - id: H-01
     title: Fill in every FILL IN line in SPEC.md
     points: "15 - Tool Design: scope matches a prompt (5), clear user and use case (5), minimal inputs (5)"
-    status: in_progress
+    status: done
     owner: "Codex (with team)"
     started_at: "2026-10-16T20:16:28+00:00"
     owns: ["SPEC.md"]
@@ -40,7 +40,7 @@ tasks:
       grep -c "FILL IN[.,]" SPEC.md prints 0 (it counts only the blanks,
       not the instructions at the top), and every teammate can say the
       method sentence in SPEC section 4 without reading it.
-    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; responding lead EMS worker primary user and 12-month baseline confirmed; descriptive weather categories and three supporting charts confirmed; automatic feed arrivals and non-excluding Unknown weather confirmed; team agreement reported on 2026-10-16 and zero spec placeholders verified; method-explanation check remains to be confirmed."
+    result: "Draft spec records team scope and I-MR proposal; team DIIS and on-campus track confirmed; baseline eligibility and review rules agreed; Shiny with HTML/CSS and optional JavaScript confirmed; simulated dispatch feed and five Queens neighborhoods with High/Medium/Low priorities confirmed; assignment/confirmed-arrival timing and within-group moving-range boundary confirmed; no official prompt number supplied by the team; challenge recorded under team-provided title; responding lead EMS worker primary user and 12-month baseline confirmed; descriptive weather categories and three supporting charts confirmed; automatic feed arrivals and non-excluding Unknown weather confirmed; team agreement reported on 2026-10-16 and zero spec placeholders verified; team confirmed the method-explanation check complete on 2026-10-16; placeholder check prints 0."
 
   - id: H-02
     title: Two or three test datasets plus a codebook
@@ -187,9 +187,9 @@ tasks:
   - id: H-10
     title: Versioned synthetic wind and weather-informed ETA fixtures
     points: "Supports experimental ETA; no additional rubric points"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex ETA fixtures"
+    started_at: "2026-10-17T00:50:19.957036+00:00"
     owns: ["data/eta/"]
     notes: >
       Team approved the experimental ETA extension. Keep H-02 core CSVs unchanged.
@@ -202,14 +202,14 @@ tasks:
       boundaries, positive durations, missing weather retention, known injected
       relationships and chronological/event-block separation checks; codebook
       documents every column, unit, assumption and expected result.
-    result: ""
+    result: "eta-v1 paired weather/no-effect fixtures (7200 incidents each), codebook, full-day assignment coverage and 2880 hourly blocks grouped into variable-length synthetic weather episodes; every split includes all 24 local hours; Rscript data/eta/validate.R prints eight PASS lines; original QC fixture hashes unchanged. Independent statistics review PASS; team approved check-in."
 
   - id: H-11
     title: Tested experimental weather-informed duration prediction
     points: "Supports experimental ETA; core QC remains H-03"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex ETA model"
+    started_at: "2026-10-17T01:04:58.908096+00:00"
     owns: ["app/eta.R", "tests/testthat/test-eta.R", "data/eta-model-review.md"]
     notes: >
       Depends on H-03 core verification and H-10 fixtures. H-03 excludes ETA tests;
@@ -223,7 +223,7 @@ tasks:
       reports frozen split dates, held-out weather versus no-weather MAE, coverage,
       interval widths and category counts against predeclared gates. Unsupported
       or failed models return unavailable or a separately validated simpler fallback.
-    result: ""
+    result: "frozen log-linear synthetic ETA with individual 95% prediction intervals, support/leakage gates and independent PASS review; test_file reports FAIL 0 WARN 0 SKIP 0 PASS 100. Weather-effect test MAE 1.645948 vs 3.062764 minutes; coverage 0.9473032; no-effect scenario correctly unavailable. Team approved check-in; UI wiring belongs to H-12."
 
   - id: H-12
     title: Integrate experimental ETA into the simulated Shiny view
@@ -294,3 +294,20 @@ tasks:
     notes: "User requested icon-based briefing, five solid zone outlines, matching nearby hospital options, transport route and responder hospital-arrival confirmation. Facilities/capabilities are fictional; no medical triage or operational destination selection."
     definition_of_done: "Check five zone groups, matching/no-match options, no transport before scene arrival, explicit destination confirmation, route switching, and hospital arrival after simulated transport; verify UI."
     result: "Implementation in progress."
+
+  - id: H-18
+    title: Incident-scoped caller PWA tracking module
+    status: in_progress
+    owner: "Codex caller implementer"
+    started_at: "2026-10-16"
+    owns: ["app/caller/", "SPEC.md"]
+    notes: >
+      User authorized caller implementation matching the pushed teal staff interface.
+      Crew-confirmed destination is authorized; What happens next and the simulated confirmation button were removed at the user request. EMS selector integration awaits teammate changes.
+      Isolated module and preview preserve teammate interfaces; merge through module hooks.
+      Dispatch-generated expiring private links scope every caller output to one synthetic incident; no caller password or code entry.
+      Real Queens street basemap with ambulance and house markers; synthetic coordinate movement, not GPS. ETA stays unavailable until H-11 validation.
+      Remote ledger has H-13 login, H-14 PWA and H-15 dispatch; reconcile H-13 before merging.
+    definition_of_done: "Rscript app/caller/verify.R passes incident isolation, expired/invalid access, status and arrival transitions, ETA unavailable, and module server checks; browser preview reviewed."
+    result: "Caller module now uses dispatch-generated private tracking links without passwords; cross-session isolation/expiry/revocation and status/arrival server checks pass. Safari dispatch-generated link click-through now verified; all nine caller verify.R checks pass, including automatic provider destination updates. Shared data merge, validated ETA and hosted installation checks remain pending."
+
