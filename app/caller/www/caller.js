@@ -74,6 +74,8 @@
     el.classList.toggle('caller-location-stale', data.stale);
     el.callerAmbulance.setLatLng([data.ambulance.lat, data.ambulance.lng]);
     el.callerHouse.setLatLng([data.destination.lat, data.destination.lng]);
+    if (data.waiting_for_confirmation) el.callerAmbulance.remove();
+    else el.callerAmbulance.addTo(el.callerMap);
     if (data.hospital) el.callerHouse.remove();
     else el.callerHouse.addTo(el.callerMap);
     // Route data is delivered only through the authorized incident lookup.
@@ -87,16 +89,16 @@
       if (data.hospital) {
         const hospital = data.hospital;
         const label = document.createElement('span');
-        label.textContent = `${hospital.name} · confirmed fictional destination`;
+        label.textContent = `${hospital.name} · confirmed destination · simulated trip`;
         el.callerHospital = L.marker([hospital.lat, hospital.lng], {
           icon: icon('🏥', 'caller-hospital'), title: hospital.name,
-          alt: 'Crew-confirmed fictional hospital', zIndexOffset: 100
+          alt: 'Crew-confirmed hospital', zIndexOffset: 100
         }).addTo(el.callerMap).bindTooltip(label, {permanent:true,direction:'right'});
         if (Array.isArray(data.hospital_route) && data.hospital_route.length >= 2) {
           el.callerRoute = L.polyline(data.hospital_route, {color:'#2468c4',weight:5,opacity:0.85})
             .addTo(el.callerMap).bindTooltip('Synthetic hospital trip · stored OSRM road snapshot, not live navigation');
           el.callerMap.fitBounds(el.callerRoute.getBounds().extend([hospital.lat,hospital.lng]), {padding:[48,48],maxZoom:15});
-          if (routeStatus) routeStatus.textContent = `Route to ${hospital.name} · fictional destination, stored road snapshot. No live navigation or hospital ETA.`;
+          if (routeStatus) routeStatus.textContent = `Route to ${hospital.name} · simulated trip, stored road snapshot. No live navigation or hospital ETA.`;
         } else {
           el.callerMap.fitBounds([[data.ambulance.lat,data.ambulance.lng],[hospital.lat,hospital.lng]], {padding:[48,48],maxZoom:15});
           if (routeStatus) routeStatus.textContent = 'Hospital confirmed; road route unavailable. No straight-line route substituted.';

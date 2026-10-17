@@ -8,7 +8,13 @@
     if (!response.ok) throw Error(path);
     return response.json();
   }
-  function roadRoute(key) {
+  let zoneTrips;
+  function getZoneTrips() {
+    if(!zoneTrips) zoneTrips=getJSON('demo-zone-trips.json').catch(error=>{zoneTrips=null;throw error;});
+    return zoneTrips;
+  }
+  function roadRoute(key, zone) {
+    if(zone) return getZoneTrips().then(trips=>key==='scene'?trips[zone].scene:trips[zone].hospital_routes[key]);
     if (!routePromises.has(key)) {
       routePromises.set(key, getJSON(key === 'scene' ? 'demo-road-route.json' : `hospital-route-${key}.json`)
         .then(feature => {
@@ -57,11 +63,12 @@
           const status=document.getElementById('map-zones-status');
           if(status) status.textContent='Zone boundaries unavailable.';
         });
-        getJSON('demo-hospitals.json').then(data => {
+        getZoneTrips().then(trips => {
+          const data={hospitals:trips[latest.zone || 'Astoria'].hospitals};
           if(map!==activeMap) return;
           data.hospitals.forEach(h=>L.marker([h.lat,h.lng],{
-            icon:L.divIcon({className:'hospital-map-icon',html:'<span aria-label="Fictional demo hospital">H</span>',iconSize:[26,26],iconAnchor:[13,13]})
-          }).bindPopup(`${h.name} · FICTIONAL<br>${h.capabilities.join(', ')}`).addTo(hospitalsLayer));
+            icon:L.divIcon({className:'hospital-map-icon',html:'<span aria-label="Hospital">H</span>',iconSize:[26,26],iconAnchor:[13,13]})
+          }).bindPopup(`${h.name} · Published services<br>${h.capabilities.join(', ')}`).addTo(hospitalsLayer));
         }).catch(()=>{});
         document.getElementById('show-all-zones').onclick=()=>{
           if(zones) map.fitBounds(zones.getBounds(),{padding:[20,20]});
@@ -72,9 +79,9 @@
       }
       const activeMap=map;
       const key=data.hospital || 'scene';
-      roadRoute(key).then(feature=>{
+      roadRoute(key,data.zone).then(feature=>{
         if(map!==activeMap || document.getElementById('responder-map')!==target) return;
-        if((latest.hospital || 'scene')!==key) return;
+        if((latest.hospital || 'scene')!==key || latest.zone!==data.zone) return;
         movement.clearLayers();
         const points=feature.geometry.coordinates.map(p=>[p[1],p[0]]);
         const fraction=key==='scene'?latest.elapsed/720:latest.travel/480;
@@ -90,7 +97,7 @@
         L.circleMarker(current,{radius:9,color:'#135b63',fillColor:'#135b63',fillOpacity:1})
           .bindPopup('Q-12 · simulated responder position').addTo(movement);
         document.getElementById('map-status').textContent=
-          `${key==='scene'?'To incident':'To demo hospital'}: ${(feature.properties.distance_m/1609.344).toFixed(2)} miles · Road-route snapshot.`;
+          `${key==='scene'?'To incident':'To hospital'}: ${(feature.properties.distance_m/1609.344).toFixed(2)} miles · Road-route snapshot.`;
         if(changed) map.fitBounds(points,{padding:[24,24]});
         map.invalidateSize();
       }).catch(()=>{
