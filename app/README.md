@@ -172,9 +172,9 @@ delays, then Start demo day. Next completed case reveals one of 12 hourly cases
 (08:00–19:00 on the current New York date); Complete demo day reveals all 12.
 The delayed scenario sets the final three selected-metric durations to 30 minutes.
 The day-so-far average is the arithmetic mean of revealed durations. Replay time
-is synthetic, including any displayed future time. Advanced settings retain
-single-case and event controls. The connected live trip stays visible but its
-records never enter generated graphs. Exit discards the generated records.
+is synthetic, including any displayed future time. The daily demo itself retains
+optional individual-case and event controls. The connected live trip stays visible
+but its records never enter generated graphs. Exit discards the generated records.
 
 ## Publishing and limitations
 

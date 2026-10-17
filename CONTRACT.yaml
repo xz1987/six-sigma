@@ -684,3 +684,13 @@ tasks:
     notes: "User requested a findings summary after Patterns charts. Reuse box medians/counts and heatmap cells; explain all-zone versus selected-zone scopes, empty categories and non-causal interpretation."
     definition_of_done: "Known medians/counts, sparse and empty cases pass; module renders filtered Patterns summary; root suite, standalone bundle, manifest and placement checks pass."
     result: "Patterns now ends with What this view tells you: existing neighborhood/weather medians and sample counts, populated hour/weekday cell median range, distinct chart scopes, empty handling and descriptive non-causal interpretation. Root tests PASS 274 including 37 combined summary checks; connected module renders selected-zone counts; standalone bundle, manifest, placement and YAML checks PASS. Module retains 12 existing timezone warnings. Preview 5807; uncommitted."
+
+  - id: H-54
+    title: Remove the redundant advanced demo settings control
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/www/supervisor.css", "app/README.md", "app/manifest.json", "tests/test-supervisor-history-replay.R"]
+    notes: "The workspace-specific daily and yearly demo bars are the single entry and exit points. Remove the duplicate Advanced demo settings title/button and its sidebar panel without changing replay isolation or controls."
+    definition_of_done: "The Supervisor sidebar contains no Advanced demo settings control; daily and yearly demo bars still enter and exit isolated replay modes; focused Supervisor tests, smoke, bundle, manifest, YAML and diff checks pass."
+    result: "Deleted the complete Advanced demo settings sidebar feature: title/button, panel content, close handlers and unused CSS. Workspace-specific daily and yearly demo bars remain the only demo entry/exit controls. Focused History replay tests PASS 50 and the connected daily-demo verification prints PASS; the existing 12 timezone warnings remain nonblocking."

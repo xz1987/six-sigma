@@ -14,13 +14,6 @@
 .rail-nav-button.btn { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); text-align: left; font-size: 12px; font-weight: 750; box-shadow: none; }
 .rail-nav-button.btn:hover, .rail-nav-button.btn:focus { background: #E6EEF5; color: var(--ink); outline: none; }
 .rail-nav-button.btn.is-active { background: #2C3E50; color: white; }
-.developer-settings { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 17px; }
-.developer-settings summary { display: inline-flex; align-items: center; cursor: pointer; color: #81888a; list-style: none; border-radius: 7px; padding: 4px 7px; }
-.developer-settings summary:hover, .developer-settings summary:focus { color: var(--ink); background: var(--soft); }
-.developer-settings summary::before { content: '⚙'; font-size: 16px; }
-.developer-settings summary::-webkit-details-marker { display: none; }
-.developer-settings[open] summary { color: var(--ink); margin-bottom: 12px; }
-.developer-settings p { color: var(--muted); font-size: 11px; line-height: 1.5; }
 .workspace { padding: 18px 28px 40px; min-width: 0; background: #EFEAE2; }
 .supervisor-filter-bar { position: sticky; top: 0; z-index: 25; display: grid; grid-template-columns: repeat(6,minmax(110px,1fr)) auto; align-items: end; gap: 8px; margin: -18px -28px 18px; padding: 12px 28px 8px; background: rgba(239,234,226,.97); border-bottom: 1px solid var(--line); box-shadow: 0 4px 14px rgba(44,62,80,.06); backdrop-filter: blur(8px); }
 .supervisor-filter-bar .form-group { margin-bottom: 0; }
@@ -43,7 +36,6 @@
 .timeline-clock { display: inline-flex; align-items: center; gap: 5px; }
 .timeline-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px #AFC6D9; margin-right: 8px; }
 .replay-timeline strong { color: #2C3E50; }
-.developer-settings > .btn { margin-bottom: 8px; }
 .developer-step-status { display: grid; gap: 2px; margin: 0 0 8px; padding: 9px 10px; border: 1px solid #AFC6D9; border-radius: 9px; background: #E6EEF5; color: #1F2D3B; font-size: 11px; line-height: 1.4; }
 .developer-step-status strong { color: #2C3E50; font-size: 12px; }
 .developer-mode-card { border: 1px solid #e4b45f; background: #fff8e8; border-radius: 9px; padding: 10px; margin-bottom: 10px; }

@@ -29,6 +29,15 @@ test_that('2026 History replay days are deterministic, complete and varied', {
     'call_to_scene', as.Date('2027-01-01')), 'valid dates in 2026')
 })
 
+test_that('Supervisor uses workspace demo bars without a duplicate advanced settings control', {
+  ui_source <- paste(readLines(file.path(repo_root, 'app', 'supervisor.R'),
+    warn = FALSE), collapse = '\n')
+  expect_false(grepl("tags$span('Advanced demo settings')", ui_source,
+    fixed = TRUE))
+  expect_false(grepl("ns('developer_panel')", ui_source, fixed = TRUE))
+  expect_true(grepl("uiOutput(ns('developer_bar'))", ui_source, fixed = TRUE))
+})
+
 test_that('History replay closes days, updates outputs and preserves ordinary records', {
   live <- response_metric_empty_records()
   suppressWarnings(shiny::testServer(supervisor_server,
@@ -37,8 +46,7 @@ test_that('History replay closes days, updates outputs and preserves ordinary re
         time_span = 'day', day_date = '2026-01-01', main_tabs = 'Active tracking',
         history_metric = 'call_to_scene', history_zone = 'Astoria',
         history_priority = 'High', history_period = 'full',
-        history_aggregation = 'day', history_phase = 'both', demo_review = TRUE,
-        developer_panel_open = TRUE, enter_developer = 1,
+        history_aggregation = 'day', history_phase = 'both', enter_developer = 1,
         history_replay_scenario = 'stable')
       frozen <- lapply(history_analysis()$groups, function(group) group$limits)
       expect_match(paste(output$developer_bar, collapse = ' '), 'Daily demo')

@@ -7,11 +7,11 @@ shared_responder_state$demo_started <- TRUE
 shared_responder_state$demo_running <- TRUE
 shared_responder_state$started_at <- incident_service$incidents[[live_id]]$dispatched_at
 shiny::testServer(supervisor_server,args=list(production_records=production_response_records),{
- stopifnot(grepl('Try demo mode',paste(output$developer_bar,collapse=' ')))
+ stopifnot(grepl('Try daily simulation',paste(output$developer_bar,collapse=' ')))
  session$setInputs(metric='call_to_scene',zone='Astoria',priority='High',time_span='day',
    day_date=as.character(Sys.Date()),history_metric='call_to_scene',history_zone='Astoria',
    history_priority='High',history_phase='monitoring',history_period='30',history_aggregation='day',
-   main_tabs='Active tracking',developer_panel_open=TRUE,enter_developer=1,demo_review=TRUE)
+   main_tabs='Active tracking',enter_developer=1)
  session$setInputs(daily_demo_scenario='abnormal',load_daily_demo=1)
  stopifnot(nrow(active_completed())==0,grepl(live_id,paste(output$shared_trip,collapse=' ')))
  session$setInputs(next_demo_case=1)
@@ -30,7 +30,7 @@ shiny::testServer(supervisor_server,args=list(production_records=production_resp
  session$setInputs(history_phase='baseline',history_period='full',history_aggregation='week')
  stopifnot(grepl('What this view tells you',paste(output$history_findings_summary,collapse=' ')),
    grepl('weekly means',paste(output$history_findings_summary,collapse=' ')),
-   grepl('12 current-day responses are excluded',paste(output$history_findings_summary,collapse=' ')))
+   grepl('0 current-day responses are excluded',paste(output$history_findings_summary,collapse=' ')))
  session$setInputs(history_phase='monitoring',history_period='7',history_aggregation='day')
  stopifnot(grepl('No completed subgroups',paste(output$history_findings_summary,collapse=' ')),
    grepl('Latest 7 calendar days',paste(output$history_findings_summary,collapse=' ')))

@@ -389,15 +389,7 @@ supervisor_ui <- function(id) {
         strong('Response-time definition'), br(),
         textOutput(ns('metric_definition'), inline = TRUE), br(),
         tags$small('Each metric has its own fixed baseline limits. Display filters never refit them.')),
-      uiOutput(ns('workspace_nav')),
-      tags$details(id = ns('developer_panel'), class = 'developer-settings',
-        ontoggle = sprintf("Shiny.setInputValue('%s', this.open, {priority: 'event'});",
-          ns('developer_panel_open')),
-        tags$summary(title = 'Developer settings',
-          onclick = sprintf("if (this.parentElement.open) Shiny.setInputValue('%s', Date.now(), {priority: 'event'});",
-            ns('developer_panel_closed')),
-          tags$span('Advanced demo settings')),
-        uiOutput(ns('developer_controls')))
+      uiOutput(ns('workspace_nav'))
     ),
     tags$main(class = 'workspace',
       conditionalPanel(sprintf("input['%s'] !== 'History analysis'", ns('main_tabs')),
@@ -633,13 +625,6 @@ supervisor_server <- function(id, production_records) {
 
   observeEvent(input$enter_developer, enter_developer_mode())
   observeEvent(input$end_developer, leave_developer_mode())
-  observeEvent(input$developer_panel_open, {
-    if (!isTRUE(input$developer_panel_open) && identical(state$mode, 'developer'))
-      leave_developer_mode()
-  }, ignoreInit = TRUE)
-  observeEvent(input$developer_panel_closed, {
-    if (identical(state$mode, 'developer')) leave_developer_mode()
-  }, ignoreInit = TRUE)
 
   observeEvent(input$clear_filters, {
     updateSelectInput(session, 'time_span', selected = 'day')
@@ -691,8 +676,7 @@ supervisor_server <- function(id, production_records) {
   })
 
   developer_target <- reactive({
-    if (identical(input$metric, 'transport_to_hospital')) input$developer_transport_target
-    else input$developer_scene_target
+    if (identical(input$metric, 'transport_to_hospital')) 8 else 12
   })
 
   add_developer_call <- function(event_type = 'stable') {
@@ -854,8 +838,7 @@ supervisor_server <- function(id, production_records) {
     historical <- response_metric_to_qc(state$baseline_records, input$metric, allow_mock = TRUE)
     completed <- response_metric_to_qc(active_completed(), input$metric,
       allow_mock = FALSE)
-    review_baseline <- if (identical(state$mode, 'developer'))
-      isTRUE(input$demo_review) else TRUE
+    review_baseline <- TRUE
     result <- supervisor_analyze(historical, completed, review_baseline,
       supervisor_live_period())
     supervisor_attach_responder_ids(result, completed)
@@ -880,30 +863,6 @@ supervisor_server <- function(id, production_records) {
     req(input$zone, input$priority)
     key <- paste(input$zone, input$priority, sep = '/')
     analysis()$groups[[key]]
-  })
-
-  output$developer_controls <- renderUI({
-    if (!identical(state$mode, 'developer')) {
-      return(tagList(
-        tags$p('Ordinary mode is active. The dashboard is reading only the shared Caller and Responder response stream.'),
-        tags$p('Select Try demo mode above the dashboard to explore generated examples.')))
-    }
-    tagList(
-      div(class = 'developer-mode-card',
-        tags$strong('Developer mode active'),
-        tags$p('Graphs show only developer cases. The connected Caller/Responder trip remains visible separately. Generated cases are discarded when you leave developer mode.')),
-      div(class = 'review-box',
-        checkboxInput(session$ns('demo_review'),
-          'Use synthetic baseline-review fixture', value = TRUE),
-        tags$small('Demonstration only. This is not approval of a real EMS baseline.')),
-      div(class = 'review-box',
-        tags$strong('Manual demo targets'),
-        numericInput(session$ns('developer_scene_target'), 'Call → scene target (minutes)',
-          value = 12, min = 1, max = 120, step = .5),
-        numericInput(session$ns('developer_transport_target'), 'Departure → hospital target (minutes)',
-          value = 8, min = 1, max = 120, step = .5),
-        tags$small('Developer mode only. Ordinary mode uses the frozen synthetic context model.')),
-      tags$p('Select Exit demo mode above the graphs to return to the shared live records.'))
   })
 
   # Each workspace exposes only its own replay controls. Daily and yearly
@@ -1004,7 +963,7 @@ supervisor_server <- function(id, production_records) {
   output$source_notice <- renderUI({
     if (identical(state$mode, 'developer')) {
       return(div(class = 'alert-note',
-        'Developer mode · simulated calls are isolated from ordinary response records and use the fixed 2025 synthetic baseline. Close Developer settings or select End developer mode to discard them and reconnect.'))
+        'Developer mode · simulated calls are isolated from ordinary response records and use the fixed 2025 synthetic baseline. Select Exit demo mode to discard them and reconnect.'))
     }
     count <- nrow(production_records())
     milestones <- nrow(response_metric_completion_events(production_records(), allow_mock = FALSE))
