@@ -27,6 +27,7 @@ shiny::testServer(supervisor_server,args=list(production_records=production_resp
    grepl('Historical variation:',paste(output$findings_summary,collapse=' ')),
    grepl('Context target:',paste(output$findings_summary,collapse=' ')),
    grepl('Configured service goal:',paste(output$findings_summary,collapse=' ')))
+ stopifnot(nrow(history_completed())==0,nrow(active_completed())==12)
  session$setInputs(history_phase='baseline',history_period='full',history_aggregation='week')
  stopifnot(grepl('What this view tells you',paste(output$history_findings_summary,collapse=' ')),
    grepl('weekly means',paste(output$history_findings_summary,collapse=' ')),

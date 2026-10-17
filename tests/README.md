@@ -81,7 +81,7 @@ Rscript tests/verify-deploy-bundle.R
 plain-language summaries against known counts/medians, overlapping signals,
 missing goals, disabled review gates, sparse categories and empty selections.
 `verify-supervisor-daily-demo.R` checks 0/1/12-case progression, summary rendering,
-independent History filters, current-day exclusion, unchanged limits and separate
+independent History filters, daily/yearly separation, unchanged limits and separate
 live-trip records. `test-supervisor-chart-guides.R` covers guides/legends for each
 plot output. Existing role, route and hospital checks remain separate runnable
 scripts under `tests/`; `app/caller/verify.R` covers Caller access and updates.
@@ -90,3 +90,15 @@ At commit `dc8f16f` the root suite passed 274 assertions, including 37 summary
 checks. The earlier full audit's separate ETA/feed counts were 100 and 39.
 The day-demo module emits 12 existing timezone-attribute warnings; its checks
 pass, but this is not a warning-free browser/device or hosted-deployment sign-off.
+
+
+`test-supervisor-history-replay.R` verifies deterministic valid 2026 days,
+closed-day progression, fixed limits, daily/yearly record and clock isolation,
+workspace-specific controls and reset behavior. A History-only reset leaves daily
+calls intact; exiting Developer mode clears both simulations. The direct daily
+module script must use History's separate record source when checking its summary.
+
+
+For merged `1f746aa`, both suites were rerun: root PASS 321 and ETA/feed PASS 139
+(total 460 assertions). The daily module's expectations were updated for the
+renamed Try daily simulation action and the yearly-only History source.

@@ -112,7 +112,7 @@ tasks:
   - id: H-06
     title: Deploy to the course Posit Connect server
     points: "protects the 25 working-tool points - judges must be able to open it"
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-17"
     owns: ["app/", "tests/verify-deploy-bundle.R"]
@@ -125,17 +125,19 @@ tasks:
       event, never in a file). Write manifest.json on your own machine with
       the demo's manifestme script and commit it. Needs your own repo (H-08).
     definition_of_done: >
-      The workflow run is green, and the public URL answers HTTP 200 from a
-      logged-out browser and returns the H-03 numbers for one test dataset.
-    result: ""
+      Publish to course Posit Connect by either supported route (local publishing
+      or GitHub Actions), verify public page delivery and the hosted workflow,
+      and retain the passing known-answer QC and dataset checks. Record whether
+      verification was performed by the team or automated checks.
+    result: "Team confirmed on 2026-10-17 that deployment to Posit Connect and the hosted-app walkthrough succeeded. The documented public URL previously returned HTTP 200 with the DIIS title; local known-answer, dataset, standalone bundle and 460 assertions passed. Deployment accepted through the supported publishing route; no GitHub Actions green run or exact deployed commit identity is claimed. H-06 complete on team-reported hosted verification."
 
   - id: H-07
     title: README and function documentation
     points: "10 - Tool Documentation: excellent, easy-to-follow documentation"
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-17"
-    owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html", "app/manifest.json", "SPEC.md", "demo/README.md", "demo/shared-incidents.md", "tests/README.md"]
+    owns: ["README.md", "app/README.md", "docs/about.md", "app/app.R", "app/www/styles.css", "app/www/about.html", "app/manifest.json", "SPEC.md", "demo/README.md", "demo/shared-incidents.md", "tests/README.md", "tests/verify-supervisor-daily-demo.R"]
     notes: >
       Replace the hackathon README.md with your tool's README; the event
       pages stay in docs/. See demos/making_readmes/.
@@ -144,14 +146,14 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: "Documentation synchronized to dc8f16f: all three findings summaries, History 7/14/30/90/full-year filters and tutorial, daily-versus-weekly distributions, synthetic suggested goals, removed intervention workflow, real sourced hospital directory and current assignment/arrival actions. Updated root/app READMEs, SPEC, demo walkthroughs, test guide and repository/in-app About pages; preserved commit-specific audit evidence and remaining hosted/device/fresh-clone/submission checks. Local links, HTML structure, YAML, manifest and diff checks pass; documented example/dataset and bundle verification recorded after execution. H-07 remains in progress pending independent teammate walkthrough and hosted verification."
+    result: "Written documentation synchronized to final merge 1f746aa, including isolated daily/yearly simulations, workspace-specific labels, locked generation scope, reset/navigation behavior and all three findings summaries. Root/app READMEs, SPEC, About pages, demo and test guides updated. Full suites PASS 460; updated daily module PASS with 12 existing timezone warnings; smoke, dataset, standalone bundle, local links, manifest and YAML checks PASS. Documented hosted URL returned HTTP 200 with DIIS title; hosted cross-role/device behavior and release identity are not established by this check. User confirmed on 2026-10-17 that a teammate successfully ran the app locally for the requested H-07 walkthrough and authorized marking it complete. Documentation and independent reproduction requirements are complete; deployment/device checks and submission remain separate tasks."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost
     points: "5 - Tool Documentation: fully reproducible code, posted publicly to GitHub"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "DIIS team (submission), Codex (verification record)"
+    started_at: "2026-10-17"
     owns: [".gitignore"]
     notes: >
       Make this clone your own public repo early (a new GitHub repo, then
@@ -161,7 +163,7 @@ tasks:
       git clone of the public repo into an empty folder, then the app/
       testme script and the H-03 tests both pass with no extra steps; git
       grep -i "api_key" finds no real key; the Devpost entry links the repo.
-    result: ""
+    result: "Team confirmed on 2026-10-17 that the live demo and public repository were submitted. Earlier credential-free public clone, clean-checkout QC tests, smoke and dataset checks passed; teammate local walkthrough, hosted app, installation and Posit Connect deployment were confirmed by the team. Submission completion is user-reported; no submission receipt or entry URL was supplied."
 
   - id: H-09
     title: Simulated dispatch feed and active-call updates
@@ -257,13 +259,13 @@ tasks:
 
   - id: H-14
     title: Installable PWA shell for the existing Shiny website
-    status: in_progress
+    status: done
     owner: "Codex"
     started_at: "2026-10-16"
     owns: ["app/www/", "app/app.R", "app/README.md"]
     notes: "User requested PWA delivery. Existing Shiny server and demo role logins remain the runtime. Per the H-04 ownership rule, visible PWA controls are limited to the authenticated Supervisor workspace; role selection, Primary responder, and Caller interfaces remain unchanged."
     definition_of_done: "Validate manifest/icon assets, service-worker offline fallback and cache exclusions, R initialization, and browser delivery; document HTTPS and connected-runtime requirements."
-    result: "R initialization, JavaScript parsing, subpath manifest, offline fallback and private-traffic exclusions passed; Safari preview checked. Hosted deployment and device installation remain unverified."
+    result: "R initialization, JavaScript parsing, subpath manifest, offline fallback and private-traffic exclusions passed; Safari preview checked. Team confirmed on 2026-10-17 that the hosted app works and installation was verified after deployment to Posit Connect. H-14 complete; no particular device/browser or new offline test outcome was supplied."
 
   - id: H-15
     title: Simulated dispatcher address-to-responder assignment workflow

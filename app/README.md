@@ -167,14 +167,36 @@ returns scope, zone, weather, time and interpretation text. These helpers return
 named text lists; they do not fit models, refit limits, identify causes or add
 new signal rules.
 
-**Try demo mode** isolates generated observations. Choose Normal day or Day with
+**Try daily simulation** in Active tracking isolates generated observations. Choose Normal day or Day with
 delays, then Start demo day. Next completed case reveals one of 12 hourly cases
 (08:00–19:00 on the current New York date); Complete demo day reveals all 12.
 The delayed scenario sets the final three selected-metric durations to 30 minutes.
 The day-so-far average is the arithmetic mean of revealed durations. Replay time
 is synthetic, including any displayed future time. The daily demo itself retains
 optional individual-case and event controls. The connected live trip stays visible
-but its records never enter generated graphs. Exit discards the generated records.
+records never enter generated graphs. Exit discards both generated streams.
+
+History has a separate **Try yearly simulation** action and **History scenario**
+selector: Stable days or Days with planted delays. Before starting, set the
+metric, zone and priority in Active tracking; the current implementation captures
+those selections when the first History day is generated. Select Start at Jan 1
+to generate January 1, 2026, then Add next day, Add next 7 days or Complete 2026.
+The scenario plants three final 30-minute durations per day when enabled. Each
+day has 12 completed canonical calls; the year ends at 365 days / 4,380 calls.
+The replay advances its own clock to 00:01 on the next day, keeping generated
+days closed. Its displayed scope and scenario lock until restarted. Starting
+sets the History metric/zone/priority to the replay scope, period to Full baseline
+year and records to Baseline + monitoring; filters can then select the view.
+
+Reset replay clears History records without clearing the daily simulation or
+ordinary records. Start at Jan 1 restarts using the current Active tracking scope
+and History scenario. Page navigation preserves both simulations, but their
+records and clocks never mix. Patterns shows no simulation bar and uses Active
+tracking's descriptive records. Exit demo mode clears both generated streams.
+`supervisor_history_replay_days(historical, zone, priority, metric_id, days,
+scenario=c('stable','abnormal'))` returns deterministic completed canonical
+records for valid dates in 2026, with unique HIST-prefixed incident IDs; it rejects
+empty, invalid or out-of-year date vectors.
 
 ## Publishing and limitations
 
@@ -207,9 +229,9 @@ request and do not provide clinical or operational navigation instructions.
 
 See the [root README](../README.md#verify-and-extend) for commands and
 [tests/README.md](../tests/README.md) for existing numerical checks. Dataset
-expected output is in [demo/README.md](../demo/README.md). A fresh-clone teammate
-walkthrough and public hosted-link verification are still required for H-07;
-local automated checks alone do not establish either.
+expected output is in [demo/README.md](../demo/README.md). The team confirmed a
+successful independent local walkthrough on 2026-10-17, completing H-07. Hosted
+cross-role/device verification remains separate from documentation completion.
 
 ## Earlier local audit — 2026-10-17 (commit 8390b46)
 
@@ -235,7 +257,7 @@ signals, the separate live-trip panel, and rendered full-year history charts
 with current-day observations excluded from closed subgroups. Full completion,
 reset and access revocation were verified by the automated session checks.
 
-Known remaining items:
+Remaining items at the earlier audit (see the later completion record below):
 
 - The Supervisor day-demo module check emits 12 R warnings that `tzone`
   attributes are inconsistent. Its chronology, fixed-limit and isolation checks
@@ -269,3 +291,35 @@ The module still emitted 12 timezone-attribute warnings. These checks are local;
 they do not confirm the deployed release or phone installation. The earlier
 audit above retains its own commit and counts rather than claiming a new full
 ETA/feed run for every text-only change.
+
+
+## Final merged release documentation check — 2026-10-17
+
+Documentation now matches merged `1f746aa`, including the isolated daily and
+2026 History replays. Root tests passed 321 assertions (47 History replay and
+37 summary checks included); the separate ETA/feed suites passed 139, for 460
+combined assertions. The dataset demonstration and standalone deployment-bundle
+startup passed. The direct daily-demo script was updated to the renamed button
+and the separate History source; its rerun passed with 12 existing timezone
+attribute warnings. Smoke also printed SMOKE PASS.
+The documented hosted URL returned HTTP 200 with the DIIS Emergency Response
+Monitor page title. This confirms page delivery, not a deployed cross-role
+WebSocket walkthrough, installed-device behavior or hosted commit identity.
+Local documentation links and runtime manifest checksums passed.
+
+The user confirmed on 2026-10-17 that a teammate successfully ran the app locally
+for the requested independent documentation walkthrough and authorized marking
+H-07 complete. This confirmation supersedes the earlier pending walkthrough
+notes. No teammate name, operating system or additional test results were
+provided. Hosted cross-role/device checks and Devpost submission remain separate.
+
+
+## Team deployment and installation confirmation — 2026-10-17
+
+The team subsequently confirmed that the app was deployed to Posit Connect,
+the hosted app was checked and worked, and installation was verified. H-06
+(deployment) and H-14 (PWA delivery) are now recorded complete, alongside H-07's
+confirmed local teammate walkthrough. These team confirmations supersede the
+earlier pending hosted/installation notes; they do not supply a device/browser
+name, CI workflow result, deployed commit identifier or additional offline-test
+output. Public-repository/Devpost submission (H-08) remains separate.
