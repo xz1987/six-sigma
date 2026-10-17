@@ -153,3 +153,16 @@
 .developer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .developer-actions .form-group{margin:0;min-width:210px}
 .developer-actions .selectize-control{margin-bottom:0}
+
+/* Compact explanations: detailed guidance opens only when requested. */
+.supervisor-chart-guide{margin:8px 0;font-size:14px;color:#475569}
+.supervisor-chart-guide summary{display:inline-flex;align-items:center;gap:12px;cursor:pointer;font-weight:600;color:#2C3E50;background:#F0F5FA;border:1px solid #8CA5BD;border-radius:7px;padding:9px 13px;list-style:none;min-height:40px}
+.supervisor-chart-guide summary::-webkit-details-marker{display:none}
+.supervisor-chart-guide summary::after{content:'+';font-size:20px;line-height:1}
+.supervisor-chart-guide[open] summary::after{content:'−'}
+.supervisor-chart-guide summary:hover{background:#DFEAF4;border-color:#526F8A}
+.supervisor-chart-guide summary:focus-visible{outline:3px solid #3977B5;outline-offset:3px}
+.supervisor-chart-guide p{margin:8px 0;max-width:85ch;line-height:1.55}
+.supervisor-chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 12px;font-size:12px;color:#475569}
+.supervisor-chart-legend [role=listitem]{display:inline-flex;align-items:center;gap:6px}
+.chart-key-symbol{display:inline-block;min-width:18px;text-align:center;font-size:19px;line-height:1;border-radius:3px;text-shadow:0 0 1px #64748b}

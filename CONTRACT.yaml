@@ -144,7 +144,7 @@ tasks:
       how each function or endpoint works, how to run it in one command, the
       live URL, and links demo/README.md. A teammate who did not write the
       code follows it from a fresh clone and it works.
-    result: ""
+    result: "Replaced event README and outdated app notes with DIIS overview, setup, connected-role and active-day walkthroughs, measurement/codebook links, QC/adapter/ETA function parameters and outputs, reproducible commands, limitations and About page. H-07 remains in progress pending an independent fresh-clone teammate walkthrough."
 
   - id: H-08
     title: Reproducible public repo, submitted on Devpost
@@ -574,3 +574,23 @@ tasks:
     notes: "Creating a caller demo must replace the displayed old responder trip with the fresh pending incident, reset replay controls, and select that incident for acceptance. Preserve prior incident records and require responder acceptance before replay movement."
     definition_of_done: "Caller-first regression recreates prior step-3 trip, creates a new caller dispatch, checks responder step 1 and zero progress until acceptance, then matching incident IDs through response and scene arrival; existing role/shared-trip tests pass."
     result: "PASS: caller-created demo resets old step 3 to step 1; acceptance starts the exact queued incident. Role, shared-trip, Caller ETA and full testthat checks pass. Browser verified caller Waiting for assignment, then Responder step 1 with the same queued incident preselected and an explicit Accept assignment action."
+
+  - id: H-45
+    title: Simulate an active-tracking day alongside the connected live trip
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "tests/test-supervisor-daily-demo.R", "tests/verify-supervisor-daily-demo.R", "app/README.md", "CONTRACT.yaml"]
+    notes: "User clarified a single-day session in Active tracking, not historical daily graphs. Reveal normal or abnormal completed cases progressively or jump to end of day; display demo-day average and existing charts. Keep live Caller/Responder panel connected but records separate."
+    definition_of_done: "Deterministic one-day generator, planted cases and known mean tests pass; module verification proves progressive Active tracking counts and plots, unchanged limits, and separation from live trip records; existing Supervisor/shared-trip checks pass."
+    result: "Active tracking now simulates one day of 12 cases with start/next-case/complete-day controls, optional final three planted 30-minute delays, day-so-far mean, existing KPIs and I-MR updates. Live trip stays connected in a separate panel; records never mix. Generator PASS 18; module verifies progressive 0/1/12 counts, rendered plots, displayed mean, frozen limits and ordinary record preservation. Full root/ETA/feed suites pass. Module emits nonblocking R warnings. Preview port 5801; not committed or pushed."
+
+  - id: H-46
+    title: Explain every Supervisor chart with guides and legends
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "app/www/supervisor.css", "tests/test-supervisor-chart-guides.R", "CONTRACT.yaml"]
+    notes: "User requested per-chart explanations and legends without clutter. Provide collapsible guides with visible text/symbol/color legends for every Active tracking, Patterns and History graph. Do not change any calculations."
+    definition_of_done: "All plotted Supervisor outputs have a guide and legend; units, colors, lines and interpretation limits match the renderer; Supervisor and day-demo verification pass."
+    result: "All 11 Supervisor graphs now include a keyboard-accessible expandable reading guide and visible symbol/text/color legend, including dynamic History layouts. Reading guides now have bordered button styling, plus/minus expansion indicators, hover feedback and keyboard focus outlines; chart guide checks PASS 67. Units and interpretation match renderers; calculations unchanged. Root tests PASS (chart coverage 67, day demo 18, Supervisor 49, QC 88, shared 1). Connected day-demo verification PASS with 12 existing nonblocking R warnings. Preview port 5802; uncommitted."

@@ -1,156 +1,182 @@
-# DIIS Emergency Response Monitor
+# DIIS developer and function reference
 
-The DIIS Emergency Response Monitor is a Shiny prototype for reviewing
-incident-level ambulance response durations across five selected Queens zones.
-It pairs a shared synthetic caller/responder workflow with supervisor control
-charts, so unusually long responses remain visible instead of disappearing in
-monthly averages.
+Start with the [project README](../README.md) for setup, role walkthrough and
+scope. This is an R/Shiny application, not a public REST API or an installed R
+package. Source functions from their files for scripted analysis.
 
-**Demonstration only.** It does not connect to 911 or EMS, dispatch a unit,
-provide clinical advice, or offer operational navigation. All demo events and
-response records are synthetic. For a real emergency in the United States,
-call 911.
+For the short user-facing overview, see [About the app](../docs/about.md).
+The current [hosted demo](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/)
+opens on the same role-selection screen.
 
-For a plain-language overview, open [About the app](../docs/about.md). See the
-[synthetic dataset walkthrough](../demo/README.md),
-[dataset codebook](../data/README.md), and [project specification](../SPEC.md)
-for the analysis assumptions and known limitations.
+## Runtime and architecture
 
-## Run locally
+Run `Rscript app/testme.R` from the repository root. `PORT` defaults to 3838 and
+`HOST` to 127.0.0.1. Runtime packages: shiny, openssl, jsonlite and ggplot2;
+testthat is used by tests, rsconnect by publishing. Disposable staff passwords
+are generated at startup and shown by the login dialog; do not replace them with
+real credentials in committed files.
 
-From the repository root, install the runtime packages once, then start the app:
+| File | Responsibility |
+| --- | --- |
+| `app.R` | Role selection, demo authentication, shared service and application startup |
+| `shared-incidents.R`, `shared-trip.R` | Process-local incident lifecycle, tracking links and milestone publication |
+| `responder-server.R`, `responder-demo.R` | Responder workflow, replay and hospital confirmation |
+| `caller/caller.R` | Link-based Caller view and shared-state tracking |
+| `response-metrics.R` | Canonical timestamp adapter; no QC formulas |
+| `qc.R` | Validation, fixed I-MR limits, gated monitoring and descriptive statistics |
+| `supervisor.R`, `supervisor-analytics.R` | Supervisor UI, isolated simulation, SPC patterns and historical summaries |
+| `eta.R` | Independent synthetic ETA fitting, validation and prediction |
+| `www/`, `caller/www/` | Maps, styles, browser behavior and offline fallback |
 
-```sh
-Rscript -e 'install.packages(c("shiny", "openssl", "jsonlite", "ggplot2"))'
-Rscript app/testme.R
+## Measurement inputs
+
+Ordinary mode consumes shared records; users do not upload a CSV. Each incident
+has the fields below. A metric is available only after its own start and end
+exist. Timestamp strings require ISO 8601 seconds with `Z` or an explicit UTC
+offset. Durations are elapsed minutes; local calendar displays use
+`America/New_York`.
+
+| Field | Meaning / allowed values |
+| --- | --- |
+| `incident_id` | Unique incident identifier |
+| `zone` | Astoria, Flushing, Jamaica, Forest Hills or Far Rockaway; incident location |
+| `call_priority` | High, Medium or Low; synthetic urgency categories |
+| `weather_condition` | Dry, Rain, Snow/Ice or Unknown; invalid/missing becomes Unknown |
+| `call_received_time` | Start of call-to-scene duration |
+| `scene_arrival_time` | Confirmed scene arrival; end of call-to-scene duration |
+| `transport_departure_time` | Start of hospital transport duration |
+| `hospital_arrival_time` | Upstream confirmed hospital arrival; end of transport duration |
+| `responder_id`, `response_system_source` | Optional identifying/provenance context |
+
+Missing/invalid required values, ambiguous duplicate IDs and negative durations
+are reported and excluded from completed QC. Missing weather is reported without
+excluding an otherwise valid incident. Pending pairs do not become zero-minute
+observations. The legacy fixture fields `dispatch_time`/`on_scene_time` are
+assignment/arrival timestamps, not the full canonical contract. Synthetic adapters
+create explicitly labeled proxies; production integrations must supply actual
+milestones. See [codebook](../data/README.md) and [SPEC](../SPEC.md).
+
+## QC function reference (`qc.R`)
+
+All arguments below are R objects, with durations in minutes. These functions
+return values rather than modifying shared trip state.
+
+| Function | Parameters and result |
+| --- | --- |
+| `qc_parse_time(x)` | Timestamp vector or POSIXt; returns UTC POSIXct, invalid values as NA. |
+| `qc_validate(records, mode=c('completed','active'))` | Data frame with legacy QC fields above. Returns completed, pending, rejected, issues and counts. Active mode retains missing arrivals as pending; completed mode rejects them. |
+| `imr_fit(baseline)` | Finite nonnegative numeric duration vector in chronological order. Returns n, center, moving ranges, sigma, I/MR limits, last observation and computability status. Short/constant inputs have unavailable limits. This does not grant review approval. |
+| `imr_monitor(fit, monitoring, enabled=TRUE)` | Fit plus ordered finite nonnegative monitoring vector. Returns durations, adjacent ranges and upper-limit exceedance fields. Disabled/unusable fit yields unavailable signals. Arithmetic primitive for tests; application integrations should use `qc_analyze`. |
+| `qc_summary(x)` | Finite numeric vector; returns n, median, type-7 p90. Empty input returns n=0 and NA statistics. |
+| `qc_box(x)` | Finite vector; returns quartiles, median, 1.5-IQR whiskers, outliers and points. Empty input returns unavailable summaries. |
+| `qc_boxes(completed, group_col)` | Validated completed data and grouping-column name; returns grouped box summaries. |
+| `qc_heatmap(completed, tz='America/New_York')` | Validated completed records; returns local hour/weekday median and count cells, preserving empty cells as missing. |
+| `qc_period(baseline_start, baseline_end, monitoring_start=baseline_end, monitoring_end)` | Offset-bearing timestamps; requires 12 complete New York baseline calendar months and nonoverlapping monitoring. Returns validated half-open period boundaries and baseline month labels. |
+| `qc_order(d)` | Orders a QC data frame by start (`dispatch_time`), then incident ID for ties. |
+| `qc_baseline_key(baseline, period, zone, priority)` | Creates an identity for the exact reference observations/settings used to match a review. |
+| `qc_diagnostics(b, fit, months)` | Ordered baseline records, fit and expected month labels; returns preliminary chart, monthly, distribution and lag diagnostics for review. |
+| `qc_review(group, reviewer, rationale, decision=c('approved','unsuitable'), reviewed_at)` | Reviewed analysis group plus documented reviewer, rationale, decision and timestamp; returns a review tied to its baseline identity. Does not bypass insufficient/degenerate safeguards. |
+| `qc_analyze(records, period, reviews=list(), mode=c('completed','active'))` | QC-shaped records, validated period and optional review records. Returns validation and 15 zone/priority groups with diagnostics, limits, summaries, status and monitoring evidence. Without suitable approval, operational monitoring flags are disabled. |
+
+Minimal standalone example, independent of Shiny:
+
+```r
+source('app/qc.R')
+x <- c(8, 9, 8, 7, 8)
+fit <- imr_fit(x)
+stopifnot(fit$center == 8, fit$mr_center == 1)
+qc_summary(x) # n = 5, median = 8, p90 = 8.6
+imr_monitor(fit, c(8, 30)) # arithmetic check, not baseline approval
 ```
 
-Open <http://127.0.0.1:3838>. Set `PORT=5300` to use port 5300. Staff demo
-usernames and disposable passwords are displayed in their login dialogs. The
-passwords are generated in memory each time the R process starts.
+## Metric adapter (`response-metrics.R`)
 
-## Use the three role views
+`response_metric_catalog()` lists the two metric IDs, labels and timestamp pairs.
+`response_system_fields()` lists canonical fields;
+`response_metric_empty_records()` creates an empty stream.
+`response_metric_info(metric_id)` looks up one supported metric and rejects
+unknown IDs. Choose `call_to_scene` or `transport_to_hospital`.
 
-- **Caller:** Create a demo tracking link. It belongs to one synthetic incident,
-  expires after 30 minutes, and does not send a message or call.
-- **Primary responder:** Accept the queued synthetic incident, advance through
-  the response steps, review the scenario-matched hospital list, confirm a
-  destination, and confirm hospital arrival. Traffic and weather prompts are
-  coordination examples; road routes are stored snapshots.
-- **Supervisor:** Review scene and hospital durations, grouped by incident zone
-  and simulated priority. Individuals and Moving Range charts use separate
-  fixed baselines for each metric/group. The bundled stable and planted-delay
-  fixtures can be replayed in Developer mode for a statistical demonstration.
+`response_metric_to_qc(records, metric_id, allow_mock=TRUE)` maps the selected
+canonical timestamp pair onto QC's `dispatch_time`/`on_scene_time` columns;
+`allow_mock=FALSE` prevents synthetic legacy fallback. Use that setting for real
+integrations. `response_metric_completion_events(records, allow_mock=FALSE)`
+returns metric completion events with IDs, metric, zone, priority, timestamp and
+duration. `response_metric_connection_status(records)` describes which input
+contract is present. Scene and transport remain separate observations and limits.
 
-The caller, responder, and ordinary supervisor views share the same incident
-and confirmed milestones in one R process. The hosted demo uses one server
-process to keep sessions together. State is in memory and clears when that
-process restarts. The caller link is private to its incident and is revoked on
-reset or replacement.
+## ETA functions (`eta.R`)
 
-## Measurements and input contract
+The ETA target is legacy assignment-to-scene minutes, distinct from the final
+call-received-to-scene QC definition. Inputs include zone, priority,
+`dispatch_time`, weather condition, precipitation intensity (`None`, `Light`,
+`Moderate`, `Heavy`), sustained `wind_speed_mph`, `wind_gust_mph` and
+`weather_observed_at`. Training also needs `on_scene_time`. Gust must be at least
+sustained speed; weather observation must precede assignment by less than one
+hour. [ETA codebook](../data/eta/README.md) defines generation and partitions.
 
-The supervisor keeps these durations separate:
+| Function | Parameters and result |
+| --- | --- |
+| `eta_prepare(d)` | Data frame; returns predictors, times, target and per-row unavailability reasons. |
+| `eta_fit(d, weather=TRUE)` | Fits a log-duration candidate with weather terms, or the comparison model without those terms. Requires eligible sample/support and nondegenerate full-rank fit; returns candidate or unavailable status/reason. |
+| `eta_validate(d)` | Runs fixed chronological train/validation/test checks against the simpler model, including predictive error and interval coverage; returns a frozen validated-synthetic bundle or unavailable result. |
+| `eta_predict(bundle, d)` | Bundle plus assignment-time rows; returns status/reason, median/mean minutes, 95% individual prediction limits and arrival timestamps. Unsupported/incomplete input returns NA estimates, never zero. |
 
-1. `call_received_time` to `scene_arrival_time` (`call_to_scene_minutes`).
-2. `transport_departure_time` to `hospital_arrival_time`
-   (`transport_to_hospital_minutes`).
+The prediction is frozen at assignment; advancing replay does not refit it.
+Hospital route progress does not turn this model into a hospital ETA. Model
+intervals describe uncertainty for a synthetic individual duration, not a
+confidence interval for a real EMS service promise. `Rscript app/eta-view.R`
+runs the reproducible ETA demonstration.
 
-Each duration is computed in minutes from timestamps parsed as instants and
-compared only with its own zone/priority baseline. Completed records require a
-valid incident ID, one of the five zone names, a simulated priority, and both
-timestamps for the selected metric. Negative/unparseable durations and
-duplicate IDs are reported and excluded from that metric. Incomplete metric
-pairs stay pending. Synthetic data require human review before monitoring
-signals are enabled; an ineligible or degenerate baseline cannot produce
-validated signals.
+## Supervisor controls and chart interpretation
 
-The application functions accept the following canonical response fields:
+Active tracking selects metric, date window, zone and priority. Patterns are
+descriptive. History analysis has independent metric/zone/priority, phase,
+period and aggregation filters. Daily/weekly subgroup limits depend on n;
+today's open New York day is excluded from closed subgroup history. Configured
+priority service goals and optional zone overrides do not modify control limits.
+Charts have visible legends and expandable **How to read this chart** buttons.
 
-| Field | Meaning |
-|---|---|
-| `incident_id` | Unique incident key. |
-| `zone` | `Astoria`, `Flushing`, `Jamaica`, `Forest Hills`, or `Far Rockaway`. |
-| `call_priority` | Synthetic `High`, `Medium`, or `Low` category. |
-| `weather_condition` | Assignment-time `Dry`, `Rain`, `Snow/Ice`, or `Unknown`; descriptive context only. |
-| `call_received_time` | Call-received timestamp, including timezone/UTC offset. |
-| `scene_arrival_time` | Confirmed scene-arrival timestamp. |
-| `transport_departure_time` | Start of the hospital-transport duration. |
-| `hospital_arrival_time` | Confirmed hospital-arrival timestamp. |
-| `responder_id` | Optional descriptive unit identifier. |
+**Try demo mode** isolates generated observations. Choose Normal day or Day with
+delays, then Start demo day. Next completed case reveals one of 12 hourly cases
+(08:00–19:00 on the current New York date); Complete demo day reveals all 12.
+The delayed scenario sets the final three selected-metric durations to 30 minutes.
+The day-so-far average is the arithmetic mean of revealed durations. Replay time
+is synthetic, including any displayed future time. Advanced settings retain
+single-case and event controls. The connected live trip stays visible but its
+records never enter generated graphs. Exit discards the generated records.
 
-`response_metric_empty_records()` creates the empty canonical data frame.
-`response_metric_catalog()` describes the two metrics. `response_metric_to_qc(records,
-metric_id, allow_mock=TRUE)` maps canonical timestamps to the QC function's
-legacy start/end columns; `metric_id` is `call_to_scene` or
-`transport_to_hospital`. With `allow_mock=TRUE`, legacy fixture rows can be
-converted using deterministic synthetic timestamps. For real canonical input,
-use `allow_mock=FALSE`. `response_metric_completion_events()` creates
-milestone records for the supervisor feed. The current UI does not ingest a
-live response feed or accept CSV uploads.
+## Publishing and limitations
 
-Synthetic fixture columns, generation, and units are documented in
-[`data/README.md`](../data/README.md). Do not join `stable.csv` and
-`planted_delay.csv`: their IDs intentionally overlap.
+From the repository root with rsconnect installed, run:
 
-## Core R functions
+```sh
+Rscript app/manifestme.R
+Rscript tests/verify-deploy-bundle.R
+```
 
-- `qc_validate(records, mode)` checks required values and reports invalid rows.
-- `imr_fit(baseline)` computes the Individuals and Moving Range center and
-  control limits from baseline observations.
-- `imr_monitor(fit, monitoring, enabled)` applies frozen limits to monitoring
-  observations and marks limits disabled when review/eligibility requirements
-  are not met.
-- `qc_analyze(records, period, reviews, mode)` runs validation, baseline
-  eligibility, review, analysis, and monitoring for zone/priority groups.
-- `qc_summary(x)`, `qc_box(x)`, `qc_boxes(completed, group_col)`, and
-  `qc_heatmap(completed, tz)` provide descriptive summaries and chart data;
-  none of these add a separate investigation rule.
-- `supervisor_signal_rules()` evaluates the documented supplemental SPC rules.
-  `supervisor_group_signals()` groups signals for the dashboard. The main
-  investigation rule remains an Individuals observation above its fixed UCL.
-- `shared_create()`, `shared_claim()`, `shared_advance()`, `shared_transport()`,
-  `shared_transport_advance()`, and `shared_hospital_arrival()` create and
-  update one shared synthetic incident and its confirmed milestones.
-- `caller_issue_access()`, `caller_lookup()`, and `caller_map()` issue an
-  expiring incident-scoped demo grant, validate it, and describe the caller's
-  map state. The Shiny module entry points are `caller_ui()` and
-  `caller_server()`.
-- `responder_server()` and `supervisor_ui()` / `supervisor_server()` implement
-  the staff workspaces and connect them to the shared incident/QC functions.
+The manifest script bundles the required synthetic CSVs under `app/data/` and
+writes `app/manifest.json`. Refresh it after runtime source/assets change. The
+bundle check verifies startup without the parent repository. Publish the `app/`
+directory to the course Posit Connect server using the team's deployment setup.
+Keep publishing credentials in environment/repository secrets. The current
+content is [hosted here](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/).
+Configure one R process so separate role sessions share state. Records disappear
+on restart; durable storage, operational authentication and multiworker shared
+storage are future work.
 
-Function arguments are ordinary R data frames, vectors, IDs, and settings as
-indicated in each function signature. There is no public REST endpoint.
+The installable PWA requires HTTPS (localhost is exempt) and a server connection
+for interaction. Its offline fallback is not offline dispatch. Browser map tiles
+require internet. Hospital capabilities have dated sources; route snapshots and
+vehicle movement do not include live traffic, emergency driving rules or GPS.
+Vendored Leaflet licensing and route/source notes are retained in `www/` and the
+[hospital codebook](../data/hospitals/README.md). Demo interactions send no EMS
+request and do not provide clinical or operational navigation instructions.
 
-## Project layout
+## Reproduction checks
 
-| Path | Purpose |
-|---|---|
-| `app.R` | Shiny entry point, role selection, ephemeral staff login, and shared services. |
-| `qc.R` | Validation, I-MR analysis, limits, summaries, and chart data. |
-| `response-metrics.R` | Canonical metric definitions and adapter to QC inputs. |
-| `feed.R`, `workflow.R` | Deterministic synthetic event replay and supervisor analysis assembly. |
-| `supervisor.R`, `supervisor-analytics.R` | Supervisor UI and supporting signal/summary calculations. |
-| `responder-server.R`, `responder-demo.R` | Responder workflow and synthetic scenario cards. |
-| `shared-incidents.R`, `shared-trip.R` | Process-local shared incidents, milestones, and responder UI state. |
-| `caller/caller.R` | Caller tracking access, route state, and Shiny module. |
-| `www/` | CSS, maps, route snapshots, icons, PWA assets, and the static About page. |
-| `data/` | Bundled copies of the synthetic fixtures needed by the hosted app. |
-
-The demo map uses bundled road geometry; it is not turn-by-turn routing and
-does not account for live traffic, closures, or emergency vehicle rules.
-Hospital services are transcribed from published sources listed in
-`www/hospital-directory.json`; the app does not check real-time capacity or
-availability. Statistical signals identify records for review and do not prove
-cause or staff performance.
-
-## Deployment
-
-The current public demo is [DIIS Emergency Response Monitor](https://connect.systems-apps.com/content/063ac41c-40a1-49bf-88dd-1ed5497a367f/).
-It runs on Posit Connect from this repository's `main` branch and the `app/`
-manifest. From the repository root, run `Rscript app/manifestme.R` to copy the
-required synthetic fixtures into the app bundle and write `app/manifest.json`.
-Import the `main` branch in Posit Connect with manifest directory `app`.
-Configure one process so caller, responder, and supervisor sessions share the
-same in-memory incident. Demo incidents reset on server restart; bundled files
-do not. Map tiles require internet access.
+See the [root README](../README.md#verify-and-extend) for commands and
+[tests/README.md](../tests/README.md) for existing numerical checks. Dataset
+expected output is in [demo/README.md](../demo/README.md). A fresh-clone teammate
+walkthrough and public hosted-link verification are still required for H-07;
+local automated checks alone do not establish either.
