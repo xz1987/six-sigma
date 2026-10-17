@@ -30,6 +30,14 @@ response_system_fields <- function() {
     'transport_departure_time', 'hospital_arrival_time')
 }
 
+# Empty canonical stream used by ordinary mode until Caller and Responder
+# workflows emit their first shared response record.
+response_metric_empty_records <- function() {
+  fields <- c(response_system_fields(), 'responder_id', 'response_system_source')
+  as.data.frame(setNames(replicate(length(fields), character(), simplify = FALSE), fields),
+    stringsAsFactors = FALSE)
+}
+
 response_metric_info <- function(metric_id) {
   catalog <- response_metric_catalog()
   row <- catalog[catalog$id == metric_id, , drop = FALSE]
@@ -88,7 +96,8 @@ response_metric_to_qc <- function(records, metric_id, allow_mock = TRUE) {
 
   common <- c('incident_id', 'zone', 'call_priority', 'weather_condition')
   for (field in common) if (!field %in% names(source)) source[[field]] <- NA_character_
-  out <- source[, common, drop = FALSE]
+  passthrough <- c(common, intersect('responder_id', names(source)))
+  out <- source[, passthrough, drop = FALSE]
   out$dispatch_time <- source[[info$start_field]]
   out$on_scene_time <- source[[info$end_field]]
   out$metric_id <- rep(metric_id, nrow(out))

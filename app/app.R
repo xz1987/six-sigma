@@ -16,6 +16,10 @@ names(demo_accounts) <- c('supervisor', 'responder')
 supervisor_path <- if (file.exists('supervisor.R')) 'supervisor.R' else file.path('app', 'supervisor.R')
 source(supervisor_path, local = TRUE)
 
+# Process-level stream shared by Caller, Responder, and Supervisor sessions.
+# It is intentionally in-memory until the production response backend is connected.
+production_response_records <- reactiveVal(response_metric_empty_records())
+
 ui <- fluidPage(
   tags$head(
     tags$title('DIIS Emergency Response Monitor'),
@@ -151,7 +155,7 @@ server <- function(input, output, session) {
   })
   observeEvent(input$change_role, session$reload())
 
-  supervisor_server('supervisor')
+  supervisor_server('supervisor', production_records = production_response_records)
 }
 
 shinyApp(ui, server)

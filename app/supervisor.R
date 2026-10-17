@@ -63,6 +63,13 @@ supervisor_month_choices <- function(year = 2026L) {
   setNames(as.character(starts), format(starts, '%B %Y'))
 }
 
+supervisor_period_values <- function(day) {
+  day <- as.Date(day)
+  list(day = day,
+    week = supervisor_date_window('week', day)[1L],
+    month = as.Date(format(day, '%Y-%m-01')))
+}
+
 # Filter points for display only; retain their full-group sequence and QC signals.
 supervisor_visible_monitoring <- function(group, window, responder = 'all') {
   m <- group$monitoring
@@ -115,6 +122,19 @@ supervisor_consecutive_segments <- function(m, value_col) {
     y = m[[value_col]][adjacent], yend = m[[value_col]][adjacent + 1L])
 }
 
+# QC calculations stay unchanged; this decorates monitoring rows with the
+# responder identifier carried by the ordinary-mode canonical stream.
+supervisor_attach_responder_ids <- function(analysis, completed) {
+  if (!'responder_id' %in% names(completed)) return(analysis)
+  for (key in names(analysis$groups)) {
+    monitoring <- analysis$groups[[key]]$monitoring
+    matched <- match(monitoring$incident_id, completed$incident_id)
+    monitoring$responder_id <- completed$responder_id[matched]
+    analysis$groups[[key]]$monitoring <- monitoring
+  }
+  analysis
+}
+
 supervisor_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -138,7 +158,7 @@ supervisor_ui <- function(id) {
         choices = setNames(response_metric_catalog()$id,
           response_metric_catalog()$label), selected = 'call_to_scene'),
       conditionalPanel(sprintf("input['%s'] === 'day'", ns('time_span')),
-        dateInput(ns('day_date'), 'Date', value = as.Date('2026-02-01'),
+        dateInput(ns('day_date'), 'Date', value = Sys.Date(),
           min = as.Date('2026-01-01'), max = as.Date('2026-12-31'))),
       conditionalPanel(sprintf("input['%s'] === 'week'", ns('time_span')),
         selectInput(ns('week_start'), 'Week', choices = supervisor_week_choices(),
@@ -156,38 +176,29 @@ supervisor_ui <- function(id) {
         strong('Response-time definition'), br(),
         textOutput(ns('metric_definition'), inline = TRUE), br(),
         tags$small('Each metric has its own fixed baseline limits. Display filters never refit them.')),
-      tags$details(class = 'developer-settings',
+      tags$details(id = ns('developer_panel'), class = 'developer-settings',
+        ontoggle = sprintf("Shiny.setInputValue('%s', this.open, {priority: 'event'});",
+          ns('developer_panel_open')),
         tags$summary(title = 'Developer settings',
+          onclick = sprintf("if (this.parentElement.open) Shiny.setInputValue('%s', Date.now(), {priority: 'event'});",
+            ns('developer_panel_closed')),
           tags$span(class = 'sr-only', 'Developer settings')),
-        tags$p('Synthetic replay controls demonstrate how newly completed response-system records change this dashboard.'),
-        selectInput(ns('scenario'), 'Bundled scenario',
-          choices = c('Stable process' = 'stable', 'Planted delay' = 'planted')),
-        numericInput(ns('seed'), 'Shuffle seed', value = 20261016, min = 1, step = 1),
-        selectInput(ns('cadence_ms'), 'Add one completed call every',
-          choices = c('0.25 seconds' = 250, '0.5 seconds' = 500,
-            '1 second' = 1000, '2 seconds' = 2000), selected = 500),
-        div(class = 'button-row',
-          actionButton(ns('start'), 'Start', class = 'btn-primary'),
-          actionButton(ns('pause_resume'), 'Pause / resume')),
-        actionButton(ns('step'), 'Add next completed call', width = '100%'),
-        actionButton(ns('reset'), 'Reset replay', width = '100%'),
-        div(class = 'review-box',
-          checkboxInput(ns('demo_review'),
-            'Use synthetic baseline-review fixture', value = TRUE),
-          tags$small('Demonstration only. This is not approval of a real EMS baseline.')))
+        uiOutput(ns('developer_controls')))
     ),
     tags$main(class = 'workspace',
       div(class = 'dashboard-heading',
         div(div(class = 'kpi-label', 'Response quality / Supervisor'),
           h1(textOutput(ns('dashboard_title'), inline = TRUE)),
           p('Completed response-system records enter the selected metric view. Historical limits stay fixed.')),
-        div(class = 'baseline-chip', '2025 synthetic baseline', tags$small('2026 monitoring'))),
+        uiOutput(ns('mode_chip'))),
       div(class = 'scope-strip',
         textOutput(ns('scope_label'), inline = TRUE),
         div(class = 'status-pill', strong('QC status: '), textOutput(ns('qc_status'), inline = TRUE))),
+      uiOutput(ns('source_notice')),
       div(class = 'replay-timeline',
         div(class = 'timeline-clock', span(class = 'timeline-pulse'),
-          strong('Simulated as of '), textOutput(ns('overview_sim_time'), inline = TRUE)),
+          strong(textOutput(ns('time_context_label'), inline = TRUE)),
+          textOutput(ns('overview_sim_time'), inline = TRUE)),
         textOutput(ns('latest_arrival'), inline = TRUE)),
       tabsetPanel(id = ns('main_tabs'),
         tabPanel('Overview',
@@ -233,37 +244,73 @@ supervisor_ui <- function(id) {
   )
 }
 
-supervisor_server <- function(id) {
+supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
-  state <- reactiveValues(feed = NULL, records = NULL, scenario = NULL,
+  state <- reactiveValues(mode = 'ordinary', feed = NULL, developer_records = NULL,
+    baseline_records = dashboard_load_fixture(repo_root, 'stable'), scenario = NULL,
     seed = NULL, ui_tick = 0L, completed_tick = 0L)
 
-  reset_feed <- function() {
+  set_period_for_mode <- function(day) {
+    values <- supervisor_period_values(day)
+    updateDateInput(session, 'day_date', value = values$day)
+    updateSelectInput(session, 'week_start', selected = as.character(values$week))
+    updateSelectInput(session, 'month_start', selected = as.character(values$month))
+  }
+
+  reset_developer_feed <- function() {
     scenario <- if (is.null(input$scenario)) 'stable' else input$scenario
     seed <- if (is.null(input$seed) || is.na(input$seed)) 20261016L else as.integer(input$seed)
     records <- dashboard_load_fixture(repo_root, scenario)
     state$feed <- feed_new(dashboard_build_feed(records, seed))
-    state$records <- records
+    state$developer_records <- records
     state$scenario <- scenario
     state$seed <- seed
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
   }
-  isolate(reset_feed())
+
+  enter_developer_mode <- function() {
+    state$mode <- 'developer'
+    reset_developer_feed()
+    set_period_for_mode(as.Date('2026-02-01'))
+  }
+
+  leave_developer_mode <- function() {
+    if (!is.null(state$feed)) feed_pause(state$feed)
+    state$mode <- 'ordinary'
+    state$feed <- NULL
+    state$developer_records <- NULL
+    state$ui_tick <- state$ui_tick + 1L
+    state$completed_tick <- state$completed_tick + 1L
+    set_period_for_mode(Sys.Date())
+  }
+
+  observeEvent(input$enter_developer, enter_developer_mode())
+  observeEvent(input$end_developer, leave_developer_mode())
+  observeEvent(input$developer_panel_open, {
+    if (!isTRUE(input$developer_panel_open) && identical(state$mode, 'developer'))
+      leave_developer_mode()
+  }, ignoreInit = TRUE)
+  observeEvent(input$developer_panel_closed, {
+    if (identical(state$mode, 'developer')) leave_developer_mode()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$start, {
-    req(state$feed)
+    req(identical(state$mode, 'developer'), state$feed)
     feed_start(state$feed)
     state$ui_tick <- state$ui_tick + 1L
   })
   observeEvent(input$pause_resume, {
-    req(state$feed)
+    req(identical(state$mode, 'developer'), state$feed)
     if (isTRUE(state$feed$running)) feed_pause(state$feed) else feed_start(state$feed)
     state$ui_tick <- state$ui_tick + 1L
   })
-  observeEvent(input$reset, reset_feed())
+  observeEvent(input$reset, {
+    req(identical(state$mode, 'developer'))
+    reset_developer_feed()
+  })
   observeEvent(input$step, {
-    req(state$feed)
+    req(identical(state$mode, 'developer'), state$feed)
     added <- supervisor_advance_one_completion(state$feed)
     if (all(state$feed$processed)) feed_pause(state$feed)
     if (added) state$completed_tick <- isolate(state$completed_tick) + 1L
@@ -274,7 +321,7 @@ supervisor_server <- function(id) {
     cadence <- suppressWarnings(as.integer(input$cadence_ms))
     if (length(cadence) != 1L || is.na(cadence) || cadence < 100L) cadence <- 500L
     invalidateLater(cadence, session)
-    req(state$feed)
+    if (!identical(state$mode, 'developer') || is.null(state$feed)) return()
     if (!isTRUE(state$feed$running)) return()
     added <- supervisor_advance_one_completion(state$feed)
     if (all(state$feed$processed)) feed_pause(state$feed)
@@ -282,20 +329,97 @@ supervisor_server <- function(id) {
     state$ui_tick <- isolate(state$ui_tick) + 1L
   })
 
-  snapshot <- reactive({ state$ui_tick; req(state$feed); feed_snapshot(state$feed) })
+  snapshot <- reactive({
+    state$ui_tick
+    if (identical(state$mode, 'developer')) {
+      req(state$feed)
+      return(feed_snapshot(state$feed))
+    }
+    records <- production_records()
+    list(simulated_time = Sys.time(), running = FALSE, pending = records[FALSE, , drop = FALSE],
+      completed = records, processed_events = nrow(records), total_events = nrow(records))
+  })
+  active_completed <- reactive({
+    if (identical(state$mode, 'developer')) feed_completed(state$feed)
+    else production_records()
+  })
+  active_source_records <- reactive({
+    if (identical(state$mode, 'developer')) state$developer_records
+    else production_records()
+  })
   metric_info <- reactive({ response_metric_info(input$metric) })
   analysis <- reactive({
     state$completed_tick
-    req(state$records, state$feed)
-    historical <- response_metric_to_qc(state$records, input$metric, allow_mock = TRUE)
-    completed <- response_metric_to_qc(feed_completed(state$feed), input$metric,
-      allow_mock = TRUE)
-    dashboard_analyze(historical, completed, isTRUE(input$demo_review))
+    historical_source <- if (identical(state$mode, 'developer'))
+      state$developer_records else state$baseline_records
+    req(historical_source)
+    historical <- response_metric_to_qc(historical_source, input$metric, allow_mock = TRUE)
+    completed <- response_metric_to_qc(active_completed(), input$metric,
+      allow_mock = identical(state$mode, 'developer'))
+    review_baseline <- if (identical(state$mode, 'developer'))
+      isTRUE(input$demo_review) else TRUE
+    result <- dashboard_analyze(historical, completed, review_baseline)
+    supervisor_attach_responder_ids(result, completed)
   })
   selected_group <- reactive({
     key <- paste(input$zone, input$priority, sep = '/')
     analysis()$groups[[key]]
   })
+
+  output$developer_controls <- renderUI({
+    if (!identical(state$mode, 'developer')) {
+      return(tagList(
+        tags$p('Ordinary mode is active. The dashboard is reading only the shared Caller and Responder response stream.'),
+        actionButton(session$ns('enter_developer'), 'Enter developer mode',
+          class = 'btn-default', width = '100%')))
+    }
+    tagList(
+      div(class = 'developer-mode-card',
+        tags$strong('Developer mode active'),
+        tags$p('The ordinary stream is disconnected from this view while an isolated historical-fixture replay is active.')),
+      selectInput(session$ns('scenario'), 'Bundled scenario',
+        choices = c('Stable process' = 'stable', 'Planted delay' = 'planted'),
+        selected = if (is.null(state$scenario)) 'stable' else state$scenario),
+      numericInput(session$ns('seed'), 'Shuffle seed',
+        value = if (is.null(state$seed)) 20261016 else state$seed, min = 1, step = 1),
+      selectInput(session$ns('cadence_ms'), 'Add one completed call every',
+        choices = c('0.25 seconds' = 250, '0.5 seconds' = 500,
+          '1 second' = 1000, '2 seconds' = 2000), selected = 500),
+      div(class = 'button-row',
+        actionButton(session$ns('start'), 'Start', class = 'btn-primary'),
+        actionButton(session$ns('pause_resume'), 'Pause / resume')),
+      actionButton(session$ns('step'), 'Add next completed call', width = '100%'),
+      actionButton(session$ns('reset'), 'Reset replay', width = '100%'),
+      div(class = 'review-box',
+        checkboxInput(session$ns('demo_review'),
+          'Use synthetic baseline-review fixture', value = TRUE),
+        tags$small('Demonstration only. This is not approval of a real EMS baseline.')),
+      actionButton(session$ns('end_developer'), 'End developer mode',
+        class = 'btn-warning', width = '100%'))
+  })
+
+  output$mode_chip <- renderUI({
+    if (identical(state$mode, 'developer'))
+      return(div(class = 'baseline-chip mode-chip-developer',
+        'Developer mode', tags$small('Isolated fixture replay')))
+    div(class = 'baseline-chip', 'Ordinary mode',
+      tags$small('Caller + responder stream'))
+  })
+
+  output$source_notice <- renderUI({
+    if (identical(state$mode, 'developer')) {
+      return(div(class = 'alert-note',
+        'Developer replay is isolated from ordinary response records. Close Developer settings or select End developer mode to stop replay and reconnect.'))
+    }
+    count <- nrow(production_records())
+    div(class = 'alert-note',
+      if (count)
+        sprintf('Ordinary mode · %d canonical response record%s received from the shared Caller/Responder stream.',
+          count, if (count == 1L) '' else 's')
+      else
+        'Ordinary mode · connected to the shared Caller/Responder stream. No completed response records have been emitted yet.')
+  })
+
   responder_ids <- reactive({
     m <- selected_group()$monitoring
     if (!'responder_id' %in% names(m)) return(character())
@@ -313,7 +437,10 @@ supervisor_server <- function(id) {
     if (length(responder_ids()))
       tags$p(class = 'filter-note', 'Responder selection changes visible completed metric records; fixed metric/zone/priority control limits remain unchanged.')
     else tags$p(class = 'filter-note',
-      'Responder assignments are not recorded in the current synthetic feed. This filter becomes active when IDs are supplied.')
+      if (identical(state$mode, 'developer'))
+        'Responder assignments are not recorded in the developer replay. This filter becomes active when IDs are supplied.'
+      else
+        'No responder IDs are present in the ordinary stream yet. This filter activates when responder records arrive.')
   })
   output$metric_definition <- renderText({ metric_info()$definition })
   output$dashboard_title <- renderText({ paste(metric_info()$short_label, 'overview') })
@@ -346,6 +473,7 @@ supervisor_server <- function(id) {
   observeEvent(input$follow_live, selected_flag_id(NULL), ignoreInit = TRUE)
 
   output$run_status <- renderText({
+    if (!identical(state$mode, 'developer')) return('ordinary stream')
     s <- snapshot()
     if (isTRUE(s$running)) 'running' else if (all(state$feed$processed)) 'complete' else 'paused'
   })
@@ -355,9 +483,14 @@ supervisor_server <- function(id) {
   output$overview_sim_time <- renderText({
     format(snapshot()$simulated_time, '%b %d, %Y %H:%M:%S %Z', tz = 'America/New_York')
   })
+  output$time_context_label <- renderText({
+    if (identical(state$mode, 'developer')) 'Simulated as of ' else 'Production stream as of '
+  })
   output$latest_arrival <- renderText({
     d <- selected_group()$monitoring
-    if (!nrow(d)) return('Waiting for the first completed metric record · synthetic replay')
+    if (!nrow(d)) return(if (identical(state$mode, 'developer'))
+      'Waiting for the first completed metric record · isolated developer replay'
+    else 'Waiting for completed response records from Caller and Responder')
     row <- d[which.max(d$on_scene_time), , drop = FALSE]
     sprintf('Latest %s: %s · %s / %s · %.1f min',
       tolower(metric_info()$short_label), row$incident_id,
@@ -390,7 +523,7 @@ supervisor_server <- function(id) {
     info <- metric_info()
     tags$div(class = 'connection-contract',
       div(class = 'status-pill', strong('Current source: '),
-        response_metric_connection_status(state$records)),
+        response_metric_connection_status(active_source_records())),
       tags$p(strong('Required identifiers/context: '),
         tags$code('incident_id, zone, call_priority, weather_condition')),
       tags$p(strong('Required timestamps: '),
@@ -401,6 +534,10 @@ supervisor_server <- function(id) {
   })
   output$review_notice <- renderUI({
     group <- selected_group()
+    if (!identical(state$mode, 'developer')) {
+      return(div(class = 'alert-note',
+        'Ordinary mode evaluates only completed canonical Caller/Responder records against the fixed historical baseline.'))
+    }
     if (isTRUE(group$flags_enabled)) {
       div(class = 'alert-note danger',
         'DEMO-ONLY REVIEW FIXTURE ACTIVE. Synthetic flags are visible for demonstration and are not operational approval.')
@@ -623,14 +760,15 @@ supervisor_server <- function(id) {
   })
 
   output$validation_table <- renderTable({
-    req(state$records)
-    metric_records <- response_metric_to_qc(state$records, input$metric,
-      allow_mock = TRUE)
+    source_records <- active_source_records()
+    req(source_records)
+    metric_records <- response_metric_to_qc(source_records, input$metric,
+      allow_mock = identical(state$mode, 'developer'))
     v <- qc_validate(metric_records, mode = 'completed')
     data.frame(
       Measure = c('Source rows', 'Accepted rows', 'Completed rows', 'Rejected rows',
         'Weather values normalized'),
-      Count = c(nrow(state$records), unname(v$counts['accepted']),
+      Count = c(nrow(source_records), unname(v$counts['accepted']),
         unname(v$counts['completed']), unname(v$counts['rejected']),
         unname(v$counts['weather_normalized']))
     )

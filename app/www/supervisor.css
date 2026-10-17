@@ -29,6 +29,10 @@
 .timeline-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 4px #dcefc7; margin-right: 8px; }
 .replay-timeline strong { color: #314b27; }
 .developer-settings > .btn { margin-bottom: 8px; }
+.developer-mode-card { border: 1px solid #e4b45f; background: #fff8e8; border-radius: 9px; padding: 10px; margin-bottom: 10px; }
+.developer-mode-card strong { color: #815c13; }
+.mode-chip-developer { background: #fff3d8; border-color: #ecd197; color: #805b13; }
+.mode-chip-developer small { color: #8d713d; }
 .flag-detail .btn { margin-top: 8px; font-size: 11px; }
 .supervisor-pwa { background: #f5f5f3; padding: 14px 28px 0 286px; }
 .supervisor-pwa .alert-note { margin: 0 0 10px; }
