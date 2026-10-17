@@ -82,7 +82,7 @@ responder_server <- function(input, output, session, authenticated_role, active_
     req(identical(authenticated_role(), "responder"), demo_started(), demo_elapsed() < 720)
     demo_running(!demo_running())
   })
-  observeEvent(input$reset_call, {
+  reset_trip <- function() {
     req(identical(authenticated_role(), "responder"))
     if(!is.null(incident_service)&&!is.null(shared_id())) {
       shared_revoke(incident_service,shared_id())
@@ -90,7 +90,9 @@ responder_server <- function(input, output, session, authenticated_role, active_
     shared_id(NULL);shared_link(NULL)
     clear_transport()
     demo_running(FALSE); demo_started(FALSE); demo_elapsed(0)
-  })
+  }
+  observeEvent(input$reset_call, reset_trip())
+  observeEvent(input$new_demo_call, reset_trip())
   observeEvent(input$advance_scene, {
     req(identical(authenticated_role(), "responder"), demo_started())
     demo_elapsed(720); demo_running(FALSE)
@@ -111,7 +113,9 @@ responder_server <- function(input, output, session, authenticated_role, active_
     req(identical(authenticated_role(), "responder"), transport_phase() == "transport")
     if (transport_elapsed() < 480) {showNotification("The simulated transport has not reached the hospital yet.",type="message");return()}
     if(!is.null(shared_id())) shared_hospital_arrival(incident_service,shared_id())
-    transport_phase("hospital"); hospital_arrival(format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
+    transport_phase("hospital")
+    confirmed <- incident_service$incidents[[shared_id()]]$hospital_arrived_at
+    hospital_arrival(format(confirmed, "%b %d, %I:%M:%S %p %Z",tz="America/New_York"))
   })
   observe({
     invalidateLater(1000, session)
@@ -252,7 +256,10 @@ responder_server <- function(input, output, session, authenticated_role, active_
   })
   output$transport_progress <- renderUI({
     req(identical(authenticated_role(), "responder"), !is.null(chosen_hospital()))
-    if (transport_phase() == "hospital") return(div(class="notice",icon("check-circle")," Hospital arrival confirmed · ",hospital_arrival()," (local demo time)"))
+    if (transport_phase() == "hospital") return(tagList(
+      div(class="notice",icon("check-circle"),strong(" Trip complete"),
+        p(paste("Hospital arrival confirmed · simulated time:",hospital_arrival()))),
+      actionButton("new_demo_call","Start another demo call",icon=icon("undo"),class="btn-primary")))
     tagList(p(sprintf("Transport replay: %02d:%02d / 08:00 simulated",transport_elapsed()%/%60,transport_elapsed()%%60)),
       p(if(transport_elapsed()>=480) "At demo destination — confirm hospital arrival." else "Fictional 8-minute transport replay, not a predicted travel time."),
       if(transport_elapsed()>=480) actionButton("arrived_hospital","Confirm hospital arrival",icon=icon("hospital"),class="btn-primary"))

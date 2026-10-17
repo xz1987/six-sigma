@@ -179,3 +179,47 @@ state only. The legacy responder-bridge helper is no longer wired into app.R.
 Replay ticks continue in Caller mode, are deduplicated across sessions, and staff
 role changes reuse the same claimed incident. Hospital arrival remains an explicit
 crew confirmation. Both integration regression scripts cover the merged behavior.
+
+## Final local verification — 2026-10-17
+
+Verified integrated commit `5ce127f` in Safari at `http://127.0.0.1:5795`.
+This is local verification, not a hosted deployment or device-installation claim.
+
+| Check | Evidence / result |
+|---|---|
+| Staff access | Supervisor wrong password rejected; correct Supervisor and Responder credentials open their respective workspaces; caller needs no staff login. |
+| Supervisor ordinary mode | Opens on October 17, 2026; reads shared canonical records; no developer-generated calls leak into ordinary mode. |
+| Developer simulation | Added SIM-0001 and SIM-0002 in the selected group; Individuals/MR plots render; hospital metric switches to its own durations; End developer mode discards those simulated records. |
+| Caller-originated incident | Created a private caller link, selected its incident from the Responder queue, and received that same incident/link. |
+| Scene replay | Pause/resume works; replay automatically reaches 12:00 and stops its scene clock; already-open caller updates to confirmed arrival. |
+| Hospital guards | Stroke-care no-match case supplies no hospital; Confirm & begin trip before scene arrival reports Reach the scene first. |
+| Hospital handoff | Explicit Hospital A confirmation automatically updates the already-open caller panel, route, hospital marker and legend; house marker is absent during hospital transport. Recenter works. |
+| Prediction preservation | Both roles retain the original assignment prediction (09:25:10 EDT with the same range) through scene arrival and transport. |
+| Hospital arrival | Transport reaches 08:00 and waits for crew confirmation; after confirmation, Supervisor shows the same incident at hospital. |
+| Supervisor measurements | Scene milestone for the tested incident is 12.0 minutes; hospital milestone is 8.0 minutes. Day/week/month controls change the period; Patterns tab is available. |
+| Reset and private access | Responder reset immediately clears the open caller's map/destination and shows Link no longer available. Automated tests cover expiry, invalid tokens and isolation. |
+| Return to roles | Caller Change role removes the fragment and reloads the clean role picker. JavaScript checks also verify subpath/query preservation and exactly one reload per action. |
+| Caller initialization | Browser click-through passes; isolated JavaScript checks pass before/after DOMContentLoaded, reconnect, and hash removal. |
+| Browser assets | Six browser scripts parse; both manifests reference nonempty icons. Isolated worker checks verify public-only precaching, private-request bypass and offline fallback. |
+
+Regression evidence on this integrated version:
+
+- Root testthat suites: QC 88, shared incidents 1, Supervisor 37 expectations pass.
+- ETA/feed suites: 100 + 39 expectations pass; no suite failures, warnings or skips.
+- `tests/verify-shared-trip.R`: PASS for shared identity, map/legend,
+  Caller-active movement, crew arrival, Supervisor upsert and reset isolation.
+- `app/caller/verify.R`: all nine PASS checks.
+- `app/smoke.R`: `SMOKE PASS` (mean 4.8, I UCL 7.459574, MR UCL 3.267).
+- `app/eta-view.R`: `H-12 ETA VIEW PASS`.
+- `demo/run-datasets.R`: `H-05 DATASET DEMO PASS`.
+
+Observed limitation: the live server emitted two `.check_tzones` warnings about
+inconsistent timezone attributes during the session. No incorrect metric or
+crash was observed (scene 12.0 min; transport 8.0 min); an isolated Developer-mode
+follow-up did not reproduce the warnings. This is recorded rather than treated
+as a warning-free browser run.
+
+Remaining environment checks: Posit Connect deployment, shared state across its
+worker/session configuration, actual phone/PWA installation, and real offline
+browser behavior. Current shared records are process-local and disappear on
+server restart. H-15 automatic dispatch selection remains deferred.

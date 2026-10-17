@@ -29,3 +29,5 @@
 
 /* Trip stages share the current caller palette. */
 .caller-steps{list-style:none;padding:0;flex-wrap:wrap}.caller-steps li{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid currentColor;border-radius:10px}.caller-steps .step-number{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;min-width:28px;padding:0;margin:0;border:1px solid currentColor;border-radius:50%;font-size:13px;line-height:1;text-align:center}.caller-steps [aria-current="step"]{font-weight:700;border-width:2px}
+
+.caller-eta-duration{font-size:13px;color:var(--caller-muted)}
