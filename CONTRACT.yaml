@@ -431,7 +431,7 @@ tasks:
     status: done
     owner: "Codex"
     started_at: "2026-10-17"
-    owns: ["app/app.R", "app/responder-server.R", "app/supervisor.R", "app/caller/caller.R", "app/www/workflow.css", "app/caller/www/caller.css", "tests/verify-role-steps.R"]
+    owns: ["app/app.R", "app/responder-server.R", "app/supervisor.R", "app/caller/caller.R", "app/www/workflow.css", "app/caller/www/caller.css", "tests/verify-role-steps.R", "tests/test-shared-incidents.R"]
     notes: "Keep the current DIIS palette and shared trip behavior. Gate responder hospital selection to scene arrival; show caller hospital progress; separate Supervisor review from investigation."
     definition_of_done: "R parsing, smoke, shared-trip and caller regression checks pass."
     result: "Role-stage guard verification, shared-trip regression, all nine caller checks, supervisor-view tests and smoke passed. Local Shiny preview restarted on port 5300. Current palette preserved."

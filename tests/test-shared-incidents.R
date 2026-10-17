@@ -47,7 +47,9 @@ local({
     testServer(caller_server,args=list(lookup=function(t)shared_lookup(store,t,now+42)),{
       session$setInputs(linkToken=token);session$flushReact()
       stopifnot(current()$incident_id==a$incident_id,
-        grepl('95% prediction range',paste(as.character(output$tracking),collapse=' ')),
+        !grepl('95% prediction range',paste(as.character(output$tracking),collapse=' ')),
+        grepl('Arrival confirmed',paste(as.character(output$tracking),collapse=' ')),
+        grepl('95% prediction range',as.character(shared_eta_card(current()))),
         grepl('Demo Hospital A',paste(as.character(output$destination),collapse=' ')))
       shared_revoke(store,a$incident_id)
       session$setInputs(linkToken='invalid');session$flushReact()
