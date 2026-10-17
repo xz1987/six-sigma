@@ -88,3 +88,29 @@ test_that('stepped arrivals never refit the 2025 control limits', {
   expect_equal(after_limits, before_limits)
   expect_equal(nrow(feed_completed(feed)), 1L)
 })
+
+test_that('live canonical records enter the I-MR monitoring sequence with true durations', {
+  records <- dashboard_load_fixture(repo_root, 'stable')
+  historical <- response_metric_to_qc(records, 'call_to_scene')
+  live <- data.frame(incident_id = c('LIVE-1', 'LIVE-2'), zone = 'Astoria',
+    call_priority = 'High', weather_condition = 'Rain',
+    call_received_time = c('2026-10-16T16:00:00Z', '2026-10-16T17:00:00Z'),
+    scene_arrival_time = c('2026-10-16T16:12:00Z', '2026-10-16T17:12:30Z'),
+    transport_departure_time = NA_character_, hospital_arrival_time = NA_character_,
+    responder_id = 'Q-12', stringsAsFactors = FALSE)
+  completed <- response_metric_to_qc(live, 'call_to_scene', allow_mock = FALSE)
+  live_analysis <- supervisor_analyze(historical, completed, TRUE, supervisor_live_period())
+  m <- live_analysis$groups[['Astoria/High']]$monitoring
+  expect_equal(m$incident_id, c('LIVE-1', 'LIVE-2'))
+  expect_equal(m$response_minutes, c(12, 12.5))
+  fixture_analysis <- dashboard_analyze(historical, completed[FALSE, ], TRUE)
+  expect_equal(live_analysis$groups[['Astoria/High']]$limits,
+    fixture_analysis$groups[['Astoria/High']]$limits)
+  # The February 2026 developer window excludes these October records.
+  expect_equal(nrow(supervisor_analyze(historical, completed, TRUE)$groups[['Astoria/High']]$monitoring), 0L)
+})
+
+test_that('ordinary-mode today follows the dispatch area calendar', {
+  expect_equal(supervisor_today(as.POSIXct('2026-10-17 02:30:00', tz = 'UTC')),
+    as.Date('2026-10-16'))
+})

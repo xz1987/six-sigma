@@ -29,6 +29,8 @@
 .timeline-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px #D7B8B8; margin-right: 8px; }
 .replay-timeline strong { color: #3B0A0A; }
 .developer-settings > .btn { margin-bottom: 8px; }
+.developer-step-status { display: grid; gap: 2px; margin: 0 0 8px; padding: 9px 10px; border: 1px solid #C79A99; border-radius: 9px; background: #F4E9E8; color: #272030; font-size: 11px; line-height: 1.4; }
+.developer-step-status strong { color: #3B0A0A; font-size: 12px; }
 .developer-mode-card { border: 1px solid #e4b45f; background: #fff8e8; border-radius: 9px; padding: 10px; margin-bottom: 10px; }
 .developer-mode-card strong { color: #815c13; }
 .mode-chip-developer { background: #fff3d8; border-color: #ecd197; color: #805b13; }

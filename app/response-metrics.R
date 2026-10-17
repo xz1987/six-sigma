@@ -106,6 +106,46 @@ response_metric_to_qc <- function(records, metric_id, allow_mock = TRUE) {
   out
 }
 
+# Expand canonical incident rows into append-style completion events for the
+# Supervisor activity feed. One incident can contribute a scene-arrival event
+# and, later, a hospital-arrival event without duplicating the incident in the
+# canonical integration contract.
+response_metric_completion_events <- function(records, allow_mock = FALSE) {
+  if (!is.data.frame(records) || !nrow(records)) {
+    return(data.frame(
+      completion_id = character(), incident_id = character(), metric_id = character(),
+      metric_label = character(), zone = character(), call_priority = character(),
+      responder_id = character(), completed_at = as.POSIXct(character()),
+      duration_minutes = numeric(), stringsAsFactors = FALSE))
+  }
+
+  events <- lapply(response_metric_catalog()$id, function(metric_id) {
+    d <- response_metric_to_qc(records, metric_id, allow_mock = allow_mock)
+    started <- qc_parse_time(d$dispatch_time)
+    completed <- qc_parse_time(d$on_scene_time)
+    duration <- as.numeric(difftime(completed, started, units = 'mins'))
+    keep <- !is.na(started) & !is.na(completed) & is.finite(duration) & duration >= 0
+    if (!any(keep)) return(NULL)
+    responder <- if ('responder_id' %in% names(d)) as.character(d$responder_id)
+      else rep(NA_character_, nrow(d))
+    data.frame(
+      completion_id = paste(d$incident_id[keep], metric_id, sep = '::'),
+      incident_id = as.character(d$incident_id[keep]),
+      metric_id = metric_id,
+      metric_label = as.character(d$metric_label[keep]),
+      zone = as.character(d$zone[keep]),
+      call_priority = as.character(d$call_priority[keep]),
+      responder_id = responder[keep],
+      completed_at = completed[keep],
+      duration_minutes = duration[keep],
+      stringsAsFactors = FALSE)
+  })
+  events <- Filter(Negate(is.null), events)
+  if (!length(events)) return(response_metric_completion_events(records[FALSE, , drop = FALSE]))
+  result <- do.call(rbind, events)
+  result[order(result$completed_at, result$completion_id), , drop = FALSE]
+}
+
 response_metric_connection_status <- function(records) {
   if (response_metric_has_contract(records))
     'Canonical response-system fields detected'

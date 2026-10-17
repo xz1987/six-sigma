@@ -29,6 +29,33 @@ panel_card <- function(title, subtitle, ...) {
   div(class = 'panel-card', h3(title), div(class = 'subhead', subtitle), ...)
 }
 
+# Today's calendar date for the dispatch area, independent of the server's clock zone.
+supervisor_today <- function(now = Sys.time()) as.Date(now, tz = 'America/New_York')
+
+# Ordinary mode monitors the live Caller/Responder stream. It keeps the same fixed
+# 2025 baseline as dashboard_period(), but its monitoring window stays open so
+# records completed after the February 2026 developer fixture are not dropped.
+supervisor_live_period <- function() {
+  fixture <- dashboard_period()
+  qc_period('2025-01-01T00:00:00-0500', '2026-01-01T00:00:00-0500',
+    format(fixture$monitoring_start, '%Y-%m-%dT%H:%M:%SZ', tz = 'UTC'),
+    '2100-01-01T00:00:00-0500')
+}
+
+# Same orchestration as dashboard_analyze(), with an explicit period. Live
+# canonical records arrive as ISO 8601 strings; rbind() with the parsed baseline
+# would silently coerce them to midnight (zero-minute durations), so parse them
+# with the strict QC parser first. Invalid stamps become NA and are rejected.
+supervisor_analyze <- function(records, completed, demo_review = FALSE,
+                               period = dashboard_period()) {
+  for (field in c('dispatch_time', 'on_scene_time'))
+    if (field %in% names(completed)) completed[[field]] <- qc_parse_time(completed[[field]])
+  combined <- dashboard_analysis_records(records, completed)
+  preliminary <- qc_analyze(combined, period)
+  if (!isTRUE(demo_review)) return(preliminary)
+  qc_analyze(combined, period, reviews = dashboard_demo_reviews(preliminary))
+}
+
 # Calendar windows are display-only. They never enter qc_analyze() or refit limits.
 supervisor_date_window <- function(span, anchor, custom = NULL) {
   day <- as.Date(anchor)
@@ -158,7 +185,7 @@ supervisor_ui <- function(id) {
         choices = setNames(response_metric_catalog()$id,
           response_metric_catalog()$label), selected = 'call_to_scene'),
       conditionalPanel(sprintf("input['%s'] === 'day'", ns('time_span')),
-        dateInput(ns('day_date'), 'Date', value = Sys.Date(),
+        dateInput(ns('day_date'), 'Date', value = supervisor_today(),
           min = as.Date('2026-01-01'), max = as.Date('2026-12-31'))),
       conditionalPanel(sprintf("input['%s'] === 'week'", ns('time_span')),
         selectInput(ns('week_start'), 'Week', choices = supervisor_week_choices(),
@@ -209,6 +236,9 @@ supervisor_ui <- function(id) {
             kpi('90th percentile', 'kpi_p90', 'minutes', ns),
             kpi('QC signals', 'kpi_flags', 'in selected time / group', ns)),
           uiOutput(ns('review_notice')),
+          panel_card('Latest completed response milestones',
+            'Each scene arrival and hospital arrival creates its own Supervisor completion record. The selected metric determines which of these records enters the control chart.',
+            tableOutput(ns('milestone_table'))),
           div(class = 'analysis-layout',
             div(class = 'chart-stack',
               panel_card('Individuals control chart',
@@ -249,7 +279,7 @@ supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
   state <- reactiveValues(mode = 'ordinary', feed = NULL, developer_records = NULL,
     baseline_records = dashboard_load_fixture(repo_root, 'stable'), scenario = NULL,
-    seed = NULL, ui_tick = 0L, completed_tick = 0L)
+    seed = NULL, ui_tick = 0L, completed_tick = 0L, last_step = NULL)
 
   set_period_for_mode <- function(day) {
     values <- supervisor_period_values(day)
@@ -266,6 +296,7 @@ supervisor_server <- function(id, production_records) {
     state$developer_records <- records
     state$scenario <- scenario
     state$seed <- seed
+    state$last_step <- NULL
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
   }
@@ -281,9 +312,10 @@ supervisor_server <- function(id, production_records) {
     state$mode <- 'ordinary'
     state$feed <- NULL
     state$developer_records <- NULL
+    state$last_step <- NULL
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
-    set_period_for_mode(Sys.Date())
+    set_period_for_mode(supervisor_today())
   }
 
   observeEvent(input$enter_developer, enter_developer_mode())
@@ -314,7 +346,21 @@ supervisor_server <- function(id, production_records) {
     req(identical(state$mode, 'developer'), state$feed)
     added <- supervisor_advance_one_completion(state$feed)
     if (all(state$feed$processed)) feed_pause(state$feed)
-    if (added) state$completed_tick <- isolate(state$completed_tick) + 1L
+    if (added) {
+      completed <- feed_completed(state$feed)
+      latest <- completed[which.max(completed$on_scene_time), , drop = FALSE]
+      metric_event <- response_metric_completion_events(latest, allow_mock = TRUE)
+      metric_event <- metric_event[metric_event$metric_id == input$metric, , drop = FALSE]
+      latest$display_minutes <- if (nrow(metric_event)) metric_event$duration_minutes[[1L]]
+        else NA_real_
+      latest$display_metric <- metric_info()$short_label
+      state$last_step <- latest
+      updateSelectInput(session, 'zone', selected = latest$zone)
+      updateSelectInput(session, 'priority', selected = latest$call_priority)
+      state$completed_tick <- isolate(state$completed_tick) + 1L
+    } else {
+      state$last_step <- data.frame()
+    }
     state$ui_tick <- isolate(state$ui_tick) + 1L
   })
 
@@ -341,6 +387,9 @@ supervisor_server <- function(id, production_records) {
       completed = records, processed_events = nrow(records), total_events = nrow(records))
   })
   active_completed <- reactive({
+    # The replay is an environment, so mutations do not invalidate Shiny on
+    # their own. completed_tick makes every completed-call beat observable.
+    state$completed_tick
     if (identical(state$mode, 'developer')) feed_completed(state$feed)
     else production_records()
   })
@@ -360,8 +409,26 @@ supervisor_server <- function(id, production_records) {
       allow_mock = identical(state$mode, 'developer'))
     review_baseline <- if (identical(state$mode, 'developer'))
       isTRUE(input$demo_review) else TRUE
-    result <- dashboard_analyze(historical, completed, review_baseline)
+    period <- if (identical(state$mode, 'developer')) dashboard_period()
+      else supervisor_live_period()
+    result <- supervisor_analyze(historical, completed, review_baseline, period)
     supervisor_attach_responder_ids(result, completed)
+  })
+
+  # Ordinary mode: when a new milestone for the selected metric arrives, show its
+  # zone/priority group so the new point is visible on the Individuals chart.
+  seen_live_completions <- reactiveVal(character())
+  observe({
+    if (!identical(state$mode, 'ordinary')) return()
+    events <- response_metric_completion_events(production_records(), allow_mock = FALSE)
+    fresh <- setdiff(events$completion_id, isolate(seen_live_completions()))
+    seen_live_completions(events$completion_id)
+    latest <- events[events$completion_id %in% fresh &
+      events$metric_id == isolate(input$metric), , drop = FALSE]
+    if (!nrow(latest)) return()
+    latest <- latest[which.max(latest$completed_at), , drop = FALSE]
+    updateSelectInput(session, 'zone', selected = latest$zone)
+    updateSelectInput(session, 'priority', selected = latest$call_priority)
   })
   selected_group <- reactive({
     req(input$zone, input$priority)
@@ -392,6 +459,18 @@ supervisor_server <- function(id, production_records) {
         actionButton(session$ns('start'), 'Start', class = 'btn-primary'),
         actionButton(session$ns('pause_resume'), 'Pause / resume')),
       actionButton(session$ns('step'), 'Add next completed call', width = '100%'),
+      if (!is.null(state$last_step)) {
+        if (nrow(state$last_step))
+          div(class = 'developer-step-status', role = 'status',
+            tags$strong(sprintf('%s added to the control chart', state$last_step$display_metric)),
+            tags$span(sprintf('%s · %s / %s · %.1f min',
+              state$last_step$incident_id, state$last_step$zone,
+              state$last_step$call_priority,
+              state$last_step$display_minutes)))
+        else
+          div(class = 'developer-step-status', role = 'status',
+            tags$strong('Replay complete'), tags$span('No completed calls remain.'))
+      },
       actionButton(session$ns('reset'), 'Reset replay', width = '100%'),
       div(class = 'review-box',
         checkboxInput(session$ns('demo_review'),
@@ -415,10 +494,12 @@ supervisor_server <- function(id, production_records) {
         'Developer replay is isolated from ordinary response records. Close Developer settings or select End developer mode to stop replay and reconnect.'))
     }
     count <- nrow(production_records())
+    milestones <- nrow(response_metric_completion_events(production_records(), allow_mock = FALSE))
     div(class = 'alert-note',
       if (count)
-        sprintf('Ordinary mode · %d canonical response record%s received from the shared Caller/Responder stream.',
-          count, if (count == 1L) '' else 's')
+        sprintf('Ordinary mode · %d canonical incident%s and %d completed response milestone%s received from the shared Caller/Responder stream.',
+          count, if (count == 1L) '' else 's', milestones,
+          if (milestones == 1L) '' else 's')
       else
         'Ordinary mode · connected to the shared Caller/Responder stream. No completed response records have been emitted yet.')
   })
@@ -587,6 +668,27 @@ supervisor_server <- function(id, production_records) {
       check.names = FALSE
     )
     head(shown, 12)
+  }, striped = TRUE, hover = TRUE, spacing = 's', rownames = FALSE)
+
+  completion_events <- reactive({
+    response_metric_completion_events(active_completed(),
+      allow_mock = identical(state$mode, 'developer'))
+  })
+  output$milestone_table <- renderTable({
+    d <- completion_events()
+    if (!nrow(d)) return(data.frame(Status =
+      'No scene-arrival or hospital-arrival milestones have been completed yet.'))
+    d <- d[order(d$completed_at, decreasing = TRUE), , drop = FALSE]
+    shown <- data.frame(
+      Incident = d$incident_id,
+      Milestone = ifelse(d$metric_id == 'call_to_scene',
+        'Arrived at destination / scene', 'Arrived at hospital'),
+      Zone = d$zone,
+      Responder = ifelse(is.na(d$responder_id) | !nzchar(d$responder_id), '—', d$responder_id),
+      `Duration (minutes)` = sprintf('%.1f', d$duration_minutes),
+      Completed = format(d$completed_at, '%b %d %H:%M:%S', tz = 'America/New_York'),
+      check.names = FALSE)
+    head(shown, 8L)
   }, striped = TRUE, hover = TRUE, spacing = 's', rownames = FALSE)
 
   selected_signal <- reactive({

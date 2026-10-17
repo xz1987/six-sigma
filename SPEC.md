@@ -10,11 +10,11 @@
 ## 2. User and use case
 - **Primary user:** The lead EMS worker on the responding ambulance who will arrive at the incident scene, working across five selected Queens neighborhoods. A dispatcher supervisor / analyst is a secondary user of historical analysis.
 - **Decision supported:** The responding lead EMS worker monitors their assigned synthetic incident and status. The secondary supervisor reviews two finalized response-system durations: call received to confirmed scene arrival, and transport departure to confirmed hospital arrival. After either duration is complete, the supervisor reviews incidents and neighborhoods requiring investigation. QC flags do not provide routing or clinical instructions.
-- **Review workflow:** The Supervisor opens in ordinary mode and reads completed canonical response records from the shared in-app Caller/Responder stream. The current role screens are prototypes, so that stream is empty until their timestamp-emitting workflow is implemented. A hidden Developer settings entry switches the Supervisor to an isolated seeded replay of bundled historical fixtures; closing or ending Developer mode stops and discards the replay and immediately reconnects the dashboard to the ordinary stream. Users do not upload CSV files. All simulated views carry a visible synthetic-data label.
+- **Review workflow:** The Supervisor opens in ordinary mode and reads completed canonical response records from the shared in-app Caller/Responder stream. Confirmed arrival at the destination/scene emits the call-to-scene completion; confirmed arrival at the hospital later emits the transport-to-hospital completion. A hidden Developer settings entry switches the Supervisor to an isolated seeded replay of bundled historical fixtures; closing or ending Developer mode stops and discards the replay and immediately reconnects the dashboard to the ordinary stream. Users do not upload CSV files. All simulated views carry a visible synthetic-data label.
 - **Prompt fit:** Incident-level monitoring exposes variation and extreme delays that monthly averages can hide. A flag requests investigation; it does not establish a cause, clinical outcome, or staff fault.
 
 ## 3. Inputs and measurement
-One historical row represents one incident with timestamps emitted by a response system. Ordinary mode reads an in-memory, process-level canonical stream shared across Caller, Responder, and Supervisor sessions; those role screens do not emit records yet. Developer mode alone supplies deterministic replay records. `app/response-metrics.R` defines the shared canonical adapter boundary. The in-memory stream is a connection seam, not durable production storage.
+One historical row represents one incident with timestamps emitted by a response system. Ordinary mode reads an in-memory, process-level canonical stream shared across Caller, Responder, and Supervisor sessions. One incident row is upserted as its milestones complete, while the Supervisor expands it into separate scene-arrival and hospital-arrival completion records. Developer mode alone supplies deterministic replay records. `app/response-metrics.R` defines the shared canonical adapter boundary. The in-memory stream is a connection seam, not durable production storage.
 
 | Column | Type / units | Meaning and source |
 |---|---|---|
@@ -143,8 +143,9 @@ H-02 created the following core fixtures; their validation and generation assump
 - Frozen assignment-time H-11 predictions use synthetic scenario weather inputs;
   missing/unsupported inputs or an unavailable model show unavailable. Traffic is
   not an ETA input. The same stored prediction is displayed to responder and caller.
-- Scene and hospital completions upsert the shared canonical supervisor stream,
-  without changing QC calculations or baseline review gates. Simulated call receipt
+- Scene and hospital completions upsert the shared canonical supervisor stream and
+  appear as separate completion records in the Supervisor activity feed, without
+  changing QC calculations or baseline review gates. Simulated call receipt
   equals assignment in this demo. The scene replay is 12 simulated minutes and
   transport is 8 simulated minutes; these durations are not model predictions.
 - Reset revokes that incident's private link, preserves completed observations and
