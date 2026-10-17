@@ -465,3 +465,13 @@ tasks:
     notes: "User approved clock-first caller ETA, waiting until responder acceptance, visible completed-trip action and consistent simulated timestamp labels. Preserve brand palette and frozen ETA model."
     definition_of_done: "Role-stage, caller, shared-trip and zone-trip checks pass; caller waits before claim, clock is primary en route and hidden during hospital transport; responder completion uses canonical simulated arrival and visible reset action."
     result: "Caller clock-first scene arrival, explicit pre-acceptance waiting state with hidden ambulance marker/label, hidden old scene ETA during hospital transport, and visible completed-trip reset implemented. Responder uses canonical simulated hospital timestamp. Full root/ETA/feed regression suites pass, plus role-stage, shared-trip, five-zone and nine Caller checks; H-12 ETA VIEW PASS and JavaScript parsing pass. Browser verified waiting state; preview on port 5796. User authorized commit and push."
+
+  - id: H-34
+    title: Connect the default responder action to the waiting caller incident
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/responder-server.R", "tests/verify-caller-responder-sessions.R", "CONTRACT.yaml"]
+    notes: "User reports separate caller and responder windows were not connected. Default to the waiting caller incident instead of silently creating another; retain explicit independent-demo creation."
+    definition_of_done: "Separate caller/responder session regression verifies default acceptance, immediate caller state change, hospital destination/route, completion and reset; existing shared-trip/role/zone/caller checks pass."
+    result: "Responder now defaults to the waiting caller incident with zone/ID labels and Receive selected incident action; unrelated incident creation is explicit. PASS independent Caller/Responder sessions for acceptance, hospital route/completion and revocation; shared-trip, role-stage, zone-trip and all nine Caller checks pass. Clean preview on port 5797; reconciled with main 094b103 and user authorized push."
