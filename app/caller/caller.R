@@ -149,14 +149,15 @@ caller_server <- function(id, lookup) {
           shiny::div(class=paste('caller-status',if(d$status=='arrived')'caller-arrived'),role='status',
             shiny::strong(if(!is.null(d$transport_departed_at))status else if(d$status=='arrived')'✓ Arrival confirmed' else status),
             if(d$status=='arrived')shiny::p(paste('Ambulance on scene at',format_time(d$arrived_at)))),
+
           shiny::tags$ol(class='caller-steps workflow-steps', `aria-label`='Your trip progress', lapply(seq_len(4),function(i) {
             stage <- if(!is.null(d$hospital_arrived_at))4L else if(!is.null(d$transport_departed_at))3L else if(d$status=='arrived')2L else 1L
             shiny::tags$li(class=if(i==stage)'is-current' else if(i<stage)'is-complete' else '', `aria-current`=if(i==stage)'step' else NULL,
               shiny::span(class='step-number',i),c('On the way','At your location','To hospital','Arrived')[i])
           })),
-          if(exists('shared_eta_card',mode='function')) shared_eta_card(d) else
-            shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ARRIVAL ESTIMATE'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'),
-              shiny::p(if(d$status=='arrived')paste('Confirmed on scene:',format_time(d$arrived_at)) else 'An arrival estimate isn’t available yet. Watch this page for updates.'))))
+          if(exists('shared_eta_card',mode='function')) shared_eta_card(d,caller_view=TRUE) else
+            shiny::div(class='caller-eta',shiny::span(class='caller-eyebrow','ETA'),shiny::h2(if(d$status=='arrived')'Arrival confirmed' else 'Not available yet'))))
+
 
     })
     output$legend<-shiny::renderUI({
