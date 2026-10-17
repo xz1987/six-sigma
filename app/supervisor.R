@@ -285,6 +285,26 @@ supervisor_history_summary <- function(d, service, aggregation, enabled, status,
     action='Investigate unusual periods using incident details in Active tracking. Baseline-period comparisons describe the reference data, not prospective monitoring. Adjusted comparisons show associations, not causes; no signal does not prove acceptable service. Historical baseline limits remain fixed.')
 }
 
+supervisor_patterns_summary <- function(records, zone, priority) {
+  all_zones <- records[records$call_priority == priority,,drop=FALSE]
+  selected <- all_zones[all_zones$zone == zone,,drop=FALSE]
+  describe <- function(boxes) {
+    present <- boxes[vapply(boxes,function(b)b$n > 0,logical(1))]
+    if(!length(present)) return('No completed records for this selection.')
+    paste(vapply(names(present),function(name) sprintf('%s: median %.1f min (n=%d)',
+      name,present[[name]]$median,present[[name]]$n),character(1)),collapse='; ')
+  }
+  grid <- qc_heatmap(selected)
+  populated <- grid[grid$n > 0,,drop=FALSE]
+  time <- if(!nrow(populated)) 'No populated hour/weekday cells for this zone and priority.' else sprintf(
+    '%d of 168 hour/weekday cells contain records; observed cell medians range from %.1f to %.1f minutes. Read each cell with its sample count; blank cells mean no data.',
+    nrow(populated),min(populated$median),max(populated$median))
+  list(zones=describe(qc_boxes(all_zones,'zone')),
+    weather=describe(qc_boxes(selected,'weather_condition')),time=time,
+    scope=sprintf('Neighborhood chart: %d completed records across all zones at %s priority. Weather and time charts: %d records in %s / %s.',nrow(all_zones),priority,nrow(selected),zone,priority),
+    action='Use these patterns to choose incidents or periods to investigate in Active tracking. Small samples can give unstable comparisons. These are unadjusted descriptions, not proof of a weather effect, a zone ranking, or new control-chart signals. Changing these views never refits baseline limits.')
+}
+
 supervisor_chart_guides <- function() {
   key <- function(symbol,label,color='#2C3E50') c(symbol=symbol,label=label,color=color)
   box <- list(text='Compare completed durations across categories. The box spans the middle 50%; its line is the median. Whiskers extend to the most extreme values within 1.5 box lengths. Dots are individual records. Counts show sample size; comparisons are descriptive, not adjusted rankings or causes.',
@@ -435,7 +455,8 @@ supervisor_ui <- function(id) {
               supervisor_chart(ns, 'heatmap', height = 420)),
             panel_card('Weather context',
               'Synthetic assignment-time weather. Descriptive only; weather does not change QC limits or establish cause.',
-              supervisor_chart(ns, 'weather_boxplot', height = 420)))
+              supervisor_chart(ns, 'weather_boxplot', height = 420))),
+          uiOutput(ns('patterns_findings_summary'))
         ),
         tabPanel('History analysis',
           div(class = 'history-filter-bar',
@@ -1189,6 +1210,17 @@ supervisor_server <- function(id, production_records) {
   descriptive <- reactive({
     window <- display_window()
     dashboard_descriptive_records(analysis(), window[1L], window[2L])
+  })
+
+  output$patterns_findings_summary <- renderUI({
+    summary <- supervisor_patterns_summary(descriptive(),input$zone,input$priority)
+    panel_card('What this view tells you',
+      paste(metric_info()$short_label,'· selected display period'),
+      p(strong('Included data: '),summary$scope),
+      p(strong('Neighborhood medians: '),summary$zones),
+      p(strong('Weather medians in the selected zone: '),summary$weather),
+      p(strong('Time patterns: '),summary$time),
+      tags$small(summary$action))
   })
 
   box_plot <- function(d, group_col, groups, title) {

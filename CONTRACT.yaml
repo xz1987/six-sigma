@@ -654,3 +654,13 @@ tasks:
     notes: "User requested What this view tells you in History. Summarize existing independently filtered subgroup and service-goal results after history charts; distinguish subgroup means from individual durations and omit open-day observations."
     definition_of_done: "Known-count, missing-limit and empty-history summary cases pass; module check confirms history filters and open-day exclusion; root tests and bundle startup pass; manifest checksums match."
     result: "History now ends with What this view tells you, scoped to independent metric/zone/priority/period/phase filters. Existing subgroup signals and individual-response p90/goal performance are explained separately with current-day exclusion and reference-versus-monitoring caveats. Root tests PASS 262 including 25 combined summary checks; module verifies weekly baseline and empty closed-monitoring filters plus open-day exclusion; bundle, manifest and YAML checks PASS. Module retains 12 existing timezone warnings. Preview 5806; uncommitted."
+
+  - id: H-51
+    title: Explain selected Patterns results in plain language
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["app/supervisor.R", "app/manifest.json", "tests/test-supervisor-summary.R", "tests/verify-supervisor-daily-demo.R", "CONTRACT.yaml"]
+    notes: "User requested a findings summary after Patterns charts. Reuse box medians/counts and heatmap cells; explain all-zone versus selected-zone scopes, empty categories and non-causal interpretation."
+    definition_of_done: "Known medians/counts, sparse and empty cases pass; module renders filtered Patterns summary; root suite, standalone bundle, manifest and placement checks pass."
+    result: "Patterns now ends with What this view tells you: existing neighborhood/weather medians and sample counts, populated hour/weekday cell median range, distinct chart scopes, empty handling and descriptive non-causal interpretation. Root tests PASS 274 including 37 combined summary checks; connected module renders selected-zone counts; standalone bundle, manifest, placement and YAML checks PASS. Module retains 12 existing timezone warnings. Preview 5807; uncommitted."

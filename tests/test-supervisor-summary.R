@@ -46,3 +46,25 @@ test_that('history summary describes subgroup means and individual goals separat
   s <- supervisor_history_summary(data.frame(signal=FALSE),goal,'day',TRUE,'approved',0)
   expect_match(s$goal,'no service goal is configured',fixed=TRUE)
 })
+
+test_that('Patterns summary follows distinct chart scopes and retains sparse weather', {
+  d <- data.frame(zone=c('Astoria','Astoria','Flushing','Astoria'),
+    call_priority=c('High','High','High','Low'),weather_condition=c('Dry','Unknown','Rain','Dry'),
+    response_minutes=c(8,12,20,99),
+    dispatch_time=qc_parse_time(rep('2026-10-17T12:00:00Z',4)))
+  s <- supervisor_patterns_summary(d,'Astoria','High')
+  expect_match(s$scope,'3 completed records across all zones',fixed=TRUE)
+  expect_match(s$scope,'2 records in Astoria / High',fixed=TRUE)
+  expect_match(s$zones,'Astoria: median 10.0 min (n=2)',fixed=TRUE)
+  expect_match(s$zones,'Flushing: median 20.0 min (n=1)',fixed=TRUE)
+  expect_match(s$weather,'Unknown: median 12.0 min (n=1)',fixed=TRUE)
+  expect_false(grepl('Rain:',s$weather,fixed=TRUE))
+  expect_match(s$time,'1 of 168',fixed=TRUE)
+  expect_match(s$time,'10.0 to 10.0 minutes',fixed=TRUE)
+  expect_match(s$action,'not proof of a weather effect',fixed=TRUE)
+  empty <- supervisor_patterns_summary(d,'Jamaica','High')
+  expect_match(empty$weather,'No completed records',fixed=TRUE)
+  expect_match(empty$time,'No populated',fixed=TRUE)
+  empty <- supervisor_patterns_summary(d[FALSE,],'Astoria','High')
+  expect_match(empty$zones,'No completed records',fixed=TRUE)
+})

@@ -34,6 +34,9 @@ shiny::testServer(supervisor_server,args=list(production_records=production_resp
  session$setInputs(history_phase='monitoring',history_period='7',history_aggregation='day')
  stopifnot(grepl('No completed subgroups',paste(output$history_findings_summary,collapse=' ')),
    grepl('Latest 7 calendar days',paste(output$history_findings_summary,collapse=' ')))
+ stopifnot(grepl('What this view tells you',paste(output$patterns_findings_summary,collapse=' ')),
+   grepl('12 records in Astoria / High',paste(output$patterns_findings_summary,collapse=' ')),
+   grepl('Neighborhood medians:',paste(output$patterns_findings_summary,collapse=' ')))
  original <- state$developer_calls
  frozen <- lapply(history_analysis()$groups,function(g)g$limits)
  shared_advance(incident_service,live_id,720)
