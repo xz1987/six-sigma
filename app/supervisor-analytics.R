@@ -189,7 +189,7 @@ supervisor_daily_subgroups <- function(m, center, sigma) {
   d
 }
 
-supervisor_history_period <- function(m, period = c('30', '90', 'full')) {
+supervisor_history_period <- function(m, period = c('7', '14', '30', '90', 'full')) {
   period <- match.arg(period)
   if (!nrow(m) || identical(period, 'full')) return(m)
   day <- as.Date(m$dispatch_time, tz = 'America/New_York')
@@ -197,19 +197,46 @@ supervisor_history_period <- function(m, period = c('30', '90', 'full')) {
   m[!is.na(day) & day >= available_through - (as.integer(period) - 1L), , drop = FALSE]
 }
 
+supervisor_count_breaks <- function(n) {
+  n <- as.numeric(n)
+  sort(unique(as.integer(n[is.finite(n) & n >= 0])))
+}
+
 supervisor_empty_service_goals <- function() data.frame(
   metric_id = character(), priority = character(), zone = character(),
-  minutes = numeric(), updated_at = as.POSIXct(character()), stringsAsFactors = FALSE)
+  minutes = numeric(), source = character(), updated_at = as.POSIXct(character()),
+  stringsAsFactors = FALSE)
 
 supervisor_set_service_goal <- function(goals, metric_id, priority, zone, minutes,
-                                        updated_at = Sys.time()) {
+                                        updated_at = Sys.time(), source = 'team configured') {
   stopifnot(is.data.frame(goals), length(metric_id) == 1L, length(priority) == 1L,
     length(zone) == 1L, length(minutes) == 1L)
   if (!is.finite(minutes) || minutes <= 0) stop('service goal must be a positive number')
   keep <- !(goals$metric_id == metric_id & goals$priority == priority & goals$zone == zone)
   rbind(goals[keep, , drop = FALSE], data.frame(metric_id = metric_id,
     priority = priority, zone = zone, minutes = as.numeric(minutes),
-    updated_at = as.POSIXct(updated_at), stringsAsFactors = FALSE))
+    source = source, updated_at = as.POSIXct(updated_at), stringsAsFactors = FALSE))
+}
+
+supervisor_suggested_service_goals <- function(records) {
+  rows <- list()
+  for (metric_id in response_metric_catalog()$id) {
+    model <- supervisor_target_model(records, metric_id)
+    if (!identical(model$status, 'synthetic_context_model')) next
+    for (priority in qc_priorities) {
+      zone_values <- vapply(qc_zones,
+        function(zone) supervisor_target_for_scope(model, zone, priority), numeric(1))
+      zone_values <- zone_values[is.finite(zone_values)]
+      if (!length(zone_values)) next
+      rows[[length(rows) + 1L]] <- data.frame(metric_id = metric_id,
+        priority = priority, zone = 'All zones',
+        minutes = round(stats::median(zone_values) * 2) / 2,
+        source = 'synthetic baseline suggestion',
+        updated_at = as.POSIXct('2026-01-01', tz = 'America/New_York'),
+        stringsAsFactors = FALSE)
+    }
+  }
+  if (!length(rows)) supervisor_empty_service_goals() else do.call(rbind, rows)
 }
 
 supervisor_clear_service_goal <- function(goals, metric_id, priority, zone) {
@@ -237,6 +264,18 @@ supervisor_service_performance <- function(m, goals, metric_id) {
       stringsAsFactors = FALSE)
   })
   do.call(rbind, rows)
+}
+
+supervisor_service_scope_summary <- function(m, goals, metric_id, zone, priority) {
+  x <- m$response_minutes[m$zone == zone & m$call_priority == priority]
+  x <- x[is.finite(x)]
+  goal <- supervisor_service_goal_value(goals, metric_id, zone, priority)
+  p90 <- if (length(x)) as.numeric(stats::quantile(x, .90, names = FALSE, type = 7)) else NA_real_
+  within <- if (length(x) && is.finite(goal)) mean(x <= goal) else NA_real_
+  status <- if (!length(x)) 'No completed records' else if (!is.finite(goal)) 'Goal not configured'
+    else if (p90 <= goal) 'Meeting goal' else 'Above goal'
+  data.frame(n = length(x), p90 = p90, goal = goal, within_goal = within,
+    status = status, stringsAsFactors = FALSE)
 }
 
 supervisor_data_quality <- function(records, metric_id) {

@@ -30,6 +30,24 @@ panel_card <- function(title, subtitle, ...) {
   div(class = 'panel-card', h3(title), div(class = 'subhead', subtitle), ...)
 }
 
+chart_help <- function(...) {
+  tags$details(class = 'chart-reading',
+    tags$summary(
+      tags$span('How to read this chart'),
+      tags$span(class = 'chart-reading-mark', `aria-hidden` = 'true')),
+    ...)
+}
+
+reading_key <- function(...) {
+  div(class = 'reading-key', ...)
+}
+
+key_item <- function(label, kind) {
+  span(class = 'reading-key-item',
+    span(class = paste('reading-key-symbol', kind), `aria-hidden` = 'true'),
+    span(label))
+}
+
 # Today's calendar date for the dispatch area, independent of the server's clock zone.
 supervisor_today <- function(now = Sys.time()) as.Date(now, tz = 'America/New_York')
 
@@ -197,6 +215,7 @@ supervisor_simulate_call <- function(historical, zone, priority, index, start_ti
 supervisor_ui <- function(id) {
   ns <- NS(id)
   tagList(
+    tags$script(src = 'history-tour.js?v=1', defer = NA),
     div(class = 'supervisor-pwa',
       div(id = 'connection-status', class = 'alert-note danger', role = 'status', hidden = NA,
         "You're offline. Reconnect to use login, incident records, and response updates."),
@@ -314,7 +333,8 @@ supervisor_ui <- function(id) {
             div(class = 'filter-field', selectInput(ns('history_priority'), 'Priority',
               choices = qc_priorities, selected = 'High')),
             div(class = 'filter-field', selectInput(ns('history_period'), 'History period',
-              choices = c('Last 30 available days' = '30', 'Last 90 available days' = '90',
+              choices = c('Latest 7 calendar days' = '7', 'Latest 14 calendar days' = '14',
+                'Latest 30 calendar days' = '30', 'Latest 90 calendar days' = '90',
                 'Full baseline year' = 'full'), selected = 'full')),
             div(class = 'filter-field', selectInput(ns('history_aggregation'), 'Subgroup interval',
               choices = c('Automatic' = 'auto', 'Daily' = 'day', 'Weekly' = 'week'),
@@ -323,11 +343,20 @@ supervisor_ui <- function(id) {
               choices = c('Baseline + monitoring' = 'both', 'Baseline only' = 'baseline',
                 'Closed monitoring only' = 'monitoring'), selected = 'both')),
             actionButton(ns('reset_history'), 'Reset', class = 'btn-default filter-reset')),
+          div(class = 'history-tour-launch',
+            actionButton(ns('restart_history_tour'), 'Show page tutorial',
+              icon = icon('circle-question'), class = 'btn-default btn-sm')),
           uiOutput(ns('subgroup_status')),
           uiOutput(ns('history_chart_layout')),
-          panel_card('Performance against configured service goals',
-            'The observed 90th percentile and percent within goal are management comparisons. Service goals are editable and do not change SPC control limits.',
-            plotOutput(ns('service_goal_plot'), height = 520),
+          div(class = 'service-goal-panel', panel_card('Selected-scope service performance',
+            'One clear comparison for the metric, zone, priority and period selected above.',
+            uiOutput(ns('service_goal_status')),
+            plotOutput(ns('service_goal_plot'), height = 230),
+            chart_help(
+              reading_key(
+                key_item('Observed p90', 'key-bar key-meeting'),
+                key_item('Configured service goal', 'key-goal')),
+              uiOutput(ns('service_goal_reading'))),
             tags$details(class = 'service-goal-settings',
               tags$summary('Configure service goals'),
               div(class = 'service-goal-controls',
@@ -337,15 +366,24 @@ supervisor_ui <- function(id) {
                   max = 120, step = .5),
                 actionButton(ns('save_goal'), 'Save goal', class = 'btn-primary'),
                 actionButton(ns('clear_goal'), 'Clear goal', class = 'btn-default')),
-              uiOutput(ns('service_goal_summary')))),
-          div(class = 'two-col',
+              uiOutput(ns('service_goal_summary'))))),
+          div(class = 'two-col history-comparisons',
             panel_card('Weather-adjusted zone comparison',
               'Marginal model estimates hold priority, weather, hour and weekday at the synthetic reference mix.',
-              plotOutput(ns('adjusted_zone_plot'), height = 360)),
+              plotOutput(ns('adjusted_zone_plot'), height = 360),
+              chart_help(
+                reading_key(
+                  key_item('Adjusted mean', 'key-dot'),
+                  key_item('95% model interval', 'key-interval')),
+                p('Each point is an adjusted geometric mean. The horizontal line is its 95% model interval. Compare positions and interval overlap; do not treat the ranking as causal or as staff performance.'))),
             panel_card('Weather-adjusted priority comparison',
               'Marginal model estimates hold zone, weather, hour and weekday at the synthetic reference mix.',
-              plotOutput(ns('adjusted_priority_plot'), height = 360))),
-          uiOutput(ns('intervention_panel'))
+              plotOutput(ns('adjusted_priority_plot'), height = 360),
+              chart_help(
+                reading_key(
+                  key_item('Adjusted mean', 'key-dot'),
+                  key_item('95% model interval', 'key-interval')),
+                p('Each point is an adjusted geometric mean. The horizontal line is its 95% model interval. Differences are descriptive associations after adjustment for the available synthetic context—not causal effects.'))))
         )
       )
     )
@@ -355,15 +393,33 @@ supervisor_ui <- function(id) {
 
 supervisor_server <- function(id, production_records) {
   moduleServer(id, function(input, output, session) {
+  baseline_records <- dashboard_load_fixture(repo_root, 'stable')
   state <- reactiveValues(mode = 'ordinary', developer_calls = NULL,
-    baseline_records = dashboard_load_fixture(repo_root, 'stable'),
+    baseline_records = baseline_records,
     ui_tick = 0L, completed_tick = 0L, last_step = NULL,
-    service_goals = supervisor_empty_service_goals(),
+    service_goals = supervisor_suggested_service_goals(baseline_records),
+    history_tour_seen = FALSE,
     developer_quality = data.frame(issue_id = character(), incident_id = character(),
-      severity = character(), issue = character(), stringsAsFactors = FALSE),
-    interventions = data.frame(id = character(), action = character(), note = character(),
-      zone = character(), priority = character(), metric_id = character(),
-      started_at = as.POSIXct(character()), call_index = integer(), stringsAsFactors = FALSE))
+      severity = character(), issue = character(), stringsAsFactors = FALSE))
+
+  start_history_tour <- function() {
+    session$sendCustomMessage('history-tour-start', list(
+      completeInput = session$ns('history_tour_complete'),
+      steps = list(
+        list(selector = '.history-filter-bar', title = 'Choose a comparable scope',
+          body = 'Try changing History period, metric, zone, or priority. The highlighted controls remain usable; these display choices never refit the frozen baseline.',
+          action = 'Change a filter, then select Next.'),
+        list(selector = '.history-chart-grid .panel-card:first-child',
+          title = 'Check whether the process is stable',
+          body = 'The page has scrolled to the subgroup control chart. Open How to read this chart, then inspect the grey 3σ band, center line, point sizes, and red signals.',
+          action = 'Open the chart guide, then select Next.'),
+        list(selector = '.service-goal-panel', title = 'Check whether service meets the goal',
+          body = 'Review observed p90, the service goal, percent within goal, and completed-response count for the selected scope.',
+          action = 'Explore the highlighted section, then select Next.'),
+        list(selector = '.history-comparisons', title = 'Use context before taking action',
+          body = 'These adjusted comparisons help form questions, but they do not prove a cause or assign staff fault.',
+          action = 'Open a chart guide for interpretation, then finish the tutorial.'))))
+  }
 
   set_period_for_mode <- function(day) {
     values <- supervisor_period_values(day)
@@ -377,7 +433,6 @@ supervisor_server <- function(id, production_records) {
     state$developer_calls <- response_metric_empty_records()
     state$last_step <- NULL
     state$developer_quality <- state$developer_quality[FALSE, , drop = FALSE]
-    state$interventions <- state$interventions[FALSE, , drop = FALSE]
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
     set_period_for_mode(supervisor_today())
@@ -388,7 +443,6 @@ supervisor_server <- function(id, production_records) {
     state$developer_calls <- NULL
     state$last_step <- NULL
     state$developer_quality <- state$developer_quality[FALSE, , drop = FALSE]
-    state$interventions <- state$interventions[FALSE, , drop = FALSE]
     state$ui_tick <- state$ui_tick + 1L
     state$completed_tick <- state$completed_tick + 1L
     set_period_for_mode(supervisor_today())
@@ -414,7 +468,14 @@ supervisor_server <- function(id, production_records) {
 
   observeEvent(input$nav_active, updateTabsetPanel(session, 'main_tabs', selected = 'Active tracking'))
   observeEvent(input$nav_patterns, updateTabsetPanel(session, 'main_tabs', selected = 'Patterns'))
-  observeEvent(input$nav_history, updateTabsetPanel(session, 'main_tabs', selected = 'History analysis'))
+  observeEvent(input$nav_history, {
+    updateTabsetPanel(session, 'main_tabs', selected = 'History analysis')
+    if (!isTRUE(state$history_tour_seen)) start_history_tour()
+  })
+  observeEvent(input$restart_history_tour, start_history_tour())
+  observeEvent(input$history_tour_complete, {
+    state$history_tour_seen <- TRUE
+  }, ignoreInit = TRUE)
   output$workspace_nav <- renderUI({
     selected <- input$main_tabs %||% 'Active tracking'
     nav_button <- function(id, label, icon_name, tab) actionButton(session$ns(id), label,
@@ -487,16 +548,6 @@ supervisor_server <- function(id, production_records) {
     add_developer_call('stable')
   })
   observeEvent(input$trigger_demo_event, add_developer_call(input$demo_event_type))
-
-  observeEvent(input$record_intervention, {
-    req(identical(state$mode, 'developer'), input$intervention_type)
-    row <- data.frame(id = sprintf('INT-%02d', nrow(state$interventions) + 1L),
-      action = input$intervention_type, note = if (nzchar(input$intervention_note)) input$intervention_note else '—',
-      zone = input$zone, priority = input$priority, metric_id = input$metric,
-      started_at = Sys.time(), call_index = nrow(state$developer_calls), stringsAsFactors = FALSE)
-    state$interventions <- rbind(state$interventions, row)
-    state$ui_tick <- isolate(state$ui_tick) + 1L
-  })
 
   snapshot <- reactive({
     state$ui_tick
@@ -588,7 +639,7 @@ supervisor_server <- function(id, production_records) {
         selectInput(session$ns('demo_event_type'), NULL,
           choices = c('Extreme point' = 'extreme', 'Shift' = 'shift', 'Trend' = 'trend',
             'Target miss' = 'target_miss', 'Data-quality warning' = 'data_quality',
-            'Post-intervention improvement' = 'improvement'), selected = 'extreme'),
+            'Improvement sequence' = 'improvement'), selected = 'extreme'),
         actionButton(session$ns('trigger_demo_event'), 'Trigger demo event', class = 'btn-warning')))
   })
   output$developer_bar_text <- renderUI({
@@ -1124,38 +1175,55 @@ supervisor_server <- function(id, production_records) {
     }
     d
   })
+  history_daily_distribution <- reactive({
+    g <- history_group(); sigma <- (g$limits$i_ucl - g$limits$center) / 3
+    supervisor_period_subgroups(subgroup_source(), g$limits$center, sigma, 'day')
+  })
   output$history_control_chart <- renderPlot({
     g <- history_group(); d <- history_subgroups()
     validate(need(nrow(d) > 0L, 'No completed subgroup is available for this selection.'))
     label <- if (identical(history_aggregation(), 'week')) 'Weekly' else 'Daily'
+    interval <- if (identical(history_aggregation(), 'week')) 'week' else 'day'
     ggplot(d, aes(period, mean)) +
-      geom_ribbon(aes(ymin = lcl, ymax = ucl), fill = '#AFC6D9', alpha = .28) +
+      geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = 'Variable 3σ control limits'),
+        alpha = .28) +
       geom_point(aes(color = signal, size = n, shape = phase), alpha = .85) +
       geom_line(color = '#6F93B4', linewidth = .45, alpha = .65) +
       geom_hline(yintercept = g$limits$center, color = '#2C3E50', linewidth = .7) +
       scale_color_manual(values = c(`FALSE` = '#6B8F7A', `TRUE` = '#D15B4A'), guide = 'none') +
+      scale_fill_manual(values = c('Variable 3σ control limits' = '#AFC6D9'),
+        name = 'Control reference') +
       scale_shape_manual(values = c(`2025 baseline` = 16, `Closed monitoring` = 17),
         name = 'Completed period') +
-      scale_size_continuous(range = c(3, 7), name = paste(label, 'n')) +
+      scale_size_continuous(range = c(3, 7),
+        breaks = supervisor_count_breaks(d$n),
+        name = sprintf('Completed responses\nper %s (n)', interval)) +
       labs(x = paste(label, 'start · America/New_York'), y = paste(label, 'mean (minutes)'),
         title = sprintf('%s · %s priority · %s subgroups', input$history_zone,
           input$history_priority, tolower(label)),
-        caption = 'Fixed baseline center · variable 3σ limits use each completed subgroup’s n · current day excluded.') +
+        caption = sprintf(paste0('n = completed response records in each %s; point size encodes n · ',
+          'variable 3σ limits use n · current day excluded.'), interval)) +
       theme_minimal(base_size = 11)
   })
 
   output$history_distribution_chart <- renderPlot({
-    d <- history_subgroups(); g <- history_group()
-    validate(need(nrow(d) > 1L, 'At least two completed subgroups are needed for a distribution.'))
+    d <- history_daily_distribution(); g <- history_group()
+    validate(need(nrow(d) > 1L, 'At least two completed days are needed for a distribution.'))
     goal <- supervisor_service_goal_value(state$service_goals, input$history_metric,
       input$history_zone, input$history_priority)
+    bins <- suppressWarnings(grDevices::nclass.FD(d$mean))
+    if (!is.finite(bins) || bins < 1L) bins <- ceiling(sqrt(nrow(d)))
+    bins <- if (nrow(d) <= 7L) max(3L, nrow(d)) else min(30L, max(7L, bins))
     p <- ggplot(d, aes(mean)) +
-      geom_histogram(bins = min(20L, max(6L, ceiling(sqrt(nrow(d))))),
-        fill = '#AFC6D9', color = 'white') +
+      geom_histogram(bins = bins, fill = '#AFC6D9', color = 'white') +
+      geom_rug(color = '#6F93B4', alpha = .6, sides = 'b') +
       geom_vline(xintercept = g$limits$center, color = '#2C3E50', linewidth = .8) +
-      labs(x = 'Completed subgroup mean (minutes)', y = 'Number of subgroups',
-        title = 'Distribution of completed subgroup means',
-        caption = 'Dark line: fixed baseline center · service-goal marker appears after configuration') +
+      labs(x = 'Completed daily subgroup mean (minutes)', y = 'Number of completed days',
+        title = 'Distribution of completed daily subgroup means',
+        subtitle = sprintf('%d completed days · %d completed responses · %d histogram bins',
+          nrow(d), sum(d$n), bins),
+        caption = paste0('Every tick is one completed daily mean, even when the control chart is weekly · ',
+          'dark line: fixed baseline center · service-goal marker appears after configuration')) +
       theme_minimal(base_size = 11)
     if (is.finite(goal)) p <- p + geom_vline(xintercept = goal, color = '#E6A700',
       linetype = 'dashed', linewidth = .9)
@@ -1177,49 +1245,159 @@ supervisor_server <- function(id, production_records) {
       theme_minimal(base_size = 11)
   })
 
+  output$history_control_reading <- renderUI({
+    d <- history_subgroups()
+    interval <- if (identical(history_aggregation(), 'week')) 'week' else 'day'
+    signals <- if (nrow(d)) sum(d$signal, na.rm = TRUE) else 0L
+    tagList(
+      p(strong('What each mark means: '),
+        sprintf('Each dot is one completed %s mean; dot size is completed-response count n. ', interval),
+        'The dark line is the frozen baseline center and the grey ribbon is the variable 3σ control-limit band.'),
+      p(strong('This selection: '), if (!nrow(d)) 'No completed subgroup is available.'
+        else if (!signals) sprintf('None of the %d completed %ss is outside the control limits.', nrow(d), interval)
+        else sprintf('%d completed %s%s outside the limits and should be reviewed.', signals,
+          interval, if (signals == 1L) ' is' else 's are')),
+      p(class = 'reading-caution', 'Control limits describe process variation; they are not service targets and do not establish cause.'))
+  })
+
+  output$history_distribution_reading <- renderUI({
+    d <- history_daily_distribution()
+    if (!nrow(d)) return(p('No completed daily subgroups are available for this selection.'))
+    p(sprintf(paste0('Bar height counts completed days, and each rug tick along the bottom is one daily mean. ',
+      'The selected window contains %d completed days and %d responses; the median daily mean is %.1f minutes. ',
+      'Use this chart to inspect shape and spread, not sequence or causality.'),
+      nrow(d), sum(d$n), stats::median(d$mean)))
+  })
+
+  output$history_monthly_reading <- renderUI({
+    source <- subgroup_source(); g <- history_group()
+    sigma <- (g$limits$i_ucl - g$limits$center) / 3
+    d <- supervisor_period_subgroups(source, g$limits$center, sigma, 'day')
+    if (!nrow(d)) return(p('No completed daily subgroups are available for monthly review.'))
+    month <- format(d$period, '%b')
+    medians <- tapply(d$mean, month, stats::median)
+    high <- names(which.max(medians)); low <- names(which.min(medians))
+    p(sprintf(paste0('Each box summarizes completed daily means within one month; the center line is the median, ',
+      'the box is the middle 50%%, and points beyond the whiskers are descriptive outliers. ',
+      '%s has the highest monthly median and %s the lowest in this selection; review context before interpreting the difference.'),
+      high, low))
+  })
+
   output$history_chart_layout <- renderUI({
-    if (identical(input$history_period, '30'))
-      return(panel_card('Recent subgroup control chart',
-        'A focused timeline is clearest for a short review period.',
-        plotOutput(session$ns('history_control_chart'), height = 380)))
-    if (identical(input$history_period, '90'))
+    if (!identical(input$history_period, 'full'))
       return(div(class = 'two-col history-chart-grid',
-        panel_card('Subgroup control chart', 'Daily sequence and variable limits.',
-          plotOutput(session$ns('history_control_chart'), height = 360)),
-        panel_card('Subgroup distribution', 'Histogram summarizes the selected completed periods.',
-          plotOutput(session$ns('history_distribution_chart'), height = 360))))
+        panel_card('Subgroup control chart',
+          'Completed-period sequence; point size is the number of response records in that subgroup.',
+          plotOutput(session$ns('history_control_chart'), height = 360),
+          chart_help(
+            reading_key(
+              key_item('Subgroup mean', 'key-dot'),
+              key_item('Control signal', 'key-dot key-signal'),
+              key_item('Baseline center', 'key-line'),
+              key_item('Variable 3σ limits', 'key-band')),
+            uiOutput(session$ns('history_control_reading')))),
+        panel_card('Subgroup distribution',
+          'Histogram uses every completed daily subgroup in the selected calendar window.',
+          plotOutput(session$ns('history_distribution_chart'), height = 360),
+          chart_help(
+            reading_key(
+              key_item('Completed days', 'key-bar'),
+              key_item('Daily mean', 'key-tick'),
+              key_item('Baseline center', 'key-line'),
+              key_item('Service goal', 'key-goal')),
+            uiOutput(session$ns('history_distribution_reading'))))))
     tagList(
       div(class = 'two-col history-chart-grid',
         panel_card('Subgroup control chart', 'Automatic mode uses weekly subgroups for the full-year view.',
-          plotOutput(session$ns('history_control_chart'), height = 360)),
-        panel_card('Subgroup distribution', 'Histogram keeps a full year readable.',
-          plotOutput(session$ns('history_distribution_chart'), height = 360))),
+          plotOutput(session$ns('history_control_chart'), height = 360),
+          chart_help(
+            reading_key(
+              key_item('Subgroup mean', 'key-dot'),
+              key_item('Control signal', 'key-dot key-signal'),
+              key_item('Baseline center', 'key-line'),
+              key_item('Variable 3σ limits', 'key-band')),
+            uiOutput(session$ns('history_control_reading')))),
+        panel_card('Subgroup distribution',
+          'Histogram retains every completed daily mean while the timeline stays weekly.',
+          plotOutput(session$ns('history_distribution_chart'), height = 360),
+          chart_help(
+            reading_key(
+              key_item('Completed days', 'key-bar'),
+              key_item('Daily mean', 'key-tick'),
+              key_item('Baseline center', 'key-line'),
+              key_item('Service goal', 'key-goal')),
+            uiOutput(session$ns('history_distribution_reading'))))),
       panel_card('Monthly distribution', 'One summary per month avoids an unreadable boxplot for every day.',
-        plotOutput(session$ns('history_monthly_chart'), height = 320)))
+        plotOutput(session$ns('history_monthly_chart'), height = 320),
+        chart_help(
+          reading_key(
+            key_item('Middle 50%', 'key-box'),
+            key_item('Median', 'key-line'),
+            key_item('Descriptive outlier', 'key-dot key-signal')),
+          uiOutput(session$ns('history_monthly_reading')))))
+  })
+
+  service_scope <- reactive(supervisor_service_scope_summary(history_filtered_records(),
+    state$service_goals, input$history_metric, input$history_zone, input$history_priority))
+
+  service_goal_source <- reactive({
+    goals <- state$service_goals
+    exact <- goals$metric_id == input$history_metric & goals$priority == input$history_priority &
+      goals$zone == input$history_zone
+    fallback <- goals$metric_id == input$history_metric & goals$priority == input$history_priority &
+      goals$zone == 'All zones'
+    row <- if (any(exact)) tail(which(exact), 1L) else if (any(fallback)) tail(which(fallback), 1L)
+      else integer()
+    if (!length(row)) 'not configured' else goals$source[row]
+  })
+
+  output$service_goal_status <- renderUI({
+    d <- service_scope()
+    status_class <- if (identical(d$status, 'Meeting goal')) 'is-meeting'
+      else if (identical(d$status, 'Above goal')) 'is-missing' else 'is-unavailable'
+    div(class = 'service-scope-summary',
+      div(class = paste('service-status-badge', status_class), d$status),
+      div(class = 'service-scope-metrics',
+        div(span('Observed p90'), strong(if (is.finite(d$p90)) sprintf('%.1f min', d$p90) else '—')),
+        div(span('Service goal'), strong(if (is.finite(d$goal)) sprintf('%.1f min', d$goal) else '—')),
+        div(span('Within goal'), strong(if (is.finite(d$within_goal))
+          sprintf('%.0f%%', 100 * d$within_goal) else '—')),
+        div(span('Completed responses'), strong(d$n))))
   })
 
   output$service_goal_plot <- renderPlot({
-    d <- supervisor_service_performance(history_filtered_records(), state$service_goals,
-      input$history_metric)
-    d$status <- ifelse(!is.finite(d$goal), 'Not configured',
-      ifelse(is.finite(d$p90) & d$p90 <= d$goal, 'Meeting goal', 'Missing goal'))
-    d$label <- ifelse(is.finite(d$within_goal),
-      sprintf('%.0f%% within · n=%d', 100 * d$within_goal, d$n),
-      sprintf('Goal not configured · n=%d', d$n))
-    d$zone <- factor(d$zone, levels = rev(qc_zones))
-    ggplot(d, aes(p90, zone, fill = status)) +
-      geom_col(width = .56, na.rm = TRUE) +
-      geom_point(aes(x = goal), shape = 4, size = 3.2, stroke = 1.2,
-        color = '#2C3E50', na.rm = TRUE) +
-      geom_text(aes(label = label), x = 0, hjust = 0, nudge_y = -.33, size = 2.7,
-        color = '#475569') +
-      facet_wrap(~priority, nrow = 1) +
-      scale_fill_manual(values = c('Meeting goal' = '#6B8F7A', 'Missing goal' = '#D15B4A',
-        'Not configured' = '#AFC6D9'), drop = FALSE) +
-      labs(x = 'Observed 90th percentile (minutes) · × configured service goal', y = NULL,
-        title = paste(response_metric_info(input$history_metric)$short_label, 'by zone and priority'),
-        caption = 'Service goals are team-configured management thresholds; fixed SPC limits are unchanged.') +
-      theme_minimal(base_size = 10) + theme(legend.position = 'top', panel.grid.major.y = element_blank())
+    d <- service_scope()
+    validate(need(d$n > 0L, 'No completed responses are available for this selection.'),
+      need(is.finite(d$goal), 'Configure a service goal to display this comparison.'))
+    axis_max <- max(d$p90, d$goal) * 1.28
+    ggplot(d, aes(x = p90, y = 'Selected scope', fill = status)) +
+      geom_col(width = .42) +
+      geom_vline(xintercept = d$goal, color = '#2C3E50', linetype = 'dashed', linewidth = .9) +
+      annotate('text', x = d$goal, y = 'Selected scope', label = sprintf('Goal %.1f', d$goal),
+        hjust = -.08, vjust = -1.8, color = '#2C3E50', size = 3.4) +
+      geom_text(aes(label = sprintf('Observed p90 %.1f', p90)), hjust = 1.05,
+        color = 'white', fontface = 'bold', size = 3.7) +
+      scale_fill_manual(values = c('Meeting goal' = '#6B8F7A', 'Above goal' = '#D15B4A'),
+        guide = 'none') +
+      scale_x_continuous(limits = c(0, axis_max), expand = expansion(mult = c(0, .02))) +
+      labs(x = 'Minutes', y = NULL,
+        title = sprintf('%s · %s priority · %s', input$history_zone, input$history_priority,
+          response_metric_info(input$history_metric)$short_label),
+        caption = sprintf('Goal source: %s · changing the goal never changes SPC limits.',
+          service_goal_source())) +
+      theme_minimal(base_size = 11) +
+      theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank())
+  })
+
+  output$service_goal_reading <- renderUI({
+    d <- service_scope()
+    if (!d$n) return(p('No completed responses are available for this scope.'))
+    tagList(
+      p('The colored bar is the observed 90th percentile: 90% of completed responses are at or below this duration. The dashed vertical line is the editable service goal.'),
+      p(if (!is.finite(d$goal)) 'No goal is configured.' else sprintf(
+        'For this selection, p90 is %.1f minutes, the goal is %.1f minutes, and %.0f%% of %d completed responses are within goal.',
+        d$p90, d$goal, 100 * d$within_goal, d$n)),
+      p(class = 'reading-caution', 'This management comparison is separate from statistical control limits and is not an official clinical standard.'))
   })
 
   output$service_goal_summary <- renderUI({
@@ -1227,7 +1405,8 @@ supervisor_server <- function(id, production_records) {
     if (!nrow(d)) return(div(class = 'flag-empty',
       'No service goal is configured for this metric. The chart remains descriptive.'))
     div(class = 'goal-chip-list', lapply(seq_len(nrow(d)), function(i)
-      span(class = 'goal-chip', sprintf('%s · %s: %.1f min', d$priority[i], d$zone[i], d$minutes[i]))))
+      span(class = 'goal-chip', sprintf('%s · %s: %.1f min · %s', d$priority[i], d$zone[i],
+        d$minutes[i], d$source[i]))))
   })
 
   adjusted_plot <- function(field, title) {
@@ -1250,42 +1429,6 @@ supervisor_server <- function(id, production_records) {
   output$adjusted_priority_plot <- renderPlot({
     adjusted_plot('call_priority', paste(response_metric_info(input$history_metric)$short_label, 'by priority'))
   })
-
-  output$intervention_panel <- renderUI({
-    if (!identical(state$mode, 'developer'))
-      return(panel_card('Intervention tracking',
-        'Demo-only workflow. Enter Developer settings to record a hypothetical intervention and inspect before/after association.',
-        div(class = 'flag-empty', 'No intervention controls are exposed in ordinary mode.')))
-    panel_card('Demo-only intervention tracking',
-      'Record the action first, then add calls or trigger post-intervention improvement events. Results are associations, not causal estimates.',
-      div(class = 'intervention-controls',
-        selectInput(session$ns('intervention_type'), 'Intervention', choices = c(
-          'Staffing adjustment', 'Dispatch protocol review', 'Route/access coordination',
-          'Timestamp audit')),
-        textInput(session$ns('intervention_note'), 'Supervisor note', placeholder = 'What changed?'),
-        actionButton(session$ns('record_intervention'), 'Record intervention', class = 'btn-primary')),
-      tableOutput(session$ns('intervention_table')))
-  })
-  output$intervention_table <- renderTable({
-    state$ui_tick
-    d <- state$interventions
-    if (!nrow(d)) return(data.frame(Status = 'No demo intervention recorded.'))
-    calls <- state$developer_calls
-    rows <- lapply(seq_len(nrow(d)), function(i) {
-      metric <- response_metric_completion_events(calls, allow_mock = FALSE)
-      metric <- metric[metric$metric_id == d$metric_id[i] & metric$zone == d$zone[i] &
-        metric$call_priority == d$priority[i], , drop = FALSE]
-      call_position <- match(metric$incident_id, calls$incident_id)
-      before <- metric$duration_minutes[call_position <= d$call_index[i]]
-      after <- metric$duration_minutes[call_position > d$call_index[i]]
-      data.frame(ID = d$id[i], Action = d$action[i], Scope = paste(d$zone[i], d$priority[i], sep = ' / '),
-        `Pre n` = length(before), `Post n` = length(after),
-        `Median change` = if (length(before) && length(after))
-          sprintf('%+.1f min', median(after) - median(before)) else 'Pending',
-        Note = d$note[i], check.names = FALSE)
-    })
-    do.call(rbind, rows)
-  }, striped = TRUE, hover = TRUE, spacing = 's', rownames = FALSE)
 
   output$validation_table <- renderTable({
     source_records <- active_source_records()
