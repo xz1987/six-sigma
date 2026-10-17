@@ -1399,7 +1399,7 @@
   },
   "files": {
     "app.R": {
-      "checksum": "e9190f2469161743c970b561b71649eb"
+      "checksum": "44738c5bd0309ecd684b4ed0de484b39"
     },
     "caller/caller.R": {
       "checksum": "f1ab7335d521466e0228065809d03eeb"
@@ -1476,8 +1476,11 @@
     "shared-trip.R": {
       "checksum": "aa88cbc4f2ce96c1a82d8a7b61ae8026"
     },
+    "supervisor-analytics.R": {
+      "checksum": "d4ab2d322307580fafe0c817bfffad05"
+    },
     "supervisor.R": {
-      "checksum": "2eeb93e5fed228e328e3cc4b7e719a71"
+      "checksum": "c34dc6f864a869ef64ec35eac5362066"
     },
     "workflow.R": {
       "checksum": "dec2c6cf6cf3d6463beed818cbe04a45"
@@ -1549,13 +1552,13 @@
       "checksum": "d3cc63eab2918d22cab4bee1fd03a8f6"
     },
     "www/navigation.js": {
-      "checksum": "44bb2b3a72258c96bf931cffc2105122"
+      "checksum": "172934eea951f55a18efd9fe195eb053"
     },
     "www/offline.html": {
       "checksum": "cba2fc3cad4ff79bb9ef84d0d3b23cd1"
     },
     "www/pwa.js": {
-      "checksum": "96e173ec11038e50b4ace6367b055b2d"
+      "checksum": "f4482dd6b82474d18c3b8ab4ed76888c"
     },
     "www/responder-map.js": {
       "checksum": "738d2c8840a9ac3a5655e0ac10c9d6b6"
@@ -1567,7 +1570,7 @@
       "checksum": "e3eb3b4185e38d356beed242c7d938e6"
     },
     "www/supervisor.css": {
-      "checksum": "afc59b0635db850bb700a671fc1fc2a5"
+      "checksum": "7577d2c208f7cb4e081c756d79b53367"
     },
     "www/sw.js": {
       "checksum": "be8e14a7479c6bd9abb4e28cbb0cbc27"

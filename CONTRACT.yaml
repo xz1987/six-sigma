@@ -413,6 +413,55 @@ tasks:
     definition_of_done: "Supervisor view tests pass (deterministic synthetic simulation, chart-window ordering, consecutive group sequence, unchanged limits); full testthat suite, verify-shared-trip, smoke and caller verify pass; in the browser, repeated Add simulated call clicks form a connected I-MR line, and zone/metric filters change the visible counts."
     result: "Tests pass (supervisor-view 37 expectations, qc, shared incidents, shared trip, SMOKE PASS, 9 caller checks). Browser review confirmed connected I/MR points, zone filtering and both response metrics; ordinary Responder completions also enter the Individuals chart."
 
+  - id: H-40
+    title: Add Supervisor signal triage, contextual targets and subgroup analytics
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/supervisor-analytics.R", "app/www/supervisor.css", "tests/test-supervisor-analytics.R"]
+    notes: "User approved a sticky filter bar, compact operational summary, 70/30 chart and signal layout, six SPC signal rules, daily zone/priority subgroups, weather-adjusted zone/priority comparisons, grouped signal inbox, investigation drawer, separately labeled data-quality warnings and demo-only intervention tracking. Ordinary-mode contextual goals use a frozen synthetic reference model analogous to the ETA workflow with the available zone, priority, weather, hour and weekday fields; traffic is not currently present in the canonical contract and must be labeled unavailable rather than invented. Developer mode provides manual target controls and explicit signal/data-quality/intervention triggers. Interventions are process-local demonstrations and effects are associations, not causal claims."
+    definition_of_done: "Supervisor analytics helper checks pass; full testthat and smoke checks pass; browser review confirms sticky filters, compact KPIs, grouped signal-to-drawer flow, six-rule annotations, daily subgroup chart, adjusted comparison, separately labeled data-quality warnings, configurable developer targets and in-memory intervention tracking without changing fixed I-MR limits."
+    result: "Supervisor now has a sticky filter bar, compact KPIs, a frozen synthetic 90th-percentile context goal (zone/priority/weather/hour/weekday; traffic explicitly unavailable), six supplementary SPC rules, grouped signal inbox with investigation drawer, daily zone-priority subgroups, weather/time-adjusted comparisons, separate data-quality warnings, and developer-only manual targets, event triggers and non-causal intervention tracking. Analytics smoke check prints SUPERVISOR ANALYTICS PASS; full testthat reports PASS 126, WARN 1 (R build-version warning only), smoke prints SMOKE PASS, shared-trip and all caller checks pass; browser review verified ordinary empty-view target 11.7 minutes, abnormal signal drill-down, data-quality separation, subgroup charts and intervention before/after summary."
+
+  - id: H-41
+    title: Simplify Supervisor to one responder per incident
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/www/supervisor.css"]
+    notes: "User requested that the MVP not consider multiple responders. Remove the Supervisor responder filter and use one consistent responder ID in Developer mode while retaining the optional canonical responder_id seam for future integration."
+    definition_of_done: "Supervisor has no responder filter, all visible summaries and charts use the selected metric/zone/priority records, Developer calls use one responder ID, parsing and existing Supervisor tests pass, and the browser shows the simplified filter bar."
+    result: "Removed the Supervisor responder selector and all responder-dependent filtering; metric, date, zone and priority now define the visible records. Developer mode uses the single synthetic responder EMS-101 while the optional canonical responder_id remains available for future integration and completion details. PARSE PASS; Supervisor view test reports PASS 37 with no failures; browser review confirms the simplified filter bar and the empty daily-subgroup state renders without a plot error."
+
+  - id: H-42
+    title: Base daily subgroups on baseline and closed monitoring days
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/supervisor.R", "app/www/supervisor.css"]
+    notes: "User requested that the subgroup view use the available one-year baseline and treat each New York calendar day as a completed subgroup. Current-day simulation records remain live I-MR points and enter the subgroup chart only after that day ends."
+    definition_of_done: "Daily subgroup chart shows the selected metric/zone/priority 2025 baseline plus only closed monitoring days, labels the open-day exclusion, does not depend on the day/week/month display window, and passes parsing, Supervisor tests and browser review."
+    result: "Daily subgroup analysis now always uses the selected metric/zone/priority full 2025 baseline and appends only canonical monitoring days that ended before the current New York day; it is independent of the incident display window. The panel reports baseline incidents/days, closed days appended and open-day records held until midnight. PARSE PASS and Supervisor tests report PASS 37; browser review showed Far Rockaway/High with 168 baseline incidents across 135 completed days and confirmed one new simulated call remained held open rather than becoming a subgroup."
+
+  - id: H-43
+    title: Separate active tracking and adaptive history analysis
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["SPEC.md", "CONTRACT.yaml", "app/app.R", "app/supervisor.R", "app/supervisor-analytics.R", "app/www/supervisor.css", "app/www/pwa.js", "app/www/navigation.js", "tests/test-supervisor-view.R"]
+    notes: "User approved sidebar navigation between active tracking and history analysis, separate subgroup filters with data-availability timestamps, adaptive daily/weekly history charts without a detail table, configurable priority service goals with optional zone overrides and zone-priority performance comparison, and a persistent app-installation affordance. Service goals are team-configured management thresholds and must remain distinct from fixed SPC control limits."
+    definition_of_done: "Supervisor view tests and full testthat pass; smoke prints SMOKE PASS; browser review confirms sidebar navigation, active filters affect only active views, history filters independently update adaptive subgroup charts and availability text, service-goal comparison reports configured/not-configured states without changing control limits, and the app-installation control remains visible with install or manual guidance."
+    result: "Supervisor navigation now separates Active tracking, Patterns and History analysis in the left rail. History has independent metric/zone/priority/phase/period/aggregation filters, closed-data availability and refresh context, adaptive 30-day, 90-day and full-year control/distribution layouts, and no detail table. Team-configured service goals support priority defaults and zone overrides; the comparison shows p90, percent within goal and n without changing fixed SPC limits. The installation control remains visible and provides native install, manual help or installed-state feedback. Full testthat: PASS 138, FAIL 0, WARN 1 (R build-version warning only); smoke prints SMOKE PASS; git diff --check passes; browser review confirmed all history plots, independent filters, service-goal save behavior, the corrected history header, persistent installation help and no new console errors."
+
+  - id: H-44
+    title: Restore Install app button label
+    status: done
+    owner: "Codex"
+    started_at: "2026-10-17"
+    owns: ["CONTRACT.yaml", "app/app.R", "app/supervisor.R", "app/www/pwa.js"]
+    notes: "User requested that the persistent Supervisor installation action read Install app as it did previously. When a native prompt is unavailable, the same button should retain that label and open manual platform instructions."
+    definition_of_done: "The Supervisor action reads Install app whenever the app is not installed, retains installed-state feedback, opens native installation when eligible or manual instructions otherwise, parses cleanly, and is confirmed in the browser."
+    result: "Restored the persistent Supervisor action label to Install app in every non-installed state. Eligible browsers receive the native prompt; otherwise the same button opens manual platform instructions, while installed mode still reads App installed. R parsing, JavaScript syntax and git diff checks pass; browser inspection reports Install app."
 
   - id: H-29
     title: Show a concise ETA and arrival time in Caller view

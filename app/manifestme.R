@@ -8,7 +8,7 @@ for(name in data_files) {
   dir.create(dirname(destination),recursive=TRUE,showWarnings=FALSE)
   if(!file.copy(file.path(repo_dir,'data',name),destination,overwrite=TRUE)) stop('Cannot bundle data: ',name)
 }
-runtime <- c('app.R','supervisor.R','responder-demo.R','responder-server.R',
+runtime <- c('app.R','supervisor.R','supervisor-analytics.R','responder-demo.R','responder-server.R',
   'caller/caller.R','eta.R','shared-incidents.R','shared-trip.R','qc.R',
   'response-metrics.R','feed.R','workflow.R')
 assets <- c(file.path('www',list.files(file.path(app_dir,'www'),recursive=TRUE)),

@@ -1,6 +1,6 @@
 // Returning home must remove the private caller fragment before a new session.
 (() => {
-  function returnHome() {
+  function returnHome(_message) {
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
     window.location.reload();
   }
