@@ -135,15 +135,18 @@ console command rather than claiming an unavailable upload or preset. Shared
 caller/responder incidents are a separate demonstration:
 [shared workflow](shared-incidents.md).
 
-## Teammate reproduction — required before H-05 is done
+## Independent reproduction completed
 
-A teammate who did not write the walkthrough must run all three commands, compare
-the numbers/statuses above and confirm the complete run ends in
-`H-05 DATASET DEMO PASS`. Record their actual results here; do not prefill them.
+Isabel Wilmot ran `Rscript demo/run-datasets.R` from the integration checkout
+at commit `200d1f6` and supplied the complete terminal output in the session on
+2026-10-16. The combined command runs all three scenarios.
 
-- Teammate: pending
-- Commit tested and date: pending
-- Stable / planted / edge results matched: pending
-- Could explain natural exceedances, unchanged limits and unavailable baselines: pending
+- Stable matched: 3,465 accepted, 0 rejected; 1 individuals and 5 moving-range exceedances.
+- Planted matched: 3,465 accepted, 0 rejected; 4 individuals and 6 moving-range exceedances.
+- Edge matched: 261 accepted, 9 rejected, 2 weather values normalized;
+  Astoria/High median 9.0 minutes and p90 9.6 minutes.
+- Output confirmed identical stable/planted baseline limits and ended with
+  `H-05 DATASET DEMO PASS`.
 
-H-05 remains in progress until this independent walkthrough is completed.
+This fulfills the independent reproducibility check for H-05. It does not
+constitute operational baseline approval or complete hosted-app verification.

@@ -98,7 +98,7 @@ tasks:
   - id: H-05
     title: Demonstration of the tool on every test dataset
     points: "10 - Tool Design: a clear demonstration of the tool, using test datasets"
-    status: in_progress
+    status: done
     owner: "Codex H-05 demonstration"
     started_at: "2026-10-16"
     owns: ["demo/", "app/frontend/"]
@@ -107,7 +107,7 @@ tasks:
       URL to run, the numbers or chart the tool shows, and a one-line "how to
       read this"; a teammate who did not write it follows it and gets the same
       numbers.
-    result: "demo/README.md documents all three CSVs and demo/run-datasets.R reproduces their verified QC results using existing functions. H-05 DATASET DEMO PASS; independent data audit PASS; QC tests PASS 88 with zero failures/warnings/skips. Teammate reproduction remains pending, so task stays in_progress."
+    result: "All three CSVs documented in demo/README.md with exact commands and interpretation; existing QC demo prints H-05 DATASET DEMO PASS, independent data audit PASS and QC tests PASS 88. Isabel Wilmot independently ran all three scenarios at 200d1f6 and supplied matching complete output; reproduction recorded in demo/README.md."
 
   - id: H-06
     title: Deploy to the course Posit Connect server
