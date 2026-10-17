@@ -202,9 +202,9 @@ tasks:
   - id: H-11
     title: Tested experimental weather-informed duration prediction
     points: "Supports experimental ETA; core QC remains H-03"
-    status: todo
-    owner: ""
-    started_at: ""
+    status: done
+    owner: "Codex ETA model"
+    started_at: "2026-10-17T01:04:58.908096+00:00"
     owns: ["app/eta.R", "tests/testthat/test-eta.R", "data/eta-model-review.md"]
     notes: >
       Depends on H-03 core verification and H-10 fixtures. H-03 excludes ETA tests;
@@ -218,7 +218,7 @@ tasks:
       reports frozen split dates, held-out weather versus no-weather MAE, coverage,
       interval widths and category counts against predeclared gates. Unsupported
       or failed models return unavailable or a separately validated simpler fallback.
-    result: ""
+    result: "frozen log-linear synthetic ETA with individual 95% prediction intervals, support/leakage gates and independent PASS review; test_file reports FAIL 0 WARN 0 SKIP 0 PASS 100. Weather-effect test MAE 1.645948 vs 3.062764 minutes; coverage 0.9473032; no-effect scenario correctly unavailable. Team approved check-in; UI wiring belongs to H-12."
 
   - id: H-12
     title: Integrate experimental ETA into the simulated Shiny view
